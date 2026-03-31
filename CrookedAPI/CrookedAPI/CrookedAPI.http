@@ -1,0 +1,6 @@
+@CrookedAPI_HostAddress = http://localhost:5023
+
+GET {{CrookedAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
