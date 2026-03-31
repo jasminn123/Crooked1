@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CRKD | Management</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; display: flex; background: #0b0b0b; color: white; height: 100vh;
+        }
+        
+        .sidebar { 
+            width: 260px; background: #000; border-right: 1px solid #222;
+            display: flex; flex-direction: column; padding: 40px 20px; box-sizing: border-box;
+        }
+        .logo-container { text-align: center; margin-bottom: 40px; }
+        .logo-img { width: 100px; }
+        
+        .nav-item { 
+            padding: 12px 15px; margin-bottom: 10px; cursor: pointer; border-radius: 8px;
+            color: #888; transition: 0.3s; font-weight: 500; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .nav-item:hover { background: #1a1a1a; color: #fff; }
+        .nav-active { background: #fff; color: #000 !important; }
+        
+        .logout-btn { 
+            margin-top: auto; padding: 12px; border-radius: 8px; border: 1px solid #441111; 
+            color: #ff5555; text-align: center; cursor: pointer; font-weight: 600;
+        }
+        .logout-btn:hover { background: #ff5555; color: white; }
+
+        .main { flex: 1; padding: 60px; overflow-y: auto; }
+        h1 { font-size: 32px; margin: 0 0 10px 0; }
+        .subtitle { color: #666; margin-bottom: 40px; }
+        
+        .card { 
+            background: #141414; padding: 30px; border-radius: 20px; 
+            border: 1px solid #222; width: 280px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .stat-label { font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 2px; }
+        .stat-number { font-size: 64px; font-weight: 700; color: #fff; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo-container">
+            <img src="images/logo.png" class="logo-img" alt="CRKD">
+        </div>
+        
+        <div class="nav-item nav-active">Dashboard</div>
+        <div class="nav-item">Users</div>
+        <div class="nav-item">Inventory</div>
+        
+        <div class="logout-btn" onclick="window.location.href='index.html'">Logout</div>
+    </div>
+
+    <div class="main">
+        <h1>System Overview</h1>
+        <p class="subtitle">Real-time statistics for CRKD Database</p>
+        
+        <div class="card">
+            <div class="stat-label">Total Population</div>
+            <div id="userCount" class="stat-number">0</div>
+            <div class="stat-label">Registered Users</div>
+        </div>
+    </div>
+
+    <script>
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/Admin/dashboard-stats');
+                const data = await response.json();
+                document.getElementById('userCount').innerText = data.totalUsers;
+            } catch (err) {
+                document.getElementById('userCount').innerText = "0";
+            }
+        }
+        loadStats();
+    </script>
+</body>
+</html>

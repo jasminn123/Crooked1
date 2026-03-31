@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CRKD | Login</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #0b0b0b; color: white; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; margin: 0;
+        }
+        
+        .login-card { 
+            background: #141414; padding: 40px; border-radius: 24px; 
+            border: 1px solid #222; width: 340px; text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+        }
+
+        .logo-img { width: 120px; margin-bottom: 20px; }
+        
+        h2 { font-weight: 600; margin-bottom: 30px; letter-spacing: -0.5px; }
+        
+        .input-group { text-align: left; margin-bottom: 15px; }
+        label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; text-transform: uppercase; margin-left: 5px; }
+        
+        input { 
+            width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #222; 
+            background: #1e1e1e; color: white; box-sizing: border-box; 
+            font-size: 14px; transition: 0.3s;
+        }
+        input:focus { border-color: #fff; outline: none; background: #252525; }
+
+        button { 
+            width: 100%; padding: 14px; background: #ffffff; color: #000; 
+            border: none; border-radius: 12px; cursor: pointer; 
+            font-weight: 700; font-size: 14px; margin-top: 20px; 
+            text-transform: uppercase; transition: 0.2s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,255,255,0.2); }
+
+        #message { margin-top: 20px; font-size: 13px; min-height: 18px; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <img src="images/logo.png" class="logo-img" alt="CRKD">
+        <h2>Clothing Shop</h2>
+        
+        <div class="input-group">
+            <label>Username</label>
+            <input type="text" id="user" placeholder="Enter username">
+        </div>
+        
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" id="pass" placeholder="••••••••">
+        </div>
+
+        <button onclick="login()">Login</button>
+        <p id="message"></p>
+    </div>
+
+    <script>
+        async function login() {
+            const user = document.getElementById('user').value;
+            const pass = document.getElementById('pass').value;
+            const msg = document.getElementById('message');
+
+            msg.style.color = "#888";
+            msg.innerText = "Authenticating...";
+
+            try {
+                const response = await fetch('/api/Auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    msg.style.color = "#4caf50";
+                    msg.innerText = "Access Granted! Opening dashboard...";
+                    setTimeout(() => { window.location.href = "dashboard.html"; }, 1000);
+                } else {
+                    msg.style.color = "#ff5555";
+                    msg.innerText = result.message || "Invalid credentials";
+                }
+            } catch (err) {
+                msg.style.color = "#ff5555";
+                msg.innerText = "Connection to server failed.";
+            }
+        }
+    </script>
+</body>
+</html>
