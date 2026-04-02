@@ -62,35 +62,59 @@
     </div>
 
     <script>
-        async function login() {
-            const user = document.getElementById('user').value;
-            const pass = document.getElementById('pass').value;
-            const msg = document.getElementById('message');
+    async function login() {
+        const user = document.getElementById('user').value;
+        const pass = document.getElementById('pass').value;
+        const msg = document.getElementById('message');
 
-            msg.style.color = "#888";
-            msg.innerText = "Authenticating...";
-
-            try {
-                const response = await fetch('/api/Auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: user, password: pass })
-                });
-
-                const result = await response.json();
-                if (response.ok) {
-                    msg.style.color = "#4caf50";
-                    msg.innerText = "Access Granted! Opening dashboard...";
-                    setTimeout(() => { window.location.href = "dashboard.html"; }, 1000);
-                } else {
-                    msg.style.color = "#ff5555";
-                    msg.innerText = result.message || "Invalid credentials";
-                }
-            } catch (err) {
-                msg.style.color = "#ff5555";
-                msg.innerText = "Connection to server failed.";
-            }
+        if (!user || !pass) {
+            msg.style.color = "#ff5555";
+            msg.innerText = "Please enter both fields.";
+            return;
         }
-    </script>
+
+        msg.style.color = "#888";
+        msg.innerText = "Authenticating...";
+
+        try {
+           const response = await fetch('http://localhost:45922/api/Auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+
+            const result = await response.json();
+            
+            if (response.ok) {
+                // IMPORTANT: These keys must match what dashboard.html uses
+                localStorage.setItem("userRole", result.role); 
+                
+                // Use result.fullName or result.name depending on your C# API return
+                localStorage.setItem("userName", result.fullName || result.name || "User");
+
+                msg.style.color = "#4caf50";
+                msg.innerText = "Access Granted! Opening dashboard...";
+                
+                setTimeout(() => { 
+                    window.location.href = "dashboard.html"; 
+                }, 1000);
+            } else {
+                msg.style.color = "#ff5555";
+                msg.innerText = result.message || "Invalid credentials";
+            }
+        } catch (err) {
+            msg.style.color = "#ff5555";
+            msg.innerText = "Connection to server failed. Is the API running?";
+            console.error("Login Error:", err);
+        }
+    }
+
+    // Allow pressing "Enter" to login
+    document.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            login();
+        }
+    });
+</script>
 </body>
 </html>
