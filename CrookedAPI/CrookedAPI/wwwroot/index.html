@@ -86,10 +86,9 @@
             const result = await response.json();
             
             if (response.ok) {
-                // IMPORTANT: These keys must match what dashboard.html uses
+
                 localStorage.setItem("userRole", result.role); 
                 
-                // Use result.fullName or result.name depending on your C# API return
                 localStorage.setItem("userName", result.fullName || result.name || "User");
 
                 msg.style.color = "#4caf50";
@@ -109,7 +108,6 @@
         }
     }
 
-    // Allow pressing "Enter" to login
     document.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             login();

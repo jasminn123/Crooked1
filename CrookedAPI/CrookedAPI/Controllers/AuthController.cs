@@ -18,7 +18,7 @@ namespace CrookedAPI.Controllers
             using (var connection = new MySqlConnection(_connectionString))
             {
                 connection.Open();
-                // ONLY allow login if is_active is 1
+
                 var sql = "SELECT role, full_name FROM users WHERE username = @user AND password = @pass AND is_active = 1";
                 using (var cmd = new MySqlCommand(sql, connection))
                 {
@@ -55,7 +55,7 @@ namespace CrookedAPI.Controllers
             using (var connection = new MySqlConnection(_connectionString))
             {
                 connection.Open();
-                // If archive is true, set to 0. If false, set to 1.
+
                 var sql = "UPDATE users SET is_active = @status WHERE id = @id";
                 
                 string staffName = "";
@@ -88,7 +88,7 @@ namespace CrookedAPI.Controllers
             using (var connection = new MySqlConnection(_connectionString))
             {
                 connection.Open();
-                var sql = "SELECT id, full_name, username, is_active FROM users WHERE role = 'staff'";
+                var sql = "SELECT id, full_name, username, is_active FROM users WHERE role = 'staff' AND is_active= 'true'";
                 using (var cmd = new MySqlCommand(sql, connection))
                 using (var reader = cmd.ExecuteReader())
                 {
