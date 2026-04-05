@@ -15,10 +15,10 @@
             background: #141414; padding: 40px; border-radius: 24px; 
             border: 1px solid #222; width: 340px; text-align: center;
             box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            position: relative;
         }
 
         .logo-img { width: 120px; margin-bottom: 20px; }
-        
         h2 { font-weight: 600; margin-bottom: 30px; letter-spacing: -0.5px; }
         
         .input-group { text-align: left; margin-bottom: 15px; }
@@ -34,15 +34,35 @@
         button { 
             width: 100%; padding: 14px; background: #ffffff; color: #000; 
             border: none; border-radius: 12px; cursor: pointer; 
-            font-weight: 700; font-size: 14px; margin-top: 20px; 
+            font-weight: 700; font-size: 14px; margin-top: 10px; 
             text-transform: uppercase; transition: 0.2s;
         }
         button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,255,255,0.2); }
 
+        .login-extras { margin-top: 20px; }
+        #forgot-password-link { color: #555; font-size: 0.8rem; text-decoration: none; transition: 0.3s; }
+        #forgot-password-link:hover { color: #888; }
+
         #message { margin-top: 20px; font-size: 13px; min-height: 18px; font-weight: 500; }
+
+        /* Dark Modal Styling */
+        #reset-modal {
+            display: none; position: fixed; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); background: #141414; 
+            padding: 30px; border-radius: 24px; border: 1px solid #333; 
+            z-index: 1000; box-shadow: 0 0 100px rgba(0,0,0,0.9); 
+            width: 300px; text-align: center;
+        }
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; 
+            width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999;
+        }
     </style>
 </head>
 <body>
+
+    <div class="modal-overlay" id="overlay" onclick="closeReset()"></div>
+
     <div class="login-card">
         <img src="images/logo.png" class="logo-img" alt="CRKD">
         <h2>Clothing Shop</h2>
@@ -58,72 +78,116 @@
         </div>
 
         <button onclick="login()">Login</button>
+
+        <div class="login-extras">
+            <a href="#" id="forgot-password-link">Forgot Password?</a>
+        </div>
+
         <p id="message"></p>
     </div>
 
+    <div id="reset-modal">
+        <h3 style="margin-top: 0;">Owner Recovery</h3>
+        <p style="font-size: 12px; color: #888; margin-bottom: 20px;">Enter your username and master key to reset.</p>
+        <input type="text" id="reset-username" placeholder="Owner Username" style="margin-bottom: 10px;"><br>
+        <input type="password" id="recovery-key" placeholder="Master Recovery Key" style="margin-bottom: 10px;"><br>
+        <input type="password" id="new-password" placeholder="New Password" style="margin-bottom: 20px;"><br>
+        <button onclick="submitReset()">Update Password</button>
+        <button onclick="closeReset()" style="background:#222; color: white; margin-top: 10px;">Cancel</button>
+        <p id="reset-msg" style="color:#ff5555; font-size: 12px; margin-top: 15px;"></p>
+    </div>
+
     <script>
-    async function login() {
-        const userField = document.getElementById('user');
-        const passField = document.getElementById('pass');
-        const msg = document.getElementById('message');
+        const API_BASE = "http://localhost:5055/api/Auth";
 
-        const username = userField.value.trim();
-        const password = passField.value.trim();
+        async function login() {
+            const userField = document.getElementById('user');
+            const passField = document.getElementById('pass');
+            const msg = document.getElementById('message');
 
-        if (!username || !password) {
-            msg.style.color = "#ff5555";
-            msg.innerText = "Please enter both fields.";
-            return;
-        }
+            const username = userField.value.trim();
+            const password = passField.value.trim();
 
-        msg.style.color = "#888";
-        msg.innerText = "Authenticating...";
-
-        try {
-
-            const response = await fetch('http://localhost:5055/api/Auth/login', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    Username: username, 
-                    Password: password 
-                })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                
-
-                localStorage.setItem("userRole", result.role); 
-                localStorage.setItem("userName", result.fullName || result.username || "User");
-
-                msg.style.color = "#4caf50";
-                msg.innerText = "Access Granted! Opening dashboard...";
-                
-                setTimeout(() => { 
-                    window.location.href = "dashboard.html"; 
-                }, 1000);
-            } else {
-                const errorData = await response.json();
+            if (!username || !password) {
                 msg.style.color = "#ff5555";
-                msg.innerText = errorData.message || "Invalid username or password";
+                msg.innerText = "Please enter both fields.";
+                return;
             }
-        } catch (err) {
-            msg.style.color = "#ff5555";
-            msg.innerText = "Connection failed. Check if API is running on 5055.";
-            console.error("Login Error:", err);
-        }
-    }
 
+            msg.style.color = "#888";
+            msg.innerText = "Authenticating...";
 
-    document.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            login();
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Username: username, Password: password })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    localStorage.setItem("userRole", result.role); 
+                    localStorage.setItem("userName", result.fullName || result.username || "User");
+
+                    msg.style.color = "#4caf50";
+                    msg.innerText = "Access Granted! Opening dashboard...";
+                    
+                    setTimeout(() => { window.location.href = "dashboard.html"; }, 1000);
+                } else {
+                    const errorData = await response.json();
+                    msg.style.color = "#ff5555";
+                    msg.innerText = errorData.message || "Invalid username or password";
+                }
+            } catch (err) {
+                msg.style.color = "#ff5555";
+                msg.innerText = "Connection failed. Check if API is running.";
+            }
         }
-    });
+
+        // Modal Logic
+        document.getElementById('forgot-password-link').onclick = function(e) {
+            e.preventDefault();
+            document.getElementById('reset-modal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        };
+
+        function closeReset() {
+            document.getElementById('reset-modal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('reset-msg').innerText = "";
+        }
+
+        async function submitReset() {
+            const data = {
+                username: document.getElementById('reset-username').value,
+                recoveryKey: document.getElementById('recovery-key').value,
+                newPassword: document.getElementById('new-password').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                const msgField = document.getElementById('reset-msg');
+                msgField.innerText = result.message;
+
+                if (response.ok) {
+                    msgField.style.color = "#4caf50";
+                    alert("Password updated! Please login.");
+                    closeReset();
+                } else {
+                    msgField.style.color = "#ff5555";
+                }
+            } catch (err) {
+                document.getElementById('reset-msg').innerText = "Server error.";
+            }
+        }
+
+        document.addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
     </script>
 </body>
 </html>
