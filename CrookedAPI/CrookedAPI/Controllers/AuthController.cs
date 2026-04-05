@@ -10,43 +10,73 @@ namespace CrookedAPI.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
+
         private readonly string _connectionString = "server=localhost;database=crooked_db;user=root;password=;";
 
         [HttpPost("login")]
         public IActionResult Login([FromBody] User loginRequest)
         {
-            using (var connection = new MySqlConnection(_connectionString))
+            try 
             {
-                connection.Open();
-
-                var sql = "SELECT role, full_name FROM users WHERE username = @user AND password = @pass AND is_active = 1";
-                using (var cmd = new MySqlCommand(sql, connection))
+                using (var connection = new MySqlConnection(_connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@user", loginRequest.Username);
-                    cmd.Parameters.AddWithValue("@pass", loginRequest.Password);
+                    connection.Open();
 
-                    using (var reader = cmd.ExecuteReader())
+                    string sql = "SELECT role, full_name FROM users WHERE username = @user AND password = @pass AND is_active = 1";
+                    using (var cmd = new MySqlCommand(sql, connection))
                     {
-                        if (reader.Read())
+                        cmd.Parameters.AddWithValue("@user", loginRequest.Username);
+                        cmd.Parameters.AddWithValue("@pass", loginRequest.Password);
+
+                        using (var reader = cmd.ExecuteReader())
                         {
-                            string role = reader["role"].ToString();
-                            string fullName = reader["full_name"].ToString();
-                            reader.Close(); 
-
-                            // LOG THE LOGIN
-                            var logSql = "INSERT INTO activitylogs (StaffName, Action, DateOccurred) VALUES (@name, 'Logged into the system', NOW())";
-                            using (var logCmd = new MySqlCommand(logSql, connection))
+                            if (reader.Read())
                             {
-                                logCmd.Parameters.AddWithValue("@name", fullName);
-                                logCmd.ExecuteNonQuery();
-                            }
+                                string role = reader["role"].ToString();
+                                string fullName = reader["full_name"].ToString();
+                                reader.Close(); 
 
-                            return Ok(new { role, fullName });
+                                // LOG THE LOGIN
+                                var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES (@name, 'Logged into the system', NOW())";                            
+                                using (var logCmd = new MySqlCommand(logSql, connection))
+                                {
+                                    logCmd.Parameters.AddWithValue("@name", fullName);
+                                    logCmd.ExecuteNonQuery();
+                                }
+
+                                return Ok(new { role, fullName });
+                            }
                         }
                     }
                 }
+                return Unauthorized(new { message = "Account archived or invalid credentials." });
             }
-            return Unauthorized(new { message = "Account archived or invalid credentials." });
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Database Error: " + ex.Message });
+            }
+        }
+
+        [HttpGet("dashboard-stats")]
+        public IActionResult GetStats()
+        {
+            try
+            {
+                using (var connection = new MySqlConnection(_connectionString))
+                {
+                    connection.Open();
+                    var sql = "SELECT COUNT(*) FROM users WHERE is_active = 1";
+                    using (var cmd = new MySqlCommand(sql, connection))
+                    {
+                        var count = Convert.ToInt32(cmd.ExecuteScalar());
+                        return Ok(new { totalUsers = count });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
 
         [HttpPost("toggle-archive/{id}")]
@@ -55,7 +85,6 @@ namespace CrookedAPI.Controllers
             using (var connection = new MySqlConnection(_connectionString))
             {
                 connection.Open();
-
                 var sql = "UPDATE users SET is_active = @status WHERE id = @id";
                 
                 string staffName = "";
@@ -71,7 +100,7 @@ namespace CrookedAPI.Controllers
                     cmd.ExecuteNonQuery();
                 }
 
-                var logSql = "INSERT INTO activitylogs (StaffName, Action, DateOccurred) VALUES ('Main Owner', @action, NOW())";
+                var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES ('Main Owner', @action, NOW())";                
                 using (var logCmd = new MySqlCommand(logSql, connection))
                 {
                     logCmd.Parameters.AddWithValue("@action", archive ? $"Archived: {staffName}" : $"Unarchived: {staffName}");
@@ -88,7 +117,7 @@ namespace CrookedAPI.Controllers
             using (var connection = new MySqlConnection(_connectionString))
             {
                 connection.Open();
-                var sql = "SELECT id, full_name, username, is_active FROM users WHERE role = 'staff' AND is_active= 'true'";
+                var sql = "SELECT id, full_name, username, is_active FROM users WHERE role = 'staff'";
                 using (var cmd = new MySqlCommand(sql, connection))
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -113,13 +142,17 @@ namespace CrookedAPI.Controllers
             using (var connection = new MySqlConnection(_connectionString))
             {
                 connection.Open();
-                var sql = "SELECT StaffName, Action, DateOccurred FROM activitylogs ORDER BY DateOccurred DESC LIMIT 10";
+                var sql = "SELECT staff_name, action, date_occurred FROM activity_logs ORDER BY date_occurred DESC LIMIT 10";
                 using (var cmd = new MySqlCommand(sql, connection))
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        logs.Add(new { staffName = reader["StaffName"], action = reader["Action"], dateOccurred = reader["DateOccurred"] });
+                        logs.Add(new { 
+                            staffName = reader["staff_name"], 
+                            action = reader["action"], 
+                            dateOccurred = reader["date_occurred"] 
+                        });
                     }
                 }
             }

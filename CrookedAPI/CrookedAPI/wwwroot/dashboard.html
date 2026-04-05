@@ -100,11 +100,15 @@
 
     document.addEventListener("DOMContentLoaded", function() {
         if (!role) { window.location.href = "index.html"; return; }
-        document.getElementById("welcomeHeader").innerText = `Welcome, ${name}`;
+        
 
+        document.getElementById("welcomeHeader").innerText = `Welcome, ${name || 'User'}`;
+        
         if (role.toLowerCase() === "owner") {
             document.querySelectorAll('.owner-only').forEach(el => el.style.display = 'block');
-            fetchStaff(); fetchLogs(); loadStats();
+            fetchStaff(); 
+            fetchLogs(); 
+            loadStats(); 
         } else {
             document.getElementById('staffDashboardMsg').style.display = 'block';
         }
@@ -112,17 +116,17 @@
 
     async function loadStats() {
         try {
-            const response = await fetch('http://localhost:45922/api/Admin/dashboard-stats');
+            // Updated to match your AuthController route
+            const response = await fetch('http://localhost:5055/api/Auth/dashboard-stats');
             const data = await response.json();
             document.getElementById('userCount').innerText = data.totalUsers || "0";
-        } catch (err) { console.error(err); }
+        } catch (err) { console.error("Stats Error:", err); }
     }
 
     async function fetchStaff() {
         try {
-            const response = await fetch('http://localhost:45922/api/Auth/get-staff');
+            const response = await fetch('http://localhost:5055/api/Auth/get-staff');
             const staff = await response.json();
-            console.log(staff);
             let activeHtml = ""; let archiveHtml = "";
 
             staff.forEach(s => {
@@ -134,12 +138,12 @@
             });
             document.getElementById('staffTableBody').innerHTML = activeHtml;
             document.getElementById('archiveTableBody').innerHTML = archiveHtml;
-        } catch (err) { console.error(err); }
+        } catch (err) { console.error("Staff Fetch Error:", err); }
     }
 
     async function fetchLogs() {
         try {
-            const response = await fetch('http://localhost:45922/api/Auth/get-logs');
+            const response = await fetch('http://localhost:5055/api/Auth/get-logs');
             const logs = await response.json();
             let html = "";
             logs.forEach(log => {
@@ -147,29 +151,48 @@
                 html += `<tr><td>${log.staffName}</td><td>${log.action}</td><td>${date}</td></tr>`;
             });
             document.getElementById('logTableBody').innerHTML = html;
-        } catch (err) { console.error(err); }
+        } catch (err) { console.error("Logs Fetch Error:", err); }
     }
 
     async function toggleArchive(id, shouldArchive) {
-        if (!confirm(`Are you sure?`)) return;
+        if (!confirm(`Are you sure you want to change this status?`)) return;
         try {
-            const response = await fetch(`http://localhost:45922/api/Auth/toggle-archive/${id}?archive=${shouldArchive}`, { method: 'POST' });
-            if (response.ok) { fetchStaff(); fetchLogs(); }
-        } catch (err) { alert("Error"); }
+
+            const response = await fetch(`http://localhost:5055/api/Auth/toggle-archive/${id}?archive=${shouldArchive}`, { method: 'POST' });
+            if (response.ok) { 
+                fetchStaff(); 
+                fetchLogs(); 
+                loadStats();
+            }
+        } catch (err) { alert("Error connecting to server."); }
     }
 
     async function addStaff() {
         const fullName = document.getElementById('staffName').value;
         const username = document.getElementById('staffUser').value;
         const password = document.getElementById('staffPass').value;
+        
+        if(!fullName || !username || !password) {
+            alert("Please fill in all fields");
+            return;
+        }
+
         try {
-            const response = await fetch('http://localhost:45922/api/Auth/register-staff', {
+            const response = await fetch('http://localhost:5055/api/Auth/register-staff', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ Username: username, Password: password, FullName: fullName })
             });
-            if (response.ok) { fetchStaff(); fetchLogs(); }
-        } catch (err) { console.error(err); }
+            if (response.ok) { 
+
+                document.getElementById('staffName').value = "";
+                document.getElementById('staffUser').value = "";
+                document.getElementById('staffPass').value = "";
+                fetchStaff(); 
+                fetchLogs(); 
+                loadStats();
+            }
+        } catch (err) { console.error("Add Staff Error:", err); }
     }
 
     function showSection(sectionId, element) {
