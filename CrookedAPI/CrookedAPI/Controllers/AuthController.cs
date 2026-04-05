@@ -176,5 +176,52 @@ namespace CrookedAPI.Controllers
             }
             return Ok();
         }
+
+        [HttpPost("reset-password")]
+public IActionResult ResetPassword([FromBody] ResetRequest request)
+{
+
+    string masterRecoveryKey = "CRKD_OWNER_2026"; 
+
+    if (request.RecoveryKey != masterRecoveryKey)
+    {
+        return BadRequest(new { message = "Invalid Recovery Key!" });
+    }
+
+    try
+    {
+        using (var connection = new MySqlConnection(_connectionString))
+        {
+            connection.Open();
+
+            var sql = "UPDATE users SET password = @newPass WHERE username = @user AND role = 'owner'";
+            using (var cmd = new MySqlCommand(sql, connection))
+            {
+                cmd.Parameters.AddWithValue("@newPass", request.NewPassword);
+                cmd.Parameters.AddWithValue("@user", request.Username);
+                
+                int rowsAffected = cmd.ExecuteNonQuery();
+                if (rowsAffected > 0)
+                {
+                    return Ok(new { message = "Owner password reset successfully!" });
+                }
+                else
+                {
+                    return BadRequest(new { message = "Owner username not found." });
+                }
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { message = ex.Message });
+    }
+}
+
+public class ResetRequest {
+    public string Username { get; set; }
+    public string RecoveryKey { get; set; }
+    public string NewPassword { get; set; }
+}
     }
 }
