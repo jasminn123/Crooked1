@@ -11,7 +11,7 @@ namespace CrookedAPI.Controllers
     public class AuthController : ControllerBase
     {
 
-        private readonly string _connectionString = "server=localhost;database=crooked_db;user=root;password=;";
+        private readonly string _connectionString = "Server=localhost;Database=crooked1;Uid=user;password=password123";
 
         [HttpPost("login")]
         public IActionResult Login([FromBody] User loginRequest)
