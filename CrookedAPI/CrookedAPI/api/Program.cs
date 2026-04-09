@@ -1,3 +1,6 @@
+using System.IO;
+using Microsoft.Extensions.FileProviders;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -13,11 +16,24 @@ builder.Services.AddCors(options => {
 
 var app = builder.Build();
 
-
 app.UseCors("AllowAll");
-
 app.UseAuthorization();
+
+var pageFileProvider = new PhysicalFileProvider(
+    Path.Combine(builder.Environment.ContentRootPath, "memberworks", "page"));
+
+app.UseDefaultFiles(new DefaultFilesOptions
+{
+    FileProvider = pageFileProvider,
+    RequestPath = ""
+});
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = pageFileProvider,
+    RequestPath = ""
+});
 
 app.MapControllers();
 
-app.Run("http://localhost:5055");
+app.Run();
