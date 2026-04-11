@@ -20,7 +20,13 @@ app.UseCors("AllowAll");
 app.UseAuthorization();
 
 var pageFileProvider = new PhysicalFileProvider(
-    Path.Combine(builder.Environment.ContentRootPath, "memberworks", "page"));
+    Path.Combine(builder.Environment.ContentRootPath, "Frontend", "page"));
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(builder.Environment.ContentRootPath, "Frontend", "assets")),
+    RequestPath = "/assets"
+});
 
 app.UseDefaultFiles(new DefaultFilesOptions
 {

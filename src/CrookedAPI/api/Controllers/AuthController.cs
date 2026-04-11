@@ -212,16 +212,10 @@ public IActionResult ResetPassword([FromBody] ResetRequest request)
             }
         }
     }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new { message = ex.Message });
-    }
-}
-
-public class ResetRequest {
-    public string Username { get; set; }
-    public string RecoveryKey { get; set; }
-    public string NewPassword { get; set; }
-}
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { message = ex.Message });
+            }
+        }
     }
 }
