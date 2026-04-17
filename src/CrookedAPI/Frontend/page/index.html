@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8">
+    <title>CRKD | Login</title>
+    <link rel="stylesheet" href="../design/index.css">
+</head>
+<body>
+
+    <div class="modal-overlay" id="overlay" onclick="closeReset()"></div>
+    <div class="login-card">
+        <img src="../assets/logo.png" class="logo-img" alt="CRKD">
+        <h2>Clothing Shop</h2>
+        
+        <div class="input-group">
+            <label>Username</label>
+            <input type="text" id="user" placeholder="Enter username">
+        </div>
+        
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" id="pass" placeholder="••••••••">
+        </div>
+
+        <button onclick="login()">Login</button>
+
+        <div class="login-extras">
+            <a href="#" id="forgot-password-link">Forgot Password?</a>
+        </div>
+
+        <p id="message"></p>
+    </div>
+
+    <div id="reset-modal">
+        <h3 style="margin-top: 0;">Owner Recovery</h3>
+        <p style="font-size: 12px; color: #888; margin-bottom: 20px;">Enter your username and master key to reset.</p>
+        <input type="text" id="reset-username" placeholder="Owner Username" style="margin-bottom: 10px;">
+        <input type="password" id="recovery-key" placeholder="Master Recovery Key" style="margin-bottom: 10px;">
+        <input type="password" id="new-password" placeholder="New Password" style="margin-bottom: 20px;">
+        <button onclick="submitReset()">Update Password</button>
+        <button onclick="closeReset()" style="background:#222; color: white; margin-top: 10px;">Cancel</button>
+        <p id="reset-msg" style="color:#ff5555; font-size: 12px; margin-top: 15px;"></p>
+    </div>
+
+    <script src="../javascript/index.js"></script>
+</body>
+</html>

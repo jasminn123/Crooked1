@@ -11,7 +11,7 @@ namespace CrookedAPI.Controllers
     public class AuthController : ControllerBase
     {
 
-        private readonly string _connectionString = "server=localhost;database=crooked_db;user=root;password=;";
+        private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
         [HttpPost("login")]
         public IActionResult Login([FromBody] User loginRequest)
@@ -211,16 +211,10 @@ public IActionResult ResetPassword([FromBody] ResetRequest request)
             }
         }
     }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new { message = ex.Message });
-    }
-}
-
-public class ResetRequest {
-    public string Username { get; set; }
-    public string RecoveryKey { get; set; }
-    public string NewPassword { get; set; }
-}
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { message = ex.Message });
+            }
+        }
     }
 }
