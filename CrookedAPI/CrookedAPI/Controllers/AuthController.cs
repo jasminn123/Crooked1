@@ -36,7 +36,6 @@ namespace CrookedAPI.Controllers
                                 string fullName = reader["full_name"].ToString();
                                 reader.Close(); 
 
-                                // LOG THE LOGIN
                                 var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES (@name, 'Logged into the system', NOW())";                            
                                 using (var logCmd = new MySqlCommand(logSql, connection))
                                 {

@@ -6,7 +6,6 @@
     <title>CRKD | Login</title>
     
    <style>
-    /* 1. Global Reset & Layout */
     body { 
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
         background: #0b0b0b; 
@@ -22,10 +21,8 @@
         overflow: hidden;
     }
 
-    /* 2. Login Card (Updated for Laptop "Cover" Feel) */
     .login-card { 
         width: 100%;
-        /* Adjusted for a more expansive "Dashboard" look on desktops */
         max-width: 420px; 
         padding: 50px;    
         background: #141414; 
@@ -40,7 +37,6 @@
     .logo-img { width: 120px; margin-bottom: 20px; transition: width 0.3s ease; }
     h2 { font-weight: 600; margin-bottom: 30px; letter-spacing: -0.5px; transition: font-size 0.3s ease; }
     
-    /* 3. Form Elements */
     .input-group { text-align: left; margin-bottom: 15px; }
     label { 
         display: block; 
@@ -109,7 +105,6 @@
         color: #ff5555; 
     }
 
-    /* 5. Modal Styles */
     #reset-modal {
         display: none; 
         position: fixed; 
@@ -139,24 +134,20 @@
         backdrop-filter: blur(4px);
     }
 
-    /* 6. UPDATED Responsive Breakpoints */
     
-    /* Laptop/Desktop Expansion: This makes it "cover" more of the screen like the dashboard */
     @media (min-width: 1024px) {
         .login-card {
-            max-width: 800px; /* Increased to match the dashboard card scale */
-            padding: 80px;    /* More whitespace for a professional look */
+            max-width: 800px; 
+            padding: 80px;    
         }
         .logo-img { width: 160px; }
         h2 { font-size: 2.2rem; }
     }
 
-    /* Tablets */
     @media (max-width: 768px) {
         .login-card { max-width: 500px; padding: 60px 40px; }
     }
 
-    /* Phones */
     @media (max-width: 480px) {
         .login-card { padding: 35px 25px; border-radius: 24px; max-width: 100%; }
         h2 { font-size: 1.5rem; margin-bottom: 25px; }
@@ -164,7 +155,6 @@
         input, button { padding: 12px; }
     }
 
-    /* Tiny screens */
     @media (max-width: 280px) {
         .logo-img { width: 80px; }
         h2 { font-size: 1.2rem; }
