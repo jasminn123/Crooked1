@@ -1,95 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../design/dashboard.css">
     <title>CRKD | Management</title>
 </head>
 <body>
 
 <div class="sidebar">
-    <img src="assets/logo.png" alt="CRKD Logo" class="logo-img">
+    <div class="logo-container">
+        <img src="../assets/logo.png" alt="CRKD" class="logo-img">
+    </div>
+    
     <div class="nav-item nav-active" onclick="showSection('view-dashboard', this)">DASHBOARD</div>
-    <div class="nav-item owner-only-nav" onclick="showSection('view-users', this)">USERS</div>
-    <div class="nav-item owner-only-nav" onclick="showSection('view-inventory', this)">INVENTORY</div>
+    <div class="nav-item" onclick="showSection('view-products', this)">PRODUCTS</div>
+    <div class="nav-item" onclick="showSection('view-create-post', this)">CREATE POST</div>
+    <div class="nav-item" onclick="showSection('view-posting-logs', this)">POSTING LOGS</div>
+    <div class="nav-item" onclick="showSection('view-transactions', this)">TRANSACTION LOGS</div>
+    <div class="nav-item" onclick="showSection('view-users', this)">STAFF MANAGEMENT</div>
+    <div class="nav-item" onclick="showSection('view-inventory', this)">INVENTORY</div>
+    
     <div class="logout-btn" onclick="logout()">Logout</div>
 </div>
 
 <div class="main">
-    <h1 id="welcomeHeader">Welcome</h1>
-    <p class="subtitle">Real-time statistics for CRKD Database</p>
-
-    <div id="view-dashboard" class="content-section" style="display: block;">
-        <div class="owner-only">
-            <div class="card stat-card">
-                <div class="stat-label">Total Population</div>
-                <div id="userCount" class="stat-number">0</div>
+    <div class="top-header">
+        <div class="search-engine">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search product name or id...">
+        </div>
+        <div class="header-icons">
+            <i class="fas fa-bell"></i>
+            <i class="fas fa-envelope"></i>
+            <div class="profile-section">
+                <span>Owner</span>
+                <div class="profile-icon"><i class="fas fa-user-circle"></i></div>
             </div>
+        </div>
+    </div>
+
+    <div class="content-wrapper">
+        <h1 id="welcomeHeader">Dashboard Overview</h1>
+
+        <div id="view-dashboard" class="content-section" style="display: flex;">
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <span class="stat-label">Total Product:</span>
+                        <h2 id="totalProduct">0</h2>
+                    </div>
+                    <i class="fas fa-box stat-icon"></i>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <span class="stat-label">Posted Today:</span>
+                        <h2 id="postedToday">0</h2>
+                    </div>
+                    <i class="fas fa-upload stat-icon"></i>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <span class="stat-label">Pending Post:</span>
+                        <h2 id="pendingPosts">0</h2>
+                    </div>
+                    <i class="fas fa-clock stat-icon"></i>
+                </div>
+            </div>
+
             <div class="card">
                 <h3>Recent Activity Logs</h3>
-                <div class="activity-logs-container">
+                <div class="table-container">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Staff Name</th>
-                                <th>Action</th>
-                                <th>Date</th>
-                            </tr>
+                            <tr><th>Staff Name</th><th>Action</th><th>Date</th></tr>
                         </thead>
                         <tbody id="logTableBody"></tbody>
                     </table>
                 </div>
             </div>
         </div>
-        
-        <div id="staffDashboardMsg" style="display:none;">
+
+        <div id="view-users" class="content-section">
             <div class="card">
-                <h3>Staff Portal</h3>
-                <p>Welcome to the system. Use the sidebar to navigate available tools.</p>
+                <h3>Create Staff Account</h3>
+                <div class="form-row">
+                    <input type="text" id="staffName" placeholder="Full Name">
+                    <input type="text" id="staffUser" placeholder="Username">
+                    <input type="password" id="staffPass" placeholder="Password">
+                    <button class="btn-create" onclick="addStaff()">Create Account</button>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <div id="view-users" class="content-section">
-        <div class="card">
-            <h3>Create Staff Account</h3>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <input type="text" id="staffName" placeholder="Full Name">
-                <input type="text" id="staffUser" placeholder="Username">
-                <input type="password" id="staffPass" placeholder="Password">
-                <button onclick="addStaff()">Create Account</button>
+            <div class="card">
+                <h3>Active Staff Members</h3>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
+                        <tbody id="staffTableBody"></tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-        <div class="card">
-            <h3>Active Staff Members</h3>
-            <div class="table-container">
-                <table>
-                    <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
-                    <tbody id="staffTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card" style="background: #0a0a0a; border: 1px solid #441111;">
-            <h3 style="color: #ff5555;">Archive Storage</h3>
-            <div class="table-container">
-                <table>
-                    <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
-                    <tbody id="archiveTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 
-    <div id="view-inventory" class="content-section">
-        <div class="card">
-            <h3>Inventory Management</h3>
-            <p>Coming soon...</p>
+            <div class="card archive-card">
+    <h3 style="color: #ff5555;">Archive Storage</h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>Name</th><th>User</th><th>Action</th></tr>
+            </thead>
+            <tbody id="archiveTableBody">
+                </tbody>
+        </table>
+    </div>
+</div>
+        </div>
+
+        <div id="view-inventory" class="content-section">
+            <div class="card">
+                <h3>Inventory Management</h3>
+                <p>COMING SOON...</p>
+            </div>
         </div>
     </div>
 </div>
 
 <script src="../javascript/dashboard.js"></script>
-
 </body>
 </html>
