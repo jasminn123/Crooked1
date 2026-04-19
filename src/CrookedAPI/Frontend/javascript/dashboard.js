@@ -15,6 +15,8 @@ function showSection(sectionId, element) {
     element.classList.add('nav-active');
 }
 
+const apiBase = window.location.origin.startsWith('http') ? window.location.origin : 'http://127.0.0.1:5055';
+
 document.addEventListener("DOMContentLoaded", () => {
     fetchStaff();
     fetchLogs();
@@ -22,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function fetchStaff() {
     try {
-        const response = await fetch('http://localhost:5055/api/Auth/get-staff');
+        const response = await fetch(`${apiBase}/api/Auth/get-staff`);
         const staff = await response.json();
         let activeHtml = ""; 
         let archiveHtml = "";
@@ -49,11 +51,53 @@ async function fetchStaff() {
     }
 }
 
+async function addStaff() {
+    const fullName = document.getElementById('staffName').value;
+    const username = document.getElementById('staffUser').value;
+    const password = document.getElementById('staffPass').value;
+
+    if (!fullName || !username || !password) {
+        alert("Please fill in all fields.");
+        return;
+    }
+
+    try {
+        const body = JSON.stringify({ 
+            FullName: fullName,  
+            Username: username,  
+            Password: password   
+        });
+        console.log('Register staff request', apiBase, body);
+
+        const response = await fetch(`${apiBase}/api/Auth/register-staff`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body
+        });
+
+        if (response.ok) {
+            alert("Staff account created successfully!");
+            document.getElementById('staffName').value = "";
+            document.getElementById('staffUser').value = "";
+            document.getElementById('staffPass').value = "";
+            fetchStaff(); 
+        } else {
+            const responseText = await response.text();
+            console.error('Register error', response.status, responseText);
+            alert(`Staff creation failed: ${response.status} ${responseText}`);
+        }
+    } catch (err) {
+        console.error("Connection Error:", err);
+        alert("API connection failed. Make sure the app is running at http://127.0.0.1:5055.");
+    }
+}
+
+
 async function toggleArchive(id, shouldArchive) {
     if (!confirm(`Are you sure you want to ${shouldArchive ? 'Archive' : 'Unarchive'} this staff?`)) return;
     
     try {
-        const response = await fetch(`http://localhost:5055/api/Auth/toggle-archive/${id}?archive=${shouldArchive}`, { 
+        const response = await fetch(`${apiBase}/api/Auth/toggle-archive/${id}?archive=${shouldArchive}`, { 
             method: 'POST' 
         });
         
@@ -72,7 +116,7 @@ async function toggleArchive(id, shouldArchive) {
 
 async function fetchLogs() {
     try {
-        const response = await fetch('http://localhost:5055/api/Auth/get-logs');
+        const response = await fetch(`${apiBase}/api/Auth/get-logs`);
         const logs = await response.json();
         let html = "";
         logs.forEach(log => {
