@@ -14,7 +14,7 @@ const API_BASE = "http://localhost:5055/api/Auth";
             }
 
             msg.style.color = "#888";
-            msg.innerText = "Authenticating...";
+            msg.innerText = "Logging in...";
 
             try {
                 const response = await fetch(`${API_BASE}/login`, {

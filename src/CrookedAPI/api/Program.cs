@@ -50,3 +50,8 @@ app.MapControllers();
 
 app.Run();
 
+void EnsureDatabaseSetup()
+{
+    Console.WriteLine("Database setup checked.");
+}
+

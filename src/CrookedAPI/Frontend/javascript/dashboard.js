@@ -18,6 +18,26 @@ function showSection(sectionId, element) {
 const apiBase = window.location.origin.startsWith('http') ? window.location.origin : 'http://127.0.0.1:5055';
 
 document.addEventListener("DOMContentLoaded", () => {
+    const role = localStorage.getItem("userRole");
+    const name = localStorage.getItem("userName");
+
+    const profileNameElement = document.querySelector('.Owner') || document.querySelector('.jasmin') || document.querySelector('.Matthew');
+    if (profileNameElement && name) {
+        profileNameElement.innerText = name;
+    }
+
+    if (role && role.toLowerCase() !== "owner") {
+        console.log("Restricting access for:", name);
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            const text = item.innerText.toUpperCase();
+            
+            if (text.includes("STAFF MANAGEMENT") || text.includes("INVENTORY")) {
+                item.style.setProperty('display', 'none', 'important');
+            }
+        });
+    }
+
     fetchStaff();
     fetchLogs();
 });
