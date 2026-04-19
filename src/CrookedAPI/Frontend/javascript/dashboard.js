@@ -40,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     fetchStaff();
     fetchLogs();
+    fetchProducts();
 });
 
 async function fetchStaff() {
@@ -145,6 +146,78 @@ async function fetchLogs() {
         });
         document.getElementById('logTableBody').innerHTML = html;
     } catch (err) { console.error("Logs Fetch Error:", err); }
+}
+
+async function fetchProducts() {
+    try {
+        const response = await fetch(`${apiBase}/api/Products/get-products`);
+        const products = await response.json();
+        
+        const productGrid = document.getElementById('productGrid'); 
+        if (!productGrid) return;
+
+        let html = "";
+
+        products.forEach(p => {
+            const pName = p.Name || p.name || "Unknown Product";
+            const pPrice = p.Price || p.price || 0;
+            const pImage = p.ImagePath || p.imagePath || 'https://via.placeholder.com/150';
+
+            html += `
+                <div class="product-card" style="border: 1px solid #333; padding: 15px; margin: 10px; border-radius: 8px; text-align: center;">
+                    <img src="${pImage}" alt="${pName}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 5px;">
+                    <h3 style="color: white; margin-top: 10px;">${pName}</h3>
+                    <p style="color: #4caf50;">₱${pPrice}</p>
+                </div>`;
+        });
+
+        productGrid.innerHTML = html || "<p style='color: white;'>No products found.</p>";
+
+    } catch (err) {
+        console.error("Error loading products:", err);
+    }
+}
+
+function showSection(sectionId, element) {
+    document.querySelectorAll('.content-section').forEach(sec => {
+        sec.style.display = 'none';
+    });
+
+    const activeSection = document.getElementById(sectionId);
+    if (activeSection) {
+        activeSection.style.display = 'flex';
+        
+        if (sectionId === 'view-products') {
+            console.log("Fetching products..."); 
+            fetchProducts();
+        }
+    }
+    
+    const title = element.innerText;
+    document.getElementById("welcomeHeader").innerText = title;
+}
+
+async function loadCategory(categoryName) {
+    try {
+        const response = await fetch(`${apiBase}/api/Products/get-by-category/${categoryName}`);
+        const products = await response.json();
+        
+        const productGrid = document.getElementById('productGrid');
+        let html = "";
+
+        products.forEach(p => {
+            html += `
+                <div class="product-card">
+                    <img src="${p.ImagePath || '../assets/placeholder.png'}" alt="${p.Name}">
+                    <h3>${p.Name}</h3>
+                    <p>₱${p.Price}</p>
+                </div>`;
+        });
+
+        productGrid.innerHTML = html || "<p>No products found in this category.</p>";
+    } catch (err) {
+        console.error("Fetch error:", err);
+    }
 }
 
 function logout() {

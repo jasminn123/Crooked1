@@ -42,86 +42,77 @@
     </div>
 
     <div class="content-wrapper">
-        <h1 id="welcomeHeader">Dashboard Overview</h1>
+    <h1 id="welcomeHeader">Dashboard Overview</h1>
 
-        <div id="view-dashboard" class="content-section" style="display: flex;">
-            <div class="stats-container">
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <span class="stat-label">Total Product:</span>
-                        <h2 id="totalProduct">0</h2>
-                    </div>
-                    <i class="fas fa-box stat-icon"></i>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <span class="stat-label">Posted Today:</span>
-                        <h2 id="postedToday">0</h2>
-                    </div>
-                    <i class="fas fa-upload stat-icon"></i>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <span class="stat-label">Pending Post:</span>
-                        <h2 id="pendingPosts">0</h2>
-                    </div>
-                    <i class="fas fa-clock stat-icon"></i>
-                </div>
+    <div id="view-dashboard" class="content-section" style="display: flex; flex-direction: column;">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-info"><span class="stat-label">Total Product:</span><h2 id="totalProduct">0</h2></div>
+                <i class="fas fa-box stat-icon"></i>
             </div>
-
-            <div class="card">
-                <h3>Recent Activity Logs</h3>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr><th>Staff Name</th><th>Action</th><th>Date</th></tr>
-                        </thead>
-                        <tbody id="logTableBody"></tbody>
-                    </table>
-                </div>
+            <div class="stat-card">
+                <div class="stat-info"><span class="stat-label">Posted Today:</span><h2 id="postedToday">0</h2></div>
+                <i class="fas fa-upload stat-icon"></i>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info"><span class="stat-label">Pending Post:</span><h2 id="pendingPosts">0</h2></div>
+                <i class="fas fa-clock stat-icon"></i>
             </div>
         </div>
-
-        <div id="view-users" class="content-section">
-            <div class="card">
-                <h3>Create Staff Account</h3>
-                <div class="form-row">
-                    <input type="text" id="staffName" placeholder="Full Name">
-                    <input type="text" id="staffUser" placeholder="Username">
-                    <input type="password" id="staffPass" placeholder="Password">
-                    <button type="button" class="btn-create" onclick="addStaff()">Create Account</button>
-                </div>
+        <div class="card">
+            <h3>Recent Activity Logs</h3>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Staff Name</th><th>Action</th><th>Date</th></tr></thead>
+                    <tbody id="logTableBody"></tbody>
+                </table>
             </div>
-
-            <div class="card">
-                <h3>Active Staff Members</h3>
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
-                        <tbody id="staffTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="card archive-card">
-    <h3 style="color: #ff5555;">Archive Storage</h3>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr><th>Name</th><th>User</th><th>Action</th></tr>
-            </thead>
-            <tbody id="archiveTableBody">
-                </tbody>
-        </table>
-    </div>
+        </div>
+    <div id="view-products" class="content-section" style="display: none; flex-direction: column;">
+    <div id="productGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; width: 100%; padding: 20px;">
+        </div>
 </div>
-        </div>
+</div>
 
-        <div id="view-inventory" class="content-section">
-            <div class="card">
-                <h3>Inventory Management</h3>
-                <p>COMING SOON...</p>
+    <div id="view-products" class="content-section" style="display: none; flex-direction: column;">
+        <div id="productGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; width: 100%; padding: 20px;">
             </div>
+    </div>
+
+    <div id="view-users" class="content-section" style="display: none; flex-direction: column;">
+        <div class="card">
+            <h3>Create Staff Account</h3>
+            <div class="form-row">
+                <input type="text" id="staffName" placeholder="Full Name">
+                <input type="text" id="staffUser" placeholder="Username">
+                <input type="password" id="staffPass" placeholder="Password">
+                <button type="button" class="btn-create" onclick="addStaff()">Create Account</button>
+            </div>
+        </div>
+        <div class="card">
+            <h3>Active Staff Members</h3>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
+                    <tbody id="staffTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card archive-card">
+            <h3 style="color: #ff5555;">Archive Storage</h3>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
+                    <tbody id="archiveTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-inventory" class="content-section" style="display: none;">
+        <div class="card">
+            <h3>Inventory Management</h3>
+            <p>COMING SOON...</p>
         </div>
     </div>
 </div>
