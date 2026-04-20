@@ -1,3 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif; 
+}
+
 body { 
     font-family: Arial, sans-serif; 
     margin: 0; 
@@ -28,17 +37,14 @@ body {
 
 .nav-item { 
     padding: 12px 15px; 
-    margin-bottom: 5px; 
     cursor: pointer; 
     color: #888; 
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    border-radius: 6px;
+    transition: 0.3s;
 }
 .nav-active { 
     background: #fff !important; 
     color: #000 !important; 
+    font-weight: 600;
 }
 
 .main { 
@@ -108,10 +114,12 @@ h1 {
 }
 
 .stats-container {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important; 
     gap: 20px;
+    width: 100%;
 }
+
 .stat-card {
     background: #141414; 
     padding: 20px; 
@@ -120,6 +128,7 @@ h1 {
     display: flex; 
     justify-content: space-between; 
     align-items: center;
+    min-height: 100px; 
 }
 .stat-label { 
     font-size: 10px; 
@@ -229,6 +238,79 @@ input {
 
 .btn-archive:hover, .btn-unarchive:hover {
     opacity: 0.8;
+}
+
+#productGrid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)) !important;
+    gap: 25px;
+    padding: 20px 0;
+    width: 100%;
+}
+
+.product-card {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 12px; 
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    border-color: #444;
+}
+
+.product-card img {
+    width: 100%;
+    aspect-ratio: 1 / 1; 
+    object-fit: cover;
+    border-bottom: 1px solid #222;
+}
+
+.product-card h3 {
+    padding: 15px 15px 5px 15px;
+    font-size: 1rem; 
+    font-weight: 600;
+    color: white;
+}
+
+.product-card p {
+    padding: 0 15px 15px 15px;
+    color: #4caf50;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.category-header {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding-left: 20px;
+}
+
+.btn-category {
+    background: transparent;
+    border: 1px solid #333;
+    color: #888;
+    padding: 10px 25px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.btn-category:hover {
+    border-color: white;
+    color: white;
+}
+
+.btn-category.active {
+    background: white;
+    color: black;
+    border-color: white;
 }
 
 .logout-btn { 

@@ -7,6 +7,33 @@ public class Products : ControllerBase
 {
     private string connectionString = "Server=localhost;Database=crooked1;Uid=root;Pwd=;";
 
+[HttpGet("get-products")]
+public IActionResult GetAllProducts()
+{
+    var products = new List<object>();
+    using (var connection = new MySqlConnection(connectionString))
+    {
+        connection.Open();
+        string sql = "SELECT id, name, price, image_path FROM products"; 
+        
+        using (var cmd = new MySqlCommand(sql, connection))
+        {
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    products.Add(new {
+                        Name = reader["name"].ToString(),
+                        Price = Convert.ToDecimal(reader["price"]),
+                        ImagePath = reader["image_path"].ToString()
+                    });
+                }
+            }
+        }
+    }
+    return Ok(products);
+}
+
     [HttpGet("get-by-category/{category}")]
 public IActionResult GetByCategory(string category)
 {

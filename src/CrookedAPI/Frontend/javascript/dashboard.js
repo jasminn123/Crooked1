@@ -1,3 +1,5 @@
+const apiBase = window.location.origin.startsWith('http') ? window.location.origin : 'http://127.0.0.1:5055';
+
 function showSection(sectionId, element) {
     document.querySelectorAll('.content-section').forEach(sec => {
         sec.style.display = 'none';
@@ -6,132 +8,92 @@ function showSection(sectionId, element) {
     const activeSection = document.getElementById(sectionId);
     if (activeSection) {
         activeSection.style.display = 'flex';
+        
+        if (sectionId === 'view-products') {
+            fetchProducts();
+        }
     }
 
-    const title = element.innerText;
-    document.getElementById("welcomeHeader").innerText = title.charAt(0) + title.slice(1).toLowerCase();
-
-    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('nav-active'));
+    document.querySelectorAll('.nav-item').forEach(nav => {
+        nav.classList.remove('nav-active');
+    });
     element.classList.add('nav-active');
+    
+    document.getElementById("welcomeHeader").innerText = element.innerText;
 }
-
-const apiBase = window.location.origin.startsWith('http') ? window.location.origin : 'http://127.0.0.1:5055';
 
 document.addEventListener("DOMContentLoaded", () => {
     const role = localStorage.getItem("userRole");
     const name = localStorage.getItem("userName");
 
-    const profileNameElement = document.querySelector('.Owner') || document.querySelector('.jasmin') || document.querySelector('.Matthew');
+    const profileNameElement = document.querySelector('.Owner');
     if (profileNameElement && name) {
         profileNameElement.innerText = name;
     }
 
     if (role && role.toLowerCase() !== "owner") {
-        console.log("Restricting access for:", name);
-
         document.querySelectorAll('.nav-item').forEach(item => {
             const text = item.innerText.toUpperCase();
-            
             if (text.includes("STAFF MANAGEMENT") || text.includes("INVENTORY")) {
                 item.style.setProperty('display', 'none', 'important');
             }
         });
     }
 
-    fetchStaff();
     fetchLogs();
-    fetchProducts();
+    fetchStaff();
+    fetchArchivedStaff();
 });
 
-async function fetchStaff() {
+async function fetchProducts() {
     try {
-        const response = await fetch(`${apiBase}/api/Auth/get-staff`);
-        const staff = await response.json();
-        let activeHtml = ""; 
-        let archiveHtml = "";
-
-        staff.forEach(s => {
-            if (s.isActive) {
-                activeHtml += `<tr>
-                    <td>${s.fullName}</td>
-                    <td>${s.username}</td>
-                    <td><button onclick="toggleArchive(${s.id}, true)" class="btn-archive">Archive</button></td>
-                </tr>`;
-            } else {
-                archiveHtml += `<tr>
-                    <td>${s.fullName}</td>
-                    <td>${s.username}</td>
-                    <td><button onclick="toggleArchive(${s.id}, false)" class="btn-unarchive">Unarchive</button></td>
-                </tr>`;
-            }
-        });
-        document.getElementById('staffTableBody').innerHTML = activeHtml;
-        document.getElementById('archiveTableBody').innerHTML = archiveHtml;
-    } catch (err) { 
-        console.error("Staff Fetch Error:", err); 
-    }
-}
-
-async function addStaff() {
-    const fullName = document.getElementById('staffName').value;
-    const username = document.getElementById('staffUser').value;
-    const password = document.getElementById('staffPass').value;
-
-    if (!fullName || !username || !password) {
-        alert("Please fill in all fields.");
-        return;
-    }
-
-    try {
-        const body = JSON.stringify({ 
-            FullName: fullName,  
-            Username: username,  
-            Password: password   
-        });
-        console.log('Register staff request', apiBase, body);
-
-        const response = await fetch(`${apiBase}/api/Auth/register-staff`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body
-        });
-
-        if (response.ok) {
-            alert("Staff account created successfully!");
-            document.getElementById('staffName').value = "";
-            document.getElementById('staffUser').value = "";
-            document.getElementById('staffPass').value = "";
-            fetchStaff(); 
-        } else {
-            const responseText = await response.text();
-            console.error('Register error', response.status, responseText);
-            alert(`Staff creation failed: ${response.status} ${responseText}`);
-        }
+        const response = await fetch(`${apiBase}/api/Products/get-products`);
+        const products = await response.json();
+        renderProductGrid(products);
     } catch (err) {
-        console.error("Connection Error:", err);
-        alert("API connection failed. Make sure the app is running at http://127.0.0.1:5055.");
+        console.error("Error loading products:", err);
     }
 }
 
-
-async function toggleArchive(id, shouldArchive) {
-    if (!confirm(`Are you sure you want to ${shouldArchive ? 'Archive' : 'Unarchive'} this staff?`)) return;
-    
+async function loadCategory(categoryName) {
     try {
-        const response = await fetch(`${apiBase}/api/Auth/toggle-archive/${id}?archive=${shouldArchive}`, { 
-            method: 'POST' 
-        });
-        
-        if (response.ok) { 
-            console.log("Success! Refreshing lists...");
-            fetchStaff(); 
-            if (typeof fetchLogs === "function") fetchLogs(); 
-            if (typeof loadStats === "function") loadStats();
-        } else {
-            alert("Failed to update status.");
-        }
-    } catch (err) { 
-        alert("Error connecting to server."); 
+        const response = await fetch(`${apiBase}/api/Products/get-by-category/${categoryName}`);
+        const products = await response.json();
+        renderProductGrid(products);
+    } catch (err) {
+        console.error("Fetch error:", err);
+    }
+}
+
+function renderProductGrid(products) {
+    const productGrid = document.getElementById('productGrid');
+    if (!productGrid) return;
+
+    let html = "";
+    products.forEach(p => {
+        const pName = p.name || p.Name || "Unknown Product";
+        const pPrice = p.price || p.Price || 0;
+        const pImage = p.imagePath || p.ImagePath || 'https://via.placeholder.com/150';
+
+        html += `
+            <div class="product-card">
+                <img src="${pImage}" alt="${pName}">
+                <h3>${pName}</h3>
+                <p>₱${pPrice}</p>
+            </div>`;
+    });
+
+    productGrid.innerHTML = html || "<p style='color: white; padding: 20px;'>No products found.</p>";
+}
+
+function filterCategory(category, buttonElement) {
+    document.querySelectorAll('.btn-category').forEach(btn => btn.classList.remove('active'));
+    buttonElement.classList.add('active');
+
+    if (category === 'all') {
+        fetchProducts();
+    } else {
+        loadCategory(category);
     }
 }
 
@@ -148,75 +110,93 @@ async function fetchLogs() {
     } catch (err) { console.error("Logs Fetch Error:", err); }
 }
 
-async function fetchProducts() {
+async function fetchStaff() {
     try {
-        const response = await fetch(`${apiBase}/api/Products/get-products`);
-        const products = await response.json();
-        
-        const productGrid = document.getElementById('productGrid'); 
-        if (!productGrid) return;
+        const response = await fetch(`${apiBase}/api/Auth/get-staff`);
+        const staff = await response.json();
+        let activeHtml = ""; 
+        let archiveHtml = "";
 
-        let html = "";
-
-        products.forEach(p => {
-            const pName = p.Name || p.name || "Unknown Product";
-            const pPrice = p.Price || p.price || 0;
-            const pImage = p.ImagePath || p.imagePath || 'https://via.placeholder.com/150';
-
-            html += `
-                <div class="product-card" style="border: 1px solid #333; padding: 15px; margin: 10px; border-radius: 8px; text-align: center;">
-                    <img src="${pImage}" alt="${pName}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 5px;">
-                    <h3 style="color: white; margin-top: 10px;">${pName}</h3>
-                    <p style="color: #4caf50;">₱${pPrice}</p>
-                </div>`;
+        staff.forEach(s => {
+            const row = `<tr>
+                <td>${s.fullName}</td>
+                <td>${s.username}</td>
+                <td>
+                    <button onclick="archiveStaff(${s.id})" class="${s.isActive ? 'btn-archive' : 'btn-unarchive'}">
+                        ${s.isActive ? 'Archive' : 'Unarchive'}
+                    </button>
+                </td>
+            </tr>`;
+            
+            if (s.isActive) activeHtml += row; else archiveHtml += row;
         });
-
-        productGrid.innerHTML = html || "<p style='color: white;'>No products found.</p>";
-
-    } catch (err) {
-        console.error("Error loading products:", err);
-    }
+        
+        document.getElementById('staffTableBody').innerHTML = activeHtml;
+        document.getElementById('archiveTableBody').innerHTML = archiveHtml;
+    } catch (err) { console.error("Staff Fetch Error:", err); }
 }
 
-function showSection(sectionId, element) {
-    document.querySelectorAll('.content-section').forEach(sec => {
-        sec.style.display = 'none';
-    });
+async function fetchArchivedStaff() {
+    try {
+        const response = await fetch(`${apiBase}/api/Auth/get-archived-staff`);
+        const archivedStaff = await response.json();
+        let html = "";
+        archivedStaff.forEach(s => {
+            html += `<tr><td>${s.fullName}</td><td>${s.username}</td><td>Archived</td></tr>`;
+        });
+        document.getElementById('archiveTableBody').innerHTML = html;
+    } catch (err) { console.error("Archived Staff Fetch Error:", err); }
+}
 
-    const activeSection = document.getElementById(sectionId);
-    if (activeSection) {
-        activeSection.style.display = 'flex';
-        
-        if (sectionId === 'view-products') {
-            console.log("Fetching products..."); 
-            fetchProducts();
-        }
-    }
+
+window.onload = function() {
+    const dashboardBtn = document.querySelector('.nav-item'); 
     
-    const title = element.innerText;
-    document.getElementById("welcomeHeader").innerText = title;
-}
+    if (dashboardBtn) {
+        showSection('view-dashboard', dashboardBtn);
+    }
+};
 
-async function loadCategory(categoryName) {
+async function addStaff() {
+    const name = document.getElementById('staffName').value;
+    const username = document.getElementById('staffUser').value;
+    const password = document.getElementById('staffPass').value;
+
+    if (!name || !username || !password) {
+        alert("Please fill in all fields");
+        return;
+    }
+
     try {
-        const response = await fetch(`${apiBase}/api/Products/get-by-category/${categoryName}`);
-        const products = await response.json();
-        
-        const productGrid = document.getElementById('productGrid');
-        let html = "";
-
-        products.forEach(p => {
-            html += `
-                <div class="product-card">
-                    <img src="${p.ImagePath || '../assets/placeholder.png'}" alt="${p.Name}">
-                    <h3>${p.Name}</h3>
-                    <p>₱${p.Price}</p>
-                </div>`;
+        const response = await fetch('http://localhost:5055/api/staff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, username, password })
         });
 
-        productGrid.innerHTML = html || "<p>No products found in this category.</p>";
-    } catch (err) {
-        console.error("Fetch error:", err);
+        if (response.ok) {
+            alert("Staff Created Successfully!");
+            document.getElementById('staffName').value = '';
+            document.getElementById('staffUser').value = '';
+            document.getElementById('staffPass').value = '';
+            fetchStaff(); 
+        }
+    } catch (error) {
+        console.error("Error adding staff:", error);
+    }
+}
+
+async function archiveStaff(staffId) {
+    try {
+        const response = await fetch(`${apiBase}/api/Auth/archive-staff/${staffId}`, {
+            method: 'PUT'
+        });
+
+        if (response.ok) {
+            fetchStaff(); 
+        }
+    } catch (error) {
+        console.error("Error archiving staff:", error);
     }
 }
 
