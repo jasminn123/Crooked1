@@ -1,17 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
+namespace CrookedAPI.api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
 public class Products : ControllerBase
 {
-    private string connectionString = "Server=localhost;Database=crooked1;Uid=root;Pwd=;";
+    // Tinatawag nya yung connection string mula sa DatabaseConfig.cs
+    private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
 [HttpGet("get-products")]
 public IActionResult GetAllProducts()
 {
     var products = new List<object>();
-    using (var connection = new MySqlConnection(connectionString))
+    using (var connection = new MySqlConnection(_connectionString))
     {
         connection.Open();
         string sql = "SELECT id, name, price, image_path FROM products"; 
@@ -40,7 +42,7 @@ public IActionResult GetByCategory(string category)
     var products = new List<object>();
     string tableName = category.ToLower() == "men" ? "menclothes" : "womenclothes";
 
-    using (var connection = new MySqlConnection(connectionString))
+    using (var connection = new MySqlConnection(_connectionString))
     {
         connection.Open();
         string sql = $"SELECT * FROM {tableName}"; 
