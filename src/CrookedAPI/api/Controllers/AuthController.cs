@@ -10,7 +10,7 @@ namespace CrookedAPI.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-
+        // Tinatawag nya yung connection string mula sa DatabaseConfig.cs
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
         [HttpPost("login")]

@@ -25,11 +25,6 @@
     gap: 20px;
 }
 
-/*.navbar :hover {
-  background-color: rgb(0, 0, 0);
-}
-*/
-
 .logo {
     font-weight: bold;
     letter-spacing: 2px;
@@ -68,31 +63,67 @@
 
 .chat-btn {
     position: fixed;
-    bottom: 30px;
-    right: 40px;
+    bottom: 20px;
+    right: 20px;
     background: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(10px);
     color: white;
     border: 1px solid rgba(255,255,255,0.3);
-    padding: 25px 55px;
-    border-radius: 15px;
+    padding: 20px 40px;
+    border-radius: 10px;
     cursor: pointer;
     font-weight: bold;
 }
 
-
+/*Shop content - yung mga product na nakalagay sa new arrivals*/
 .new-arrivals {
     padding: 40px;
 }
 
-.placeholder-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    margin-top: 20px;
+.shop-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
 }
 
-.box {
-    height: 500px;
-    background: #e0e0e0;
+.product-box {
+  position: relative;
+  max-width: 300px;
+  margin: auto;
+}
+
+.product-box img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.product-box:hover {
+  padding: 10px;
+  transition: 0.4s;
+}
+/* Product name styling */
+.product-name {
+  color: #222;           /* dark gray text */
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-top: 0.5rem;
+}
+
+.price {
+  color: #000000;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.product-box a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.product-box a:hover .product-name,
+.product-box a:hover .price {
+  color: #0077b6;
 }

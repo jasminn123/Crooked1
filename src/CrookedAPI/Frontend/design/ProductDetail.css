@@ -1,0 +1,142 @@
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Arial', sans-serif;
+}
+
+body {
+  background: #fff;
+  color: #333;
+}
+
+/* Navbar */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: #000;
+  color: #fff;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.nav-right i {
+  margin-left: 1rem;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.nav-right i:hover {
+  color: #f0c040; /* highlight color */
+}
+
+/* Product Detail Layout */
+.product-detail {
+  padding: 4rem 2rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.col-md-6 {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* Product Image */
+#product-image {
+  max-width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.view-label {
+  margin-top: 0.5rem;
+  color: #777;
+  font-size: 0.9rem;
+}
+
+/* Product Info */
+#product-title {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+#product-price {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #555;
+}
+
+/* Size Options */
+#size-options button {
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #aaa;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#size-options button:hover {
+  background: #000;
+  color: #fff;
+}
+
+/* Quantity */
+#quantity {
+  padding: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  width: 80px;
+}
+
+/* Add to Cart Button */
+button.btn-dark {
+  background: #000;
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+button.btn-dark:hover {
+  background: #333;
+}
+
+/* Description */
+.description {
+  margin-top: 2rem;
+}
+
+.description h4 {
+  margin-bottom: 0.5rem;
+}
+
+.description p {
+  color: #555;
+  line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .row {
+    flex-direction: column;
+  }
+}
