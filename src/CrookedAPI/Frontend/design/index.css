@@ -26,8 +26,27 @@
         transition: all 0.3s ease;
     }
 
-    .logo-img { width: 120px; margin-bottom: 20px; transition: width 0.3s ease; }
-    h2 { font-weight: 600; margin-bottom: 30px; letter-spacing: -0.5px; transition: font-size 0.3s ease; }
+    .logo-img { 
+    width: 120px;
+    margin-bottom: 20px;
+    transition: width 0.3s ease; 
+    }
+
+    h2 { 
+    font-weight: 600;
+    margin-bottom: 30px; 
+    letter-spacing: -0.5px; 
+    transition: font-size 0.3s ease; 
+    }
+
+    .login-title {
+    font-family: 'UnifrakturMaguntia', serif !important;
+    font-size: 60px !important;
+    color: white !important;
+    text-align: center;
+    margin-top: 20px;
+    display: block;
+    }
     
     .input-group { text-align: left; margin-bottom: 15px; }
     label { 
