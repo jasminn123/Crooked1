@@ -16,7 +16,7 @@
     
     <div class="nav-item nav-active" onclick="showSection('view-dashboard', this)">DASHBOARD</div>
     <div class="nav-item" onclick="showSection('view-products', this)">PRODUCTS</div>
-    <div class="nav-item" onclick="showSection('view-inventory', this)">INVENTORY</div>
+    <div class="nav-item" onclick="showSection('view-inventory', this)">INVENTORY</div>    
     <div class="nav-item" onclick="showSection('view-transactions', this)">TRANSACTION LOGS</div>
     <div class="nav-item" onclick="showSection('view-users', this)">STAFF MANAGEMENT</div>
 
@@ -89,6 +89,28 @@
             <div id="productGrid" class="product-grid-layout"></div>
         </div>
 
+        <div id="view-inventory" class="content-section" style="display: none; padding: 20px;">
+         <h2 style="font-family: sans-serif; color: white; margin-bottom: 20px; letter-spacing: 1px;">Stock Inventory</h2>
+
+            <div style="background: #111; padding: 10px; border-radius: 12px; border: 1px solid #333; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                <table style="width: 100%; border-collapse: collapse; color: white; font-family: sans-serif;">
+                    <thead>
+                      <tr style="border-bottom: 2px solid #444; text-align: left; color: #888; font-size: 0.85rem; text-transform: uppercase;">
+                      <th style="padding: 15px 12px;">Product Name</th>
+                      <th style="padding: 15px 12px;">Category</th>
+                      <th style="padding: 15px 12px;">Price</th>
+                      <th style="padding: 15px 12px;">Stock</th>
+                      <th style="padding: 15px 12px;">Status</th>
+                      </tr>
+                    </thead>
+                 <tbody id="inventory-list-main">
+                 </tbody>
+                </table>
+            </div>
+        </div>
+
+
+
         <div id="view-users" class="content-section" style="display: none; flex-direction: column;">
             <div class="card">
                 <h3>Create Staff Account</h3>
@@ -117,16 +139,10 @@
             </thead>
             <tbody id="archiveTableBody"></tbody> </table>
     </div>
-</div>
+    </div>
         </div>
 
-        <div id="view-inventory" class="content-section" style="display: none;">
-            <div class="card">
-                <h3>Inventory Management</h3>
-                <p style="color: white;">COMING SOON...</p>
-            </div>
-        </div>
-
-    </div> </div> <script src="../javascript/dashboard.js"></script>
+    </div> 
+</div> <script src="../javascript/dashboard.js"></script>
 </body>
 </html>
