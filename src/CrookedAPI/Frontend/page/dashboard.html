@@ -9,140 +9,175 @@
 </head>
 <body>
 
-<div class="sidebar">
-    <div class="logo-container">
-        <img src="../assets/logo.png" alt="CRKD" class="logo-img">
-    </div>
-    
-    <div class="nav-item nav-active" onclick="showSection('view-dashboard', this)">DASHBOARD</div>
-    <div class="nav-item" onclick="showSection('view-products', this)">PRODUCTS</div>
-    <div class="nav-item" onclick="showSection('view-inventory', this)">INVENTORY</div>    
-    <div class="nav-item" onclick="showSection('view-transactions', this)">TRANSACTION LOGS</div>
-    <div class="nav-item" onclick="showSection('view-users', this)">STAFF MANAGEMENT</div>
-
-    
-    <div class="logout-btn" onclick="logout()">LOGOUT</div>
-</div>
-
-<div class="main">
-    <div class="top-header">
-        <div class="search-engine">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Search product name or id...">
+    <div class="sidebar">
+        <div class="logo-container">
+            <img src="../assets/logo.png" alt="CRKD" class="logo-img">
         </div>
-        <div class="header-icons">
-            <i class="fas fa-bell"></i>
-            <i class="fas fa-envelope"></i>
-            <div class="profile-section">
-                <span class="Owner">Owner</span>
-                <div class="profile-icon"><i class="fas fa-user-circle"></i></div>
-            </div>
-        </div>
+
+        <div class="nav-item nav-active" onclick="showSection('view-dashboard', this)">DASHBOARD</div>
+        <div class="nav-item" onclick="showSection('view-products', this)">PRODUCTS</div>
+        <div class="nav-item" onclick="showSection('view-inventory', this)">INVENTORY</div>
+        <div class="nav-item" onclick="showSection('view-pos', this)">POINT OF SALE</div>
+        <div class="nav-item" onclick="showSection('view-transactions', this)">TRANSACTION LOGS</div>
+        <div class="nav-item" onclick="showSection('view-users', this)">STAFF MANAGEMENT</div>
+
+        <div class="logout-btn" onclick="logout()">LOGOUT</div>
     </div>
 
-    <div class="content-wrapper">
-        <h1 id="welcomeHeader">Dashboard Overview</h1>
+    <div class="main">
+        <div class="top-header">
+            <div class="search-engine">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search product name or id...">
+            </div>
+            <div class="header-icons">
+                <i class="fas fa-bell"></i>
+                <i class="fas fa-envelope"></i>
+                <div class="profile-section">
+                    <span class="Owner">Owner</span>
+                    <div class="profile-icon"><i class="fas fa-user-circle"></i></div>
+                </div>
+            </div>
+        </div>
 
-        <div id="view-dashboard" class="content-section">
-            <div class="stats-container">
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <span class="stat-label">Total Product:</span>
-                        <h2 id="totalProduct">0</h2>
+        <div class="content-wrapper">
+            <h1 id="welcomeHeader">Dashboard Overview</h1>
+
+            <!-- Dashboard Section -->
+            <div id="view-dashboard" class="content-section">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-label">Total Product:</span>
+                            <h2 id="totalProduct">0</h2>
+                        </div>
+                        <i class="fas fa-box stat-icon"></i>
                     </div>
-                    <i class="fas fa-box stat-icon"></i>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <span class="stat-label">Posted Today:</span>
-                        <h2 id="postedToday">0</h2>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-label">Posted Today:</span>
+                            <h2 id="postedToday">0</h2>
+                        </div>
+                        <i class="fas fa-upload stat-icon"></i>
                     </div>
-                    <i class="fas fa-upload stat-icon"></i>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <span class="stat-label">Pending Post:</span>
-                        <h2 id="pendingPosts">0</h2>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <span class="stat-label">Pending Post:</span>
+                            <h2 id="pendingPosts">0</h2>
+                        </div>
+                        <i class="fas fa-clock stat-icon"></i>
                     </div>
-                    <i class="fas fa-clock stat-icon"></i>
+                    <div class="stat-card" style="visibility: hidden;"></div>
                 </div>
-                <div class="stat-card" style="visibility: hidden;"></div>
+
+                <div class="card">
+                    <h3>Recent Activity Logs</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr><th>Staff Name</th><th>Action</th><th>Date</th></tr>
+                            </thead>
+                            <tbody id="logTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            <div class="card">
-                <h3>Recent Activity Logs</h3>
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>Staff Name</th><th>Action</th><th>Date</th></tr></thead>
-                        <tbody id="logTableBody"></tbody>
+            <!-- Products Section -->
+            <div id="view-products" class="content-section" style="display: none; flex-direction: column;">
+                <div class="category-header" style="display: flex; gap: 10px; padding-bottom: 20px;">
+                    <button class="btn-category active" onclick="filterCategory('all', this)">All Products</button>
+                    <button class="btn-category" onclick="filterCategory('men', this)">Men's Wear</button>
+                    <button class="btn-category" onclick="filterCategory('women', this)">Women's Wear</button>
+                </div>
+                <div id="productGrid" class="product-grid-layout"></div>
+            </div>
+
+            <!-- Inventory Section -->
+            <div id="view-inventory" class="content-section" style="display: none; padding: 20px;">
+                <h2 style="font-family: sans-serif; color: white; margin-bottom: 20px; letter-spacing: 1px;">Stock Inventory</h2>
+                <div style="background: #111; padding: 10px; border-radius: 12px; border: 1px solid #333; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                    <table style="width: 100%; border-collapse: collapse; color: white; font-family: sans-serif;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #444; text-align: left; color: #888; font-size: 0.85rem; text-transform: uppercase;">
+                                <th style="padding: 15px 12px;">Product Name</th>
+                                <th style="padding: 15px 12px;">Category</th>
+                                <th style="padding: 15px 12px;">Price</th>
+                                <th style="padding: 15px 12px;">Stock</th>
+                                <th style="padding: 15px 12px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-list-main"></tbody>
                     </table>
                 </div>
             </div>
-        </div>
 
-        <div id="view-products" class="content-section" style="display: none; flex-direction: column;">
-            <div class="category-header" style="display: flex; gap: 10px; padding-bottom: 20px;">
-                <button class="btn-category active" onclick="filterCategory('all', this)">All Products</button>
-                <button class="btn-category" onclick="filterCategory('men', this)">Men's Wear</button>
-                <button class="btn-category" onclick="filterCategory('women', this)">Women's Wear</button>
-            </div>
-            <div id="productGrid" class="product-grid-layout"></div>
-        </div>
+            <!-- Staff Management Section -->
+            <div id="view-users" class="content-section" style="display: none; flex-direction: column;">
+                <div class="card">
+                    <h3>Create Staff Account</h3>
+                    <div class="form-row">
+                        <input type="text" id="staffName" placeholder="Full Name">
+                        <input type="text" id="staffUser" placeholder="Username">
+                        <input type="password" id="staffPass" placeholder="Password">
+                        <button type="button" class="btn-create" onclick="addStaff()">Create Account</button>
+                    </div>
+                </div>
 
-        <div id="view-inventory" class="content-section" style="display: none; padding: 20px;">
-         <h2 style="font-family: sans-serif; color: white; margin-bottom: 20px; letter-spacing: 1px;">Stock Inventory</h2>
+                <div class="card">
+                    <h3>Active Staff Members</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
+                            <tbody id="staffTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
 
-            <div style="background: #111; padding: 10px; border-radius: 12px; border: 1px solid #333; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-                <table style="width: 100%; border-collapse: collapse; color: white; font-family: sans-serif;">
-                    <thead>
-                      <tr style="border-bottom: 2px solid #444; text-align: left; color: #888; font-size: 0.85rem; text-transform: uppercase;">
-                      <th style="padding: 15px 12px;">Product Name</th>
-                      <th style="padding: 15px 12px;">Category</th>
-                      <th style="padding: 15px 12px;">Price</th>
-                      <th style="padding: 15px 12px;">Stock</th>
-                      <th style="padding: 15px 12px;">Status</th>
-                      </tr>
-                    </thead>
-                 <tbody id="inventory-list-main">
-                 </tbody>
-                </table>
-            </div>
-        </div>
-
-
-
-        <div id="view-users" class="content-section" style="display: none; flex-direction: column;">
-            <div class="card">
-                <h3>Create Staff Account</h3>
-                <div class="form-row">
-                    <input type="text" id="staffName" placeholder="Full Name">
-                    <input type="text" id="staffUser" placeholder="Username">
-                    <input type="password" id="staffPass" placeholder="Password">
-                    <button type="button" class="btn-create" onclick="addStaff()">Create Account</button>
+                <div class="card archive-card">
+                    <h3 style="color: #ff5555;">Archived Accounts</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
+                            <tbody id="archiveTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <div class="card">
-                <h3>Active Staff Members</h3>
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
-                        <tbody id="staffTableBody"></tbody>
-                    </table>
+
+            <!-- POS Section -->
+            <div id="view-pos" class="content-section" style="display: none;">
+                <h2>Point of Sale</h2>
+                <div class="pos-container">
+                    <!-- Product Grid -->
+                    <div class="pos-products">
+                        <div class="pos-card">
+                            <img src="../assets/tshirt1.avif" alt="2PAC Tee">
+                            <h3>2PAC Tee</h3>
+                            <p>₱399.00</p>
+                            <button onclick="addToCart('2PAC Tee', 399)">Add to Cart</button>
+                        </div>
+                        <!-- More cards dynamically -->
+                    </div>
+
+                    <!-- Checkout Panel -->
+                    <div class="pos-checkout">
+                        <h3>Checkout</h3>
+                        <div id="cartItems">
+                            <p>No items yet...</p>
+                        </div>
+                        <strong>Total: ₱<span id="cartTotal">0.00</span></strong>
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button onclick="checkout()">CHECK OUT</button>
+                            <button onclick="clearCart()">CANCEL</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="card archive-card">
-    <h3 style="color: #ff5555;">Archived Accounts</h3>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr><th>Name</th><th>User</th><th>Action</th></tr>
-            </thead>
-            <tbody id="archiveTableBody"></tbody> </table>
-    </div>
-    </div>
-        </div>
 
-    </div> 
-</div> <script src="../javascript/dashboard.js"></script>
+        </div>
+    </div>
+
+    <script src="../javascript/dashboard.js"></script>
 </body>
 </html>

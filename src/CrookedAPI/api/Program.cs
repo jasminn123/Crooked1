@@ -8,8 +8,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-builder.Services.AddCors(options => {
-    options.AddPolicy("AllowAll", policy => {
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
               .AllowAnyHeader();
@@ -23,35 +25,51 @@ EnsureDatabaseSetup();
 app.UseCors("AllowAll");
 app.UseAuthorization();
 
-var frontendProvider = new PhysicalFileProvider(
-    Path.Combine(builder.Environment.ContentRootPath, "Frontend"));
 var pageProvider = new PhysicalFileProvider(
-    Path.Combine(builder.Environment.ContentRootPath, "Frontend", "page"));
-
+    Path.Combine(builder.Environment.ContentRootPath, "Frontend", "page")
+);
 app.UseDefaultFiles(new DefaultFilesOptions
 {
     FileProvider = pageProvider,
     RequestPath = ""
 });
-
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = pageProvider,
     RequestPath = ""
 });
 
+var assetsProvider = new PhysicalFileProvider(
+    Path.Combine(builder.Environment.ContentRootPath, "Frontend", "assets")
+);
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = frontendProvider,
-    RequestPath = ""
+    FileProvider = assetsProvider,
+    RequestPath = "/assets"
+});
+
+var designProvider = new PhysicalFileProvider(
+    Path.Combine(builder.Environment.ContentRootPath, "Frontend", "design")
+);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = designProvider,
+    RequestPath = "/design"
+});
+
+var jsProvider = new PhysicalFileProvider(
+    Path.Combine(builder.Environment.ContentRootPath, "Frontend", "javascript")
+);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = jsProvider,
+    RequestPath = "/javascript"
 });
 
 app.MapControllers();
-
 app.Run();
 
 void EnsureDatabaseSetup()
 {
     Console.WriteLine("Database setup checked.");
 }
-

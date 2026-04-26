@@ -1,0 +1,55 @@
+body {
+  background-color: #0b0b0b;
+  color: white;
+  font-family: sans-serif;
+}
+
+.inventory-container {
+  padding: 20px;
+}
+
+.inventory-header {
+  text-align: center;
+  padding: 20px;
+}
+
+.login-title {
+  font-family: 'UnifrakturMaguntia', serif;
+  font-size: 60px;
+}
+
+.btn-refresh {
+  cursor: pointer;
+  padding: 10px 20px;
+  background-color: #222;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.btn-refresh:hover {
+  background-color: #444;
+}
+
+.styled-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.styled-table thead tr {
+  background-color: #333;
+}
+
+.styled-table th,
+.styled-table td {
+  padding: 15px;
+  border-bottom: 2px solid #555;
+  text-align: left;
+}
+
+.styled-table tbody tr td {
+  text-align: center;
+  padding: 20px;
+}

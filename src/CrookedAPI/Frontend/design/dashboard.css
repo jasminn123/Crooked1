@@ -317,3 +317,113 @@ input {
     background: rgba(255, 68, 68, 0.1);
     border-radius: 6px;
 }
+
+/* ---------- POS design ---------- */
+#view-pos {
+  padding: 20px;
+  color: white;
+  font-family: sans-serif;
+}
+
+#view-pos h2 {
+  margin-bottom: 20px;
+  letter-spacing: 1px;
+}
+
+.pos-container {
+  display: flex;
+  gap: 20px;
+}
+
+.pos-products {
+  flex: 2;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+}
+
+.pos-card {
+  background: #111;
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.pos-card:hover {
+  transform: scale(1.05);
+}
+
+.pos-card img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.pos-card h3 {
+  margin: 10px 0;
+  font-size: 1rem;
+}
+
+.pos-card p {
+  color: #aaa;
+}
+
+.pos-card button {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #0077b6;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.pos-card button:hover {
+  background: #005f8a;
+}
+
+.pos-checkout {
+  flex: 1;
+  background: #111;
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid #333;
+}
+
+.pos-checkout h3 {
+  margin-bottom: 15px;
+}
+
+#cartItems {
+  margin-bottom: 15px;
+  color: white;
+}
+
+.pos-checkout strong {
+  display: block;
+  margin-top: 10px;
+}
+
+.pos-checkout button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.pos-checkout button:first-child {
+  background: #28a745;
+  color: white;
+}
+
+.pos-checkout button:last-child {
+  background: #dc3545;
+  color: white;
+}
+
+.pos-checkout button:hover {
+  opacity: 0.9;
+}

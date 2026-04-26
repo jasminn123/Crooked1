@@ -1,40 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory | CRKD</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="../design/inventory.css?v=99">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory | CRKD</title>
+  
+  <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../design/inventory.css">
 </head>
-<body style="background-color: #0b0b0b; color: white; font-family: sans-serif;">
-
-    <div class="inventory-container">
-        <div class="inventory-header" style="text-align: center; padding: 20px;">
-            <h1 class="login-title" style="font-family: 'UnifrakturMaguntia', serif; font-size: 60px;">Stock Inventory</h1>
-            <button class="btn-refresh" onclick="loadInventory()" style="cursor: pointer; padding: 10px 20px;">Refresh List</button>
-        </div>
-
-        <table class="styled-table" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-            <thead>
-                <tr style="background-color: #333;">
-                    <th style="padding: 15px; border-bottom: 2px solid #555;">Product Name</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #555;">Category</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #555;">Price</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #555;">Stock Quantity</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #555;">Status</th>
-                </tr>
-            </thead>
-            <tbody id="inventory-list">
-                <tr>
-                    <td colspan="5" style="text-align:center; padding: 20px;">Loading database products...</td>
-                </tr>
-            </tbody>
-        </table>
+<body>
+  <div class="inventory-container">
+    <div class="inventory-header">
+      <h1 class="login-title">Stock Inventory</h1>
+      <button class="btn-refresh" onclick="loadInventory()">Refresh List</button>
     </div>
 
-    <script src="../javascript/inventory.js"></script>
+    <table class="styled-table">
+      <thead>
+        <tr>
+          <th>Product Name</th>
+          <th>Category</th>
+          <th>Price</th>
+          <th>Stock Quantity</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="inventory-list">
+        <tr>
+          <td colspan="5">Loading database products...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script src="../javascript/inventory.js"></script>
 </body>
 </html>

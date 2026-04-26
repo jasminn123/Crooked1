@@ -13,6 +13,8 @@ function showSection(sectionId, element) {
             fetchProducts();
         } else if (sectionId === 'view-inventory') {
             loadInventory(); 
+        } else if (sectionId === 'view-pos') {
+            loadPOS();
         }
     }
 
@@ -26,7 +28,6 @@ function showSection(sectionId, element) {
         if (header) header.innerText = element.innerText;
     }
 }
-
 
 async function loadInventory() {
     alert("Inventory function triggered!");
@@ -66,6 +67,31 @@ async function loadInventory() {
     }
 }
 
+// POS
+function loadPOS() {
+    const posGrid = document.querySelector('.pos-products');
+    if (!posGrid) {
+        console.error("POS grid not found");
+        return;
+    }
+
+    const products = [
+        { name: "2PAC Tee", price: 399, img: "../assets/tshirt1.avif" },
+        { name: "San Diego Tee", price: 499, img: "../assets/tshirt2.avif" }
+    ];  
+
+    posGrid.innerHTML = "";
+    products.forEach(p => {
+        posGrid.innerHTML += `
+            <div class="pos-card">
+                <img src="${p.img}" alt="${p.name}">
+                <h3>${p.name}</h3>
+                <p>₱${p.price.toLocaleString()}</p>
+                <button onclick="addToCart('${p.name}', ${p.price})">Add to Cart</button>
+            </div>
+        `;
+    });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     const role = localStorage.getItem("userRole");
@@ -87,10 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     fetchLogs();
     fetchStaff();
-    
-    // fetchArchivedStaff(); 
 });
-
 
 async function fetchProducts() {
     try {
