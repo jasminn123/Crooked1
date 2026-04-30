@@ -251,3 +251,34 @@ if (currentTheme === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
     themeToggle.checked = true;
 }
+
+function updateDailyTotal() {
+    const totalDisplay = document.getElementById('total-revenue');
+    if (!totalDisplay) return; 
+
+    const prices = document.querySelectorAll('.sales-row .order-price');
+    let total = 0;
+
+    prices.forEach(priceElement => {
+        const value = parseFloat(priceElement.innerText.replace(/[₱,]/g, ''));
+        if (!isNaN(value)) total += value;
+    });
+
+    totalDisplay.innerText = `₱${total.toLocaleString('en-PH', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    })}`;
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateDailyTotal();
+    
+    setTimeout(() => {
+        if (typeof renderWeeklyChart === 'function') {
+            renderWeeklyChart();
+        } else {
+            console.warn("Chart function 'renderWeeklyChart' not ready yet.");
+        }
+    }, 150);
+});

@@ -493,6 +493,50 @@ input {
   opacity: 0.9;
 }
 
+
+.sales-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #222;
+}
+
+.sales-row:last-child {
+    border-bottom: none;
+}
+
+.sales-details {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.order-no {
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.order-time {
+    color: #666;
+    font-size: 0.75rem;
+}
+
+.order-price {
+    color: #2ecc71;
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+
+.sales-list::-webkit-scrollbar {
+    width: 5px;
+}
+.sales-list::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 10px;
+}
+
 .theme-toggle-container {
     margin-left: auto;
     margin-right: 20px;
