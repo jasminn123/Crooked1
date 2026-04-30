@@ -1,10 +1,75 @@
-body { 
-    font-family: Arial, sans-serif; 
-    margin: 0; 
-    background: #0b0b0b; 
-    color: white; 
+
+:root {
+    --bg-color: #0b0b0b; 
+    --card-bg: #1a1a1a;
+    --text-color: #ffffff;
+    --border-color: #222;
+}
+
+[data-theme="light"] {
+    --bg-color: #f4f4f4;
+    --card-bg: #ffffff;
+    --text-color: #1a1a1a; 
+    --border-color: #ddd;
+}
+
+[data-theme="light"] body,
+[data-theme="light"] .main,
+[data-theme="light"] .main-wrapper,
+[data-theme="light"] .card,
+[data-theme="light"] .chart-card,
+[data-theme="light"] .stat-card {
+    background-color: var(--bg-color) !important;
+    color: var(--text-color) !important;
+}
+
+[data-theme="light"] .top-header,
+[data-theme="light"] .profile-section span,
+[data-theme="light"] .header-icons i,
+[data-theme="light"] .top-header em {
+    color: var(--text-color) !important;
+}
+
+[data-theme="light"] .recent-activity-card,
+[data-theme="light"] .activity-logs-table td,
+[data-theme="light"] .activity-logs-table span,
+[data-theme="light"] .activity-logs-table tr {
+    color: var(--text-color) !important;
+    border-color: var(--border-color);
+}
+
+[data-theme="light"] .revenue-card h1,
+[data-theme="light"] .revenue-card p,
+[data-theme="light"] .apexcharts-canvas text {
+    fill: var(--text-color) !important;
+    color: var(--text-color) !important;
+}
+
+[data-theme="light"] .search-engine input {
+    color: var(--text-color) !important;
+    background-color: #fff !important;
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="light"] .apexcharts-text tspan {
+    fill: var(--text-color) !important;
+}
+
+[data-theme="light"] .nav-item span {
+    color: var(--text-color);
+}
+
+
+
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: var(--bg-color); 
+    color: var(--text-color);   
     display: flex;
     min-height: 100vh;
+    transition: 0.3s; 
 }
 
 .sidebar { 
@@ -426,4 +491,77 @@ input {
 
 .pos-checkout button:hover {
   opacity: 0.9;
+}
+
+.theme-toggle-container {
+    margin-left: auto;
+    margin-right: 20px;
+}
+
+.theme-pill {
+    position: relative;
+    display: inline-block;
+    width: 140px;
+    height: 44px;
+}
+
+.theme-pill input { display: none; }
+
+.pill-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #e0e0e0; 
+    transition: .4s;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+}
+
+.pill-knob {
+    position: absolute;
+    height: 36px;
+    width: 36px;
+    left: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.pill-knob i { font-size: 18px; transition: .4s; }
+.moon-icon { display: none; color: white; }
+.sun-icon { display: block; color: #333; }
+
+.pill-text {
+    font-size: 11px;
+    font-weight: 800;
+    margin-left: 45px;
+    color: #333;
+    transition: .4s;
+}
+.night-text { display: none; }
+
+input:checked + .pill-slider {
+    background-color: #1a1a1a; 
+}
+
+input:checked + .pill-slider .pill-knob {
+    transform: translateX(96px);
+    background-color: #000;
+}
+
+input:checked + .pill-slider .sun-icon { display: none; }
+input:checked + .pill-slider .moon-icon { display: block; }
+
+input:checked + .pill-slider .day-text { display: none; }
+input:checked + .pill-slider .night-text { 
+    display: block; 
+    margin-left: 15px; 
+    color: white; 
 }

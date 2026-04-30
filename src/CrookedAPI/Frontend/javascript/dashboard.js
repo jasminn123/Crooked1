@@ -30,7 +30,6 @@ function showSection(sectionId, element) {
 }
 
 async function loadInventory() {
-    alert("Inventory function triggered!");
     console.log("System: Fetching inventory data..."); 
     try {
         const response = await fetch(`${apiBase}/api/products/get-inventory`);
@@ -232,4 +231,23 @@ window.onload = function() {
 function logout() {
     localStorage.clear();
     window.location.href = "index.html";
+}
+
+
+const themeToggle = document.querySelector('#theme-checkbox');
+
+themeToggle.addEventListener('change', () => {
+    if (themeToggle.checked) {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+    }
+});
+
+const currentTheme = localStorage.getItem('theme');
+if (currentTheme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    themeToggle.checked = true;
 }
