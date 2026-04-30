@@ -67,6 +67,62 @@ async function loadInventory() {
     }
 }
 
+  // Chart
+function initSalesChart() {
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line', 
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Sales (₱)',
+                data: [1200, 1900, 800, 1500, 2200, 3000, 2500], 
+                borderColor: '#ff0000', 
+                backgroundColor: 'rgba(255, 0, 0, 0.1)',
+                borderWidth: 2,
+                tension: 0.4, 
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                  display: false 
+                },
+                tooltip: {
+                enabled: true,
+                backgroundColor: '#1a1a1a',
+                titleColor: '#fff',
+                bodyColor: '#ff0000'
+                }
+            },
+            scales: {
+             y: {
+                beginAtZero: true,
+                grid: { color: '#333' },
+                ticks: { 
+                    color: '#888',
+
+                    callback: function(value) {
+                    return '₱' + value.toLocaleString(); 
+                    } 
+                }
+            },
+            x: {
+               grid: { display: false },
+               ticks: { color: '#888' }
+               }
+            }
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initSalesChart();
+    fetchLogs(); 
+});
+
 // POS
 function loadPOS() {
     const posGrid = document.querySelector('.pos-products');
