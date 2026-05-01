@@ -282,3 +282,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 150);
 });
+
+function toggleProfileCard(event) {
+  event.stopPropagation(); // prevents the outside click listener from closing it immediately
+  const card = document.getElementById("profileCard");
+  if (!card) return;
+  card.style.display = (card.style.display === "block") ? "none" : "block";
+}
+
+document.addEventListener("click", function(event) {
+  const card = document.getElementById("profileCard");
+  const profileSection = document.querySelector(".profile-section");
+  if (card && !profileSection.contains(event.target)) {
+    card.style.display = "none";
+  }
+});

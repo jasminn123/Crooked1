@@ -17,7 +17,6 @@
         <div class="nav-item nav-active" onclick="showSection('view-dashboard', this)">DASHBOARD</div>
         <div class="nav-item" onclick="showSection('view-products', this)">PRODUCTS</div>
         <div class="nav-item" onclick="showSection('view-inventory', this)">INVENTORY</div>
-        <div class="nav-item" onclick="showSection('view-pos', this)">POINT OF SALE</div>
         <div class="nav-item" onclick="showSection('view-transactions', this)">TRANSACTION LOGS</div>
         <div class="nav-item" onclick="showSection('view-users', this)">STAFF MANAGEMENT</div>
         <div class="nav-item" onclick="showSection('view-forecasting', this)">FORECASTING</div>
@@ -52,11 +51,25 @@
                 <i class="fas fa-bell"></i>
                 <i class="fas fa-envelope"></i>
                 <div class="profile-section">
-                    <span class="Owner">Owner</span>
-                    <div class="profile-icon"><i class="fas fa-user-circle"></i></div>
-                </div>
-            </div>
-        </div>
+        <span class="Owner">Owner</span>
+  <div class="profile-icon" onclick="toggleProfileCard(event)">
+    <i class="fa-solid fa-user"></i>
+  </div>
+
+  <!-- Popup Card -->
+  <div id="profileCard" class="profile-card">
+    <div class="profile-card-header">
+      <i class="fa-solid fa-user"></i>
+      <span>Main Owner</span>
+    </div>
+    <div class="profile-card-body">
+    <button onclick="window.location.href='../page/PointofSale.html'">Switch to POS</button>      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+</div>
+
+      </div>
+    </div>
 
     <div class="content-wrapper">
            <h1 id="welcomeHeader">Dashboard Overview</h1>
@@ -177,37 +190,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- POS Section -->
-            <div id="view-pos" class="content-section" style="display: none;">
-                <h2>Point of Sale</h2>
-                <div class="pos-container">
-                    <!-- Product Grid -->
-                    <div class="pos-products">
-                        <div class="pos-card">
-                            <img src="../assets/tshirt1.avif" alt="2PAC Tee">
-                            <h3>2PAC Tee</h3>
-                            <p>₱399.00</p>
-                            <button onclick="addToCart('2PAC Tee', 399)">Add to Cart</button>
-                        </div>
-                        <!-- More cards dynamically -->
-                    </div>
-
-                    <!-- Checkout Panel -->
-                    <div class="pos-checkout">
-                        <h3>Checkout</h3>
-                        <div id="cartItems">
-                            <p>No items yet...</p>
-                        </div>
-                        <strong>Total: ₱<span id="cartTotal">0.00</span></strong>
-                        <div style="display:flex; gap:10px; margin-top:15px;">
-                            <button onclick="checkout()">CHECK OUT</button>
-                            <button onclick="clearCart()">CANCEL</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </div>
 
