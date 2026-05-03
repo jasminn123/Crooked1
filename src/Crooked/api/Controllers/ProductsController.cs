@@ -7,7 +7,7 @@ namespace Crooked.api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class Products : ControllerBase
+public class ProductsController : ControllerBase
 {
     
     private readonly string _connectionString = DatabaseConfig.ConnectionString;
@@ -19,7 +19,7 @@ public class Products : ControllerBase
     using (var connection = new MySqlConnection(_connectionString))
     {
         connection.Open();
-        string sql = "SELECT id, product_name, category, price, stock_quantity FROM products";    
+        string sql = "SELECT id, product_name, category, price, stock_quantity, image_url FROM products";    
             
         using (var cmd = new MySqlCommand(sql, connection))
         using (var reader = cmd.ExecuteReader())

@@ -1,56 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Point of Sale</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../design/PointofSale.css">
+  <meta charset="UTF-8">
+  <title>Point of Sale</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="../design/PointofSale.css">
 </head>
 <body>
-    <header class="pos-header">
+  <header class="pos-header">
     <div class="logo">CRKD</div>
     <div class="header-actions">
-        <input type="text" placeholder="Search..." class="search-bar">
-        <span class="icon"></span><i class="fa-regular fa-comment"></i></span>
-        <span class="icon"></span><i class="fa-regular fa-bell"></i></span>
-        <span class="icon"></span><i class="fa-regular fa-user"></i></span>
+      <input type="text" placeholder="Search..." class="search-bar">
+      <i class="fa-regular fa-comment"></i>
+      <i class="fa-regular fa-bell"></i>
+      <i class="fa-regular fa-user"></i>
     </div>
-    </header>
+  </header>
 
-    <main class="pos-main">
-    <section class="product-grid">
-        <div class="product-card">
-            <img src="../assets/tshirt1.avif" alt="Gothic Pants">
-            <h3>2 Pac</h3>
-            <p>₱799.00</p>
-        </div>
-        <div class="product-card">
-            <img src="../assets/tshirt2.avif" alt="T-Shirt">
-            <h3>No Defeat</h3>
-            <p>₱799.00</p>
-        </div>
-        <div class="product-card">
-            <img src="../assets/tshirt3.avif" alt="T-Shirt">
-            <h3>Keep the Wind</h3>
-            <p>₱799.00</p>
-        </div>
-        <div class="product-card">
-            <img src="../assets/tshirt4.avif" alt="T-Shirt">
-            <h3>San Diego</h3>
-            <p>₱799.00</p>
-        </div>
-        <div class="product-card">
-            <img src="../assets/tshirt5.avif" alt="T-Shirt">
-            <h3>Fassion</h3>
-            <p>₱799.00</p>
-        </div>
-        <div class="product-card">
-            <img src="../assets/tshirt1.avif" alt="T-Shirt">
-            <h3>Li Europan</h3>
-            <p>₱799.00</p>
-        </div>
-        </section>
-        
+  <main class="pos-main">
+    <section class="product-grid" id="productGrid">
+    </section>
+
+    <!-- Checkout panel -->
     <aside class="checkout-panel">
       <h2>Checkout</h2>
       <ul id="checkoutList" class="checkout-list"></ul>
@@ -64,7 +35,6 @@
     </aside>
   </main>
 
-<script src="../javascript/PointOfSale.js"></script>
-
+  <script src="../javascript/PointOfSale.js"></script>
 </body>
 </html>

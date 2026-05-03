@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
-using CrookedAPI.Models;
+using Crooked.Models;
 using System.Collections.Generic;
 using System;
 

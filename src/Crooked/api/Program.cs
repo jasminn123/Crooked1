@@ -39,12 +39,10 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = ""
 });
 
-var assetsProvider = new PhysicalFileProvider(
-    Path.Combine(builder.Environment.ContentRootPath, "Frontend", "assets")
-);
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = assetsProvider,
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "Frontend", "assets")),
     RequestPath = "/assets"
 });
 
@@ -64,6 +62,13 @@ app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = jsProvider,
     RequestPath = "/javascript"
+});
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "Frontend")),
+    RequestPath = ""
 });
 
 app.MapControllers();
