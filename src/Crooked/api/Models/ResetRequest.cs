@@ -1,4 +1,4 @@
-namespace CrookedAPI.Models
+namespace Crooked.Models
 {
     public class ResetRequest 
     {

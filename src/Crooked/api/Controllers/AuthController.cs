@@ -4,7 +4,7 @@ using CrookedAPI.Models;
 using System.Collections.Generic;
 using System;
 
-namespace CrookedAPI.Controllers
+namespace Crooked.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

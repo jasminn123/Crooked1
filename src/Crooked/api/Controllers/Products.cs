@@ -3,7 +3,7 @@ using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
 
-namespace CrookedAPI.api.Controllers;
+namespace Crooked.api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]

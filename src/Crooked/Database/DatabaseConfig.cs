@@ -1,4 +1,4 @@
-namespace CrookedAPI
+namespace Crooked
 {
     public static class DatabaseConfig
     {

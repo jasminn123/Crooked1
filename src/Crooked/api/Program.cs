@@ -1,7 +1,7 @@
 using System.IO;
 using Microsoft.Extensions.FileProviders;
 using MySql.Data.MySqlClient;
-using CrookedAPI;
+using Crooked;
 
 var builder = WebApplication.CreateBuilder(args);
 
