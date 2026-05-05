@@ -30,7 +30,8 @@ public class ProductsController : ControllerBase
                     product_name = reader["product_name"].ToString(), 
                     category = reader["category"].ToString(),
                     price = Convert.ToDecimal(reader["price"]),
-                    stock_quantity = Convert.ToInt32(reader["stock_quantity"])
+                    stock_quantity = Convert.ToInt32(reader["stock_quantity"]),
+                    imageUrl = reader["image_url"].ToString()
                 });
             }
         }

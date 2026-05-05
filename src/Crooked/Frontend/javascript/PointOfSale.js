@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Load products from API
   async function loadProducts() {
     try {
-      const res = await fetch("http://localhost:5055/api/POS/products"); // ✅ correct port
+      const res = await fetch("http://localhost:5055/api/POS/products"); // ✅ match your backend port
       const products = await res.json();
 
       grid.innerHTML = "";
@@ -31,10 +31,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function addToCart(product) {
-    if (cart[product.id]) {
-      cart[product.id].qty += 1;
+    const productId = product.id || product.product_Id; // ✅ handle both field names
+
+    if (cart[productId]) {
+      cart[productId].qty += 1;
     } else {
-      cart[product.id] = { name: product.product_Name, price: product.price, qty: 1 };
+      cart[productId] = { name: product.product_Name, price: product.price, qty: 1 };
     }
     renderCheckout();
   }
@@ -46,6 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     Object.values(cart).forEach(item => {
       const subtotal = item.qty * item.price;
       total += subtotal;
+
       const li = document.createElement("li");
       li.textContent = `${item.name} — ${item.qty} — ₱${subtotal.toLocaleString()}`;
       checkoutList.appendChild(li);
@@ -88,20 +91,4 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Initial load
   loadProducts();
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const userIcon = document.getElementById("userIcon");
-  const userPopup = document.getElementById("userPopup");
-
-  userIcon.addEventListener("click", () => {
-    userPopup.style.display = userPopup.style.display === "block" ? "none" : "block";
-  });
-
-  // Optional: close popup if clicking outside
-  document.addEventListener("click", (e) => {
-    if (!userIcon.contains(e.target) && !userPopup.contains(e.target)) {
-      userPopup.style.display = "none";
-    }
-  });
 });

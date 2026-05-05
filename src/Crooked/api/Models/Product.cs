@@ -10,6 +10,6 @@ namespace Crooked.Models
         public decimal Price { get; set; }
         public int Stock_Quantity { get; set; }
         public int Low_Stock_Threshold { get; set; }
-        public string? ImageUrl { get; set; }
+        public string ImageUrl { get; set; }
     }
 }
