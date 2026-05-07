@@ -8,14 +8,31 @@
 </head>
 <body>
   <header class="pos-header">
-    <div class="logo">CRKD</div>
-    <div class="header-actions">
-      <input type="text" placeholder="Search..." class="search-bar">
-      <i class="fa-regular fa-comment"></i>
-      <i class="fa-regular fa-bell"></i>
-      <i class="fa-regular fa-user"></i>
+  <div class="logo">CRKD</div>
+  <div class="header-actions">
+    <input type="text" placeholder="Search..." class="search-bar">
+    <i class="fa-regular fa-comment"></i>
+    <i class="fa-regular fa-bell"></i>
+
+    <!-- Profile Section -->
+    <div class="profile-section">
+      <i id="userIcon" class="fa-regular fa-user"></i>
+
+      <!-- Popup Card -->
+      <div id="profileCard" class="profile-card">
+        <div class="profile-card-header">
+          <i class="fa-regular fa-user"></i>
+          <span>Main Owner</span>
+        </div>
+        <div class="profile-card-body">
+          <button onclick="window.location.href='../page/dashboard.html'">Switch to DASHBOARD</button>
+          <button onclick="window.location.href='../page/index.html'">LOGOUT</button>
+        </div>
+      </div>
     </div>
-  </header>
+  </div>
+</header>
+
 
   <main class="pos-main">
     <section class="product-grid" id="productGrid"></section>
@@ -32,8 +49,50 @@
   </div>
 </aside>
 
+<div id="receiptModal" class="modal">
+  <div class="modal-content">
+    <h2>Do you want to print a receipt?</h2>
+    <div class="modal-actions">
+      <button id="receiptYesBtn" class="btn">YES</button>
+      <button id="receiptNoBtn" class="btn cancel">NO</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Method Modal -->
+<div id="paymentModal" class="modal">
+  <div class="modal-content">
+    <h3>Total Amount: <span id="modalTotal">₱0.00</span></h3>
+    <p>Select Payment Method:</p>
+    <div class="modal-actions">
+      <button id="cashBtn" class="btn">Cash</button>
+      <button id="gcashBtn" class="btn">GCash</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cash Payment Modal -->
+<div id="cashModal" class="modal">
+  <div class="modal-content">
+    <h3>Total Amount: <span id="cashTotal">₱0.00</span></h3>
+    <input id="amountReceived" type="number" placeholder="Enter amount received">
+    <p>Change: <span id="changeDisplay">₱0.00</span></p>
+    <button id="confirmCashBtn" class="btn">Confirm Payment</button>
+  </div>
+</div>
+
+<!-- GCash Payment Modal -->
+<div id="gcashModal" class="modal">
+  <div class="modal-content">
+    <h3>Total Amount: <span id="gcashTotal">₱0.00</span></h3>
+    <input id="gcashRefId" type="text" placeholder="Enter Reference ID">
+    <button id="confirmGCashBtn" class="btn">Confirm Payment</button>
+  </div>
+</div>
+
   </main>
 
   <script src="../javascript/PointOfSale.js"></script>
+
 </body>
 </html>
