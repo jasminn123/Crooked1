@@ -3,13 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRKD | Management</title>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../design/dashboard.css">
-    <title>CRKD | Management</title>
 </head>
+
 <body>
 
+    <!-- SIDEBAR -->
     <div class="sidebar">
+
         <div class="logo-container">
             <img src="../assets/logo.png" alt="CRKD" class="logo-img">
         </div>
@@ -18,150 +22,137 @@
         <div class="nav-item" onclick="showSection('view-products', this)">PRODUCTS</div>
         <div class="nav-item" onclick="showSection('view-inventory', this)">INVENTORY</div>
         <div class="nav-item" onclick="showSection('view-transactions', this)">TRANSACTION LOGS</div>
+        <div class="nav-item" onclick="showSection('view-sales-history', this)">SALES HISTORY</div>
         <div class="nav-item" onclick="showSection('view-users', this)">STAFF MANAGEMENT</div>
         <div class="nav-item" onclick="showSection('view-forecasting', this)">FORECASTING</div>
 
-
-        <div class="logout-btn" onclick="logout()">LOGOUT</div>
     </div>
 
+    <!-- MAIN CONTENT -->
     <div class="main">
+
+        <!-- TOP HEADER -->
         <div class="top-header">
-            <div class="search-engine">
-                <i class="fas fa-search"></i>
-                <input type="text" placeholder="Search product name or id...">
-            </div>
-
-            <div class="theme-toggle-container">
-                <label class="theme-pill" for="theme-checkbox">
-                    <input type="checkbox" id="theme-checkbox">
-                    <div class="pill-slider">
-                        <div class="pill-knob">
-                            <i class="fas fa-sun sun-icon"></i>
-                            <i class="fas fa-moon moon-icon"></i>
-                        </div>
-                        <span class="pill-text day-text">DAYMODE</span>
-                        <span class="pill-text night-text">NIGHTMODE</span>
-                    </div>
-                </label>
-            </div>
-
-
             <div class="header-icons">
+
                 <i class="fas fa-bell"></i>
-                <i class="fas fa-envelope"></i>
+
                 <div class="profile-section">
-        <span class="Owner">Owner</span>
-        <div class="profile-icon" onclick="toggleProfileCard(event)">
-        <i class="fa-solid fa-user"></i>
-    </div>
+                 <span class="Owner">Main Owner</span>
+                   
+                   <div class="profile-icon" onClick="toggleProfileCard(event)">
+                    <i class="fa-solid fa-user"></i>
+                   </div>
 
-  <!-- Popup Card -->
-    <div id="profileCard" class="profile-card">
-    <div class="profile-card-header">
-        <i class="fa-solid fa-user"></i>
-        <span>Main Owner</span>
-    </div>
-    <div class="profile-card-body">
-    <button onclick="window.location.href='../page/PointofSale.html'">Switch to POS</button>      <button onclick="logout()">Logout</button>
-    </div>
-  </div>
-</div>
-
-      </div>
-    </div>
-
-    <div class="content-wrapper">
-           <h1 id="welcomeHeader">Dashboard Overview</h1>
-
-    <!-- DASHBOARD SECTION START -->
-        <div id="view-dashboard" class="content-section">
-            <div class="dashboard-stats-container" style="display: flex; gap: 20px; margin-bottom: 20px;">
-               <div class="chart-card" style="flex: 2; background: #1a1a1a; padding: 20px; border-radius: 8px;">
-                  <h3 style="color: white; margin-bottom: 15px;">Weekly Sales Analytics</h3>
-                  <canvas id="salesChart"></canvas>
-                 </div>
-
-            <div class="stat-card" style="flex: 1; background: #1a1a1a; padding: 25px; border-radius: 8px; display: flex; flex-direction: column; justify-content: flex-start;">
-                <h3 style="color: #888; margin: 0; font-size: 1rem;">Today's Revenue</h3>
-                <h2 style="color: #fff; font-size: 2.5rem; margin-top: 10px;">₱0.00</h2>
-
-
-                <div class="history-container" style="flex-grow: 1; background: #111; border-radius: 10px; border: 1px solid #222; display: flex; flex-direction: column; overflow: hidden; margin-top: 10px;">
-                <div style="padding: 12px 15px; border-bottom: 1px solid #222; background: #161616;">
-                    <span style="color: #555; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Recent Sales History</span>
-                </div>
-                
-                <div class="sales-list" style="overflow-y: auto; flex-grow: 1; padding: 0 15px;">
-                    <!-- Example Entry -->
-                    <div class="sales-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #222;">
-                        <div style="display: flex; flex-direction: column; gap: 2px;">
-                            <span style="color: #fff; font-weight: bold; font-size: 0.85rem;">#ORD-7721</span>
-                            <span style="color: #555; font-size: 0.7rem;">4/30/2026, 6:45 PM</span>
+                   <div id="profileCard" class="profile-card">
+                        <div class="profile-card-header">
+                          <i clas="fa-solid fa-user"></i>
+                         <span>Main Owner</span>
                         </div>
-                        <span class="order-price" style="color: #2ecc71; font-weight: bold; font-size: 0.95rem;">₱450.00</span>
+
+                        <div class="profile-card-body">
+                            <button onClick="window.location.href='../page/PointofSale.html'">
+                                Switch to POS
+                            </button>
+                            <button onClick="logout()">Logout</button>
+                        </div>
                     </div>
 
-                    <div class="sales-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #222;">
-                        <div style="display: flex; flex-direction: column; gap: 2px;">
-                            <span style="color: #fff; font-weight: bold; font-size: 0.85rem;">#ORD-7718</span>
-                            <span style="color: #555; font-size: 0.7rem;">4/30/2026, 3:20 PM</span>
-                        </div>
-                        <span class="order-price" style="color: #2ecc71; font-weight: bold; font-size: 0.95rem;">₱5,250.00</span>
-                    </div>
                 </div>
-            </div>
-                <p style="color: #2ecc71; font-size: 0.9rem; margin-top: auto;">↑ 0% from yesterday</p>
             </div>
         </div>
 
-        <div class="card">
-            <h3>Recent Activity Logs</h3>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr><th>Staff Name</th><th>Action</th><th>Date</th></tr>
-                    </thead>
-                    <tbody id="logTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-            
+        <!-- CONTENT WRAPPER -->
+        <div class="content-wrapper">
 
-            <!-- Products Section -->
-            <div id="view-products" class="content-section" style="display: none; flex-direction: column;">
-                <div class="category-header" style="display: flex; gap: 10px; padding-bottom: 20px;">
+            <h1 id="welcomeHeader">Dashboard Overview</h1>
+
+            <!-- DASHBOARD SECTION -->
+            <div id="view-dashboard" class="content-section">
+
+                <!-- TOP DASHBOARD CARDS -->
+                <div class="dashboard-stats-container" style="display:flex; gap:20px; margin-bottom:20px;">
+
+                    <!-- SALES CHART -->
+                    <div class="chart-card" style="flex:2; background:#1a1a1a; padding:20px; border-radius:8px;">
+                        <h3 style="color:white; margin-bottom:15px;">Weekly Sales Analytics</h3>
+                        <canvas id="salesChart"></canvas>
+                    </div>
+
+                    <!-- TODAY'S REVENUE -->
+                    <div class="stat-card" style="flex:1; background:#1a1a1a; padding:25px; border-radius:8px; display:flex; flex-direction:column;">
+
+                        <h3 style="color:#888; margin:0; font-size:1rem;">Today's Revenue</h3>
+                        <h2 style="color:#fff; font-size:2.5rem; margin-top:10px;">₱0.00</h2>
+
+                    </div>
+                </div>
+
+                <!-- RECENT ACTIVITY LOGS -->
+                <div class="card">
+                    <h3>Recent Activity Logs</h3>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Staff Name</th>
+                                    <th>Action</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="logTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- PRODUCTS SECTION -->
+            <div id="view-products" class="content-section" style="display:none; flex-direction:column;">
+
+                <div class="category-header" style="display:flex; gap:10px; padding-bottom:20px;">
                     <button class="btn-category active" onclick="filterCategory('all', this)">All Products</button>
                     <button class="btn-category" onclick="filterCategory('men', this)">Men's Wear</button>
                     <button class="btn-category" onclick="filterCategory('women', this)">Women's Wear</button>
                 </div>
+
                 <div id="productGrid" class="product-grid-layout"></div>
             </div>
 
-            <!-- Inventory Section -->
-            <div id="view-inventory" class="content-section" style="display: none; padding: 20px;">
-                <h2 style="font-family: sans-serif; color: white; margin-bottom: 20px; letter-spacing: 1px;">Stock Inventory</h2>
-                <div style="background: #111; padding: 10px; border-radius: 12px; border: 1px solid #333; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-                    <table style="width: 100%; border-collapse: collapse; color: white; font-family: sans-serif;">
+            <!-- INVENTORY SECTION -->
+            <div id="view-inventory" class="content-section" style="display:none; padding:20px;">
+
+                <h2 style="color:white; margin-bottom:20px;">Stock Inventory</h2>
+
+                <div style="background:#111; padding:10px; border-radius:12px; border:1px solid #333;">
+                    <table style="width:100%; border-collapse:collapse; color:white;">
+
                         <thead>
-                            <tr style="border-bottom: 2px solid #444; text-align: left; color: #888; font-size: 0.85rem; text-transform: uppercase;">
-                                <th style="padding: 15px 12px;">Product Name</th>
-                                <th style="padding: 15px 12px;">Category</th>
-                                <th style="padding: 15px 12px;">Price</th>
-                                <th style="padding: 15px 12px;">Stock</th>
-                                <th style="padding: 15px 12px;">Status</th>
+                            <tr style="border-bottom:2px solid #444; color:#888;">
+                                <th style="padding:15px 12px;">Product Name</th>
+                                <th style="padding:15px 12px;">Category</th>
+                                <th style="padding:15px 12px;">Price</th>
+                                <th style="padding:15px 12px;">Stock</th>
+                                <th style="padding:15px 12px;">Status</th>
                             </tr>
                         </thead>
+
                         <tbody id="inventory-list-main"></tbody>
+
                     </table>
                 </div>
+
             </div>
 
-            <!-- Staff Management Section -->
-            <div id="view-users" class="content-section" style="display: none; flex-direction: column;">
+            <!-- STAFF MANAGEMENT SECTION -->
+            <div id="view-users" class="content-section" style="display:none; flex-direction:column;">
+
+                <!-- CREATE STAFF -->
                 <div class="card">
                     <h3>Create Staff Account</h3>
+
                     <div class="form-row">
                         <input type="text" id="staffName" placeholder="Full Name">
                         <input type="text" id="staffUser" placeholder="Username">
@@ -170,30 +161,51 @@
                     </div>
                 </div>
 
+                <!-- ACTIVE STAFF -->
                 <div class="card">
                     <h3>Active Staff Members</h3>
+
                     <div class="table-container">
                         <table>
-                            <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+
                             <tbody id="staffTableBody"></tbody>
                         </table>
                     </div>
                 </div>
 
+                <!-- ARCHIVED STAFF -->
                 <div class="card archive-card">
-                    <h3 style="color: #ff5555;">Archived Accounts</h3>
+                    <h3 style="color:#ff5555;">Archived Accounts</h3>
+
                     <div class="table-container">
                         <table>
-                            <thead><tr><th>Name</th><th>User</th><th>Action</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+
                             <tbody id="archiveTableBody"></tbody>
                         </table>
                     </div>
                 </div>
+
             </div>
+
         </div>
     </div>
 
     <script src="../javascript/dashboard.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </body>
 </html>
