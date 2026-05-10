@@ -1,299 +1,363 @@
-const apiBase = window.location.origin.startsWith('http') ? window.location.origin : 'http://127.0.0.1:5055';
+const apiBase = window.location.origin.startsWith('http')
+    ? window.location.origin
+    : 'http://127.0.0.1:5055';
 
+/* =========================
+   SECTION SWITCHING
+========================= */
 function showSection(sectionId, element) {
     document.querySelectorAll('.content-section').forEach(sec => {
         sec.style.display = 'none';
     });
 
     const activeSection = document.getElementById(sectionId);
+
     if (activeSection) {
-        activeSection.style.display = 'block'; 
-        
+        activeSection.style.display = 'block';
+
         if (sectionId === 'view-products') {
             fetchProducts();
-        } else if (sectionId === 'view-inventory') {
-            loadInventory(); 
-        } else if (sectionId === 'view-pos') {
-            loadPOS();
+        }
+
+        if (sectionId === 'view-inventory') {
+            loadInventory();
         }
     }
 
     document.querySelectorAll('.nav-item').forEach(nav => {
         nav.classList.remove('nav-active', 'active');
     });
-    
+
     if (element) {
         element.classList.add('nav-active', 'active');
-        const header = document.getElementById("welcomeHeader");
-        if (header) header.innerText = element.innerText;
+        const header = document.getElementById('welcomeHeader');
+        if (header) {
+            header.innerText = element.innerText;
+        }
     }
 }
 
+/* =========================
+   INVENTORY
+========================= */
 async function loadInventory() {
-    console.log("System: Fetching inventory data..."); 
     try {
         const response = await fetch(`${apiBase}/api/products/get-inventory`);
-        if (!response.ok) throw new Error("Backend response was not OK");
-        
+        if (!response.ok) throw new Error('Inventory fetch failed');
+
         const products = await response.json();
-        console.log("System: Data received successfully", products); 
-        
         const tableBody = document.getElementById('inventory-list-main');
-        if (!tableBody) {
-            console.error("Critical: Table body 'inventory-list-main' not found in HTML.");
-            return;
-        }
+        if (!tableBody) return;
 
-        tableBody.innerHTML = ''; 
-
+        tableBody.innerHTML = '';
         products.forEach(item => {
             const isLow = item.stock_quantity <= 5;
-            const status = isLow 
-                ? '<span style="color: #ff4d4d; font-weight: bold;">LOW STOCK</span>' 
-                : '<span style="color: #2ecc71;">OK</span>';
-            
+            const status = isLow
+                ? '<span style="color:#ff4d4d;font-weight:bold;">LOW STOCK</span>'
+                : '<span style="color:#2ecc71;">OK</span>';
+
             tableBody.innerHTML += `
-                <tr style="border-bottom: 1px solid #222;">
-                    <td style="padding: 12px; color: white;">${item.product_name}</td>
-                    <td style="padding: 12px; color: #888;">${item.category}</td>
-                    <td style="padding: 12px; color: white;">₱${item.price.toLocaleString()}</td>
-                    <td style="padding: 12px; color: white;">${item.stock_quantity}</td>
-                    <td style="padding: 12px;">${status}</td>
-                </tr>`;
+                <tr style="border-bottom:1px solid #222;">
+                    <td style="padding:12px;color:white;">${item.product_name}</td>
+                    <td style="padding:12px;color:#888;">${item.category}</td>
+                    <td style="padding:12px;color:white;">₱${item.price.toLocaleString()}</td>
+                    <td style="padding:12px;color:white;">${item.stock_quantity}</td>
+                    <td style="padding:12px;">${status}</td>
+                </tr>
+            `;
         });
     } catch (error) {
-        console.error("Critical Inventory Error:", error);
+        console.error('Inventory Error:', error);
     }
 }
 
-  // Chart
+/* =========================
+   SALES CHART
+========================= */
 function initSalesChart() {
-    const ctx = document.getElementById('salesChart').getContext('2d');
+    const canvas = document.getElementById('salesChart');
+    if (!canvas || typeof Chart === 'undefined') return; // Check if Chart.js loaded
+
+    const ctx = canvas.getContext('2d');
     new Chart(ctx, {
-        type: 'line', 
+        type: 'line',
         data: {
             labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
             datasets: [{
-                label: 'Sales (₱)',
-                data: [1200, 1900, 800, 1500, 2200, 3000, 2500], 
-                borderColor: '#ff0000', 
-                backgroundColor: 'rgba(255, 0, 0, 0.1)',
+                label: 'Sales',
+                data: [1200, 1900, 800, 1500, 2200, 3000, 2500],
+                borderColor: '#ff0000',
+                backgroundColor: 'rgba(255,0,0,0.08)',
                 borderWidth: 2,
-                tension: 0.4, 
+                tension: 0.4,
                 fill: true
             }]
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: {
-                  display: false 
-                },
-                tooltip: {
-                enabled: true,
-                backgroundColor: '#1a1a1a',
-                titleColor: '#fff',
-                bodyColor: '#ff0000'
-                }
-            },
-            scales: {
-             y: {
-                beginAtZero: true,
-                grid: { color: '#333' },
-                ticks: { 
-                    color: '#888',
-
-                    callback: function(value) {
-                    return '₱' + value.toLocaleString(); 
-                    } 
-                }
-            },
-            x: {
-               grid: { display: false },
-               ticks: { color: '#888' }
-               }
-            }
+            plugins: { legend: { display: false } }
         }
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    initSalesChart();
-    fetchLogs(); 
-});
-
-// POS
-function loadPOS() {
-    const posGrid = document.querySelector('.pos-products');
-    if (!posGrid) {
-        console.error("POS grid not found");
-        return;
-    }
-
-    const products = [
-        { name: "2PAC Tee", price: 399, img: "../assets/tshirt1.avif" },
-        { name: "San Diego Tee", price: 499, img: "../assets/tshirt2.avif" }
-    ];  
-
-    posGrid.innerHTML = "";
-    products.forEach(p => {
-        posGrid.innerHTML += `
-            <div class="pos-card">
-                <img src="${p.img}" alt="${p.name}">
-                <h3>${p.name}</h3>
-                <p>₱${p.price.toLocaleString()}</p>
-                <button onclick="addToCart('${p.name}', ${p.price})">Add to Cart</button>
-            </div>
-        `;
-    });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    const role = localStorage.getItem("userRole");
-    const name = localStorage.getItem("userName");
-
-    const profileNameElement = document.querySelector('.Owner');
-    if (profileNameElement && name) {
-        profileNameElement.innerText = name;
-    }
-
-    if (role && role.toLowerCase() !== "owner") {
-        document.querySelectorAll('.nav-item').forEach(item => {
-            const text = item.innerText.toUpperCase();
-            if (text.includes("STAFF MANAGEMENT") || text.includes("INVENTORY")) {
-                item.style.setProperty('display', 'none', 'important');
-            }
-        });
-    }
-
-    fetchLogs();
-    fetchStaff();
-});
-
+/* =========================
+   PRODUCTS (FIXED JSON HANDLING)
+========================= */
 async function fetchProducts() {
     try {
         const response = await fetch(`${apiBase}/api/Products/get-products`);
-        const products = await response.json();
-        renderProductGrid(products);
-    } catch (err) {
-        console.error("Error loading products:", err);
+        
+        if (!response.ok) {
+            console.error(`Server error: ${response.status}`);
+            return;
+        }
+
+        const text = await response.text();
+        if (!text || text.trim().length === 0) {
+            console.warn('Products API returned empty response.');
+            return;
+        }
+
+        // Try parsing only if text exists
+        try {
+            const products = JSON.parse(text);
+            if (typeof renderProductGrid === 'function') {
+                renderProductGrid(products);
+            }
+        } catch (parseError) {
+            console.error('JSON Parse Error. Raw Response:', text);
+        }
+
+    } catch (error) {
+        console.error('Network Error fetching products:', error);
     }
 }
 
+/* =========================
+   ACTIVITY LOGS
+========================= */
 async function fetchLogs() {
     try {
         const response = await fetch(`${apiBase}/api/Auth/get-logs`);
+        if (!response.ok) return;
         const logs = await response.json();
-        let html = "";
-        logs.forEach(log => {
-            const date = new Date(log.dateOccurred).toLocaleString();
-            html += `<tr><td>${log.staffName}</td><td>${log.action}</td><td>${date}</td></tr>`;
-        });
+
         const logBody = document.getElementById('logTableBody');
-        if (logBody) logBody.innerHTML = html;
-    } catch (err) { console.error("Logs Fetch Error:", err); }
+        if (!logBody) return;
+
+        logBody.innerHTML = logs.map(log => {
+            const date = new Date(log.dateOccurred).toLocaleString();
+            return `
+                <tr>
+                    <td>${log.staffName}</td>
+                    <td>${log.action}</td>
+                    <td>${date}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Logs Error:', error);
+    }
 }
 
+/* =========================
+   STAFF
+========================= */
 async function fetchStaff() {
     try {
         const response = await fetch(`${apiBase}/api/Auth/get-staff`);
+        if (!response.ok) return;
         const staff = await response.json();
-        let activeHtml = ""; 
-        let archiveHtml = "";
 
-        staff.forEach(s => {
-            const row = `<tr>
-                <td>${s.fullName}</td>
-                <td>${s.username}</td>
-                <td>
-                    <button onclick="archiveStaff(${s.id})" class="${s.isActive ? 'btn-archive' : 'btn-unarchive'}">
-                        ${s.isActive ? 'Archive' : 'Unarchive'}
-                    </button>
-                </td>
-            </tr>`;
-            if (s.isActive) activeHtml += row; else archiveHtml += row;
-        });
-        
         const staffBody = document.getElementById('staffTableBody');
         const archiveBody = document.getElementById('archiveTableBody');
-        if (staffBody) staffBody.innerHTML = activeHtml;
-        if (archiveBody) archiveBody.innerHTML = archiveHtml;
-    } catch (err) { console.error("Staff Fetch Error:", err); }
+        if (!staffBody || !archiveBody) return;
+
+        let activeHtml = '';
+        let archiveHtml = '';
+
+        staff.forEach(s => {
+            const row = `
+                <tr>
+                    <td>${s.fullName}</td>
+                    <td>${s.username}</td>
+                    <td>
+                        <button onclick="archiveStaff(${s.id})"
+                            class="${s.isActive ? 'btn-archive' : 'btn-unarchive'}">
+                            ${s.isActive ? 'Archive' : 'Unarchive'}
+                        </button>
+                    </td>
+                </tr>
+            `;
+            s.isActive ? activeHtml += row : archiveHtml += row;
+        });
+
+        staffBody.innerHTML = activeHtml;
+        archiveBody.innerHTML = archiveHtml;
+    } catch (error) {
+        console.error('Staff Error:', error);
+    }
 }
 
-window.onload = function() {
-    const dashboardBtn = document.querySelector('.nav-item'); 
-    if (dashboardBtn) {
-        showSection('view-dashboard', dashboardBtn);
+/* =========================
+   PROFILE & LOGOUT
+========================= */
+function toggleProfileCard(event) {
+    event.stopPropagation();
+    const card = document.getElementById('profileCard');
+    if (card) card.style.display = card.style.display === 'block' ? 'none' : 'block';
+}
+
+document.addEventListener('click', (event) => {
+    const card = document.getElementById('profileCard');
+    const profileSection = document.querySelector('.profile-section');
+    if (card && profileSection && !profileSection.contains(event.target)) {
+        card.style.display = 'none';
     }
-};
+});
 
 function logout() {
     localStorage.clear();
-    window.location.href = "index.html";
+    window.location.href = 'index.html';
 }
 
+/* =========================
+   PAGE LOAD
+========================= */
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        initSalesChart();
+        fetchLogs();
 
-const themeToggle = document.querySelector('#theme-checkbox');
+        const role = localStorage.getItem('userRole');
+        const name = localStorage.getItem('userName');
 
-themeToggle.addEventListener('change', () => {
-    if (themeToggle.checked) {
-        document.documentElement.setAttribute('data-theme', 'light');
-        localStorage.setItem('theme', 'light');
-    } else {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
+        const profileName = document.querySelector('.Owner');
+        if (profileName && name) profileName.innerText = name;
+
+        // Role-based UI hiding
+        if (role && role.toLowerCase() !== 'owner') {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                const text = item.innerText.toUpperCase();
+                if (text.includes('STAFF MANAGEMENT') || text.includes('INVENTORY')) {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        if (typeof fetchStaff === 'function') fetchStaff();
+
+        const dashboardBtn = document.querySelector('.nav-item');
+        if (dashboardBtn) showSection('view-dashboard', dashboardBtn);
+
+    } catch (error) {
+        console.error('Dashboard Init Error:', error);
     }
 });
 
-const currentTheme = localStorage.getItem('theme');
-if (currentTheme === 'light') {
-    document.documentElement.setAttribute('data-theme', 'light');
-    themeToggle.checked = true;
-}
 
-function updateDailyTotal() {
-    const totalDisplay = document.getElementById('total-revenue');
-    if (!totalDisplay) return; 
+/* =========================
+   PRODUCT MANAGEMENT LOGIC
+========================= */
 
-    const prices = document.querySelectorAll('.sales-row .order-price');
-    let total = 0;
-
-    prices.forEach(priceElement => {
-        const value = parseFloat(priceElement.innerText.replace(/[₱,]/g, ''));
-        if (!isNaN(value)) total += value;
-    });
-
-    totalDisplay.innerText = `₱${total.toLocaleString('en-PH', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    })}`;
-}
-
-
-document.addEventListener('DOMContentLoaded', () => {
-    updateDailyTotal();
+function renderProductGrid(products) {
+    const grid = document.getElementById('productGrid');
+    const userRole = localStorage.getItem('userRole')?.toLowerCase();
     
-    setTimeout(() => {
-        if (typeof renderWeeklyChart === 'function') {
-            renderWeeklyChart();
-        } else {
-            console.warn("Chart function 'renderWeeklyChart' not ready yet.");
-        }
-    }, 150);
-});
+    if (!grid) return;
+    grid.innerHTML = '';
 
-function toggleProfileCard(event) {
-  event.stopPropagation(); // prevents the outside click listener from closing it immediately
-  const card = document.getElementById("profileCard");
-  if (!card) return;
-  card.style.display = (card.style.display === "block") ? "none" : "block";
+    products.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        
+        let ownerActions = '';
+        if (userRole === 'owner') {
+            ownerActions = `
+                <div style="margin-top: 15px; display: flex; gap: 8px; border-top: 1px solid #f8f8f8; padding-top: 15px;">
+                    <button class="action-btn btn-edit" onclick="editProduct(${p.id})" style="flex: 1;">Edit</button>
+                    <button class="action-btn btn-archive" onclick="archiveProduct(${p.id})" style="flex: 1;">Archive</button>
+                </div>
+            `;
+        }
+
+        card.innerHTML = `
+            <div class="img-placeholder">
+                ${p.image_url ? `<img src="${p.image_url}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">` : 'NO IMAGE AVAILABLE'}
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 11px; font-weight: 700; color: #2ecc71; text-transform: uppercase;">${p.category}</span>
+                <span style="font-weight: 700; font-size: 16px;">₱${p.price.toLocaleString()}</span>
+            </div>
+
+            <h3 style="margin: 8px 0; font-size: 18px; color: #000;">${p.product_name}</h3>
+            
+            <div style="display: flex; gap: 10px; font-size: 12px; color: #666;">
+                <span>Size: <strong>${p.size || '-'}</strong></span>
+                <span>Color: <strong>${p.color || '-'}</strong></span>
+                <span>Stock: <strong style="color: ${p.stock_quantity <= 5 ? '#ff4d4d' : '#000'}">${p.stock_quantity}</strong></span>
+            </div>
+
+            ${ownerActions}
+        `;
+        grid.appendChild(card);
+    });
 }
 
-document.addEventListener("click", function(event) {
-  const card = document.getElementById("profileCard");
-  const profileSection = document.querySelector(".profile-section");
-  if (card && !profileSection.contains(event.target)) {
-    card.style.display = "none";
-  }
-});
+// Open/Close Modal
+function openAddModal() { document.getElementById('addProductModal').style.display = 'flex'; }
+function closeAddModal() { document.getElementById('addProductModal').style.display = 'none'; }
+
+// Save Product Function
+async function saveProduct(event) {
+    event.preventDefault();
+
+    const formData = new FormData();
+    // Use the exact names the C# Backend expects
+    formData.append("ProductName", document.getElementById('prodName').value);
+    formData.append("Category", document.getElementById('prodCategory').value);
+    formData.append("Price", document.getElementById('prodPrice').value);
+    formData.append("StockQuantity", document.getElementById('prodStock').value);
+    formData.append("Size", document.getElementById('prodSize').value);
+    formData.append("Color", document.getElementById('prodColor').value);
+    
+    const imageFile = document.getElementById('prodImage').files[0];
+    if (imageFile) {
+        formData.append("ImageFile", imageFile);
+    }
+
+    try {
+        // Double check your apiBase. If it's http://localhost:5055, ensure the backend is RUNNING.
+        const response = await fetch(`${apiBase}/api/Products/add-product`, {
+            method: 'POST',
+            body: formData 
+            // Note: DO NOT set Content-Type header manually when sending FormData
+        });
+
+        if (response.ok) {
+            alert("Product successfully added to Crooked Clothing Shop!");
+            closeAddModal();
+            document.getElementById('productForm').reset(); // Clear form
+            fetchProducts(); // Refresh grid for Owner/Staff
+        } else {
+            const errorText = await response.text();
+            console.error("Backend Error:", errorText);
+            alert("Error adding product: " + errorText);
+        }
+    } catch (error) {
+        console.error("Network Error:", error);
+        alert("Cannot connect to the server. Check if XAMPP and VS are running.");
+    }
+}
+
+// Internal Search Filter
+function filterProducts() {
+    const input = document.getElementById('productSearch').value.toLowerCase();
+    const cards = document.querySelectorAll('.product-card');
+    
+    cards.forEach(card => {
+        const name = card.innerText.toLowerCase();
+        card.style.display = name.includes(input) ? 'block' : 'none';
+    });
+}
