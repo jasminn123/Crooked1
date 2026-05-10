@@ -2,95 +2,96 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Point of Sale</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="../design/PointofSale.css">
 </head>
 <body>
+
   <header class="pos-header">
-  <div class="logo">CRKD</div>
-  <div class="header-actions">
-    <input type="text" placeholder="Search..." class="search-bar">
-    <i class="fa-regular fa-comment"></i>
-    <i class="fa-regular fa-bell"></i>
-
-    <!-- Profile Section -->
-    <div class="profile-section">
-      <i id="userIcon" class="fa-regular fa-user"></i>
-
-      <!-- Popup Card -->
-      <div id="profileCard" class="profile-card">
-        <div class="profile-card-header">
-          <i class="fa-regular fa-user"></i>
-          <span>Main Owner</span>
-        </div>
-        <div class="profile-card-body">
-          <button onclick="window.location.href='../page/dashboard.html'">Switch to DASHBOARD</button>
-          <button onclick="window.location.href='../page/index.html'">LOGOUT</button>
+    <div class="logo">CRKD</div>
+    <div class="header-actions">
+      <input type="text" placeholder="Search..." class="search-bar">
+      <i class="fa-regular fa-comment"></i>
+      <i class="fa-regular fa-bell"></i>
+      <div class="profile-section">
+        <i id="userIcon" class="fa-regular fa-user"></i>
+        <div id="profileCard" class="profile-card">
+          <div class="profile-card-header">
+            <i class="fa-regular fa-user"></i>
+            <span>Main Owner</span>
+          </div>
+          <div class="profile-card-body">
+            <button onclick="window.location.href='../page/dashboard.html'">Switch to DASHBOARD</button>
+            <button onclick="window.location.href='../page/index.html'">LOGOUT</button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</header>
-
+  </header>
 
   <main class="pos-main">
     <section class="product-grid" id="productGrid"></section>
 
     <aside class="checkout-panel">
-  <h2>Checkout</h2>
-  <ul id="checkoutList" class="checkout-list"></ul>
-  <div class="checkout-total">
-    <strong>Total:</strong> <span id="checkoutTotal">₱0.00</span>
-  </div>
-  <div class="checkout-actions">
-    <button class="btn checkout">CHECK OUT</button>
-    <button class="btn cancel" onclick="clearCheckout()">CANCEL</button>
-  </div>
-</aside>
-
-<div id="receiptModal" class="modal">
-  <div class="modal-content">
-    <h2>Do you want to print a receipt?</h2>
-    <div class="modal-actions">
-      <button id="receiptYesBtn" class="btn">YES</button>
-      <button id="receiptNoBtn" class="btn cancel">NO</button>
-    </div>
-  </div>
-</div>
-
-<!-- Payment Method Modal -->
-<div id="paymentModal" class="modal">
-  <div class="modal-content">
-    <h3>Total Amount: <span id="modalTotal">₱0.00</span></h3>
-    <p>Select Payment Method:</p>
-    <div class="modal-actions">
-      <button id="cashBtn" class="btn">Cash</button>
-      <button id="gcashBtn" class="btn">GCash</button>
-    </div>
-  </div>
-</div>
-
-<!-- Cash Payment Modal -->
-<div id="cashModal" class="modal">
-  <div class="modal-content">
-    <h3>Total Amount: <span id="cashTotal">₱0.00</span></h3>
-    <input id="amountReceived" type="number" placeholder="Enter amount received">
-    <p>Change: <span id="changeDisplay">₱0.00</span></p>
-    <button id="confirmCashBtn" class="btn">Confirm Payment</button>
-  </div>
-</div>
-
-<!-- GCash Payment Modal -->
-<div id="gcashModal" class="modal">
-  <div class="modal-content">
-    <h3>Total Amount: <span id="gcashTotal">₱0.00</span></h3>
-    <input id="gcashRefId" type="text" placeholder="Enter Reference ID">
-    <button id="confirmGCashBtn" class="btn">Confirm Payment</button>
-  </div>
-</div>
-
+      <h2>Checkout</h2>
+      <ul id="checkoutList" class="checkout-list"></ul>
+      <div class="checkout-total">
+        <strong>Total:</strong> <span id="checkoutTotal">&#8369;0.00</span>
+      </div>
+      <div class="checkout-actions">
+        <button class="btn checkout">CHECK OUT</button>
+        <button class="btn cancel" onclick="clearCheckout()">CANCEL</button>
+      </div>
+    </aside>
   </main>
+
+  <!-- Modals outside main -->
+
+  <div id="receiptModal" class="modal">
+    <div class="modal-content">
+      <h2>Do you want to print a receipt?</h2>
+      <div class="modal-actions">
+        <button id="receiptYesBtn" class="btn">YES</button>
+        <button id="receiptNoBtn" class="btn">NO</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="paymentModal" class="modal">
+    <div class="modal-content">
+      <h3>Total Amount: <span id="modalTotal">&#8369;0.00</span></h3>
+      <p>Select Payment Method:</p>
+      <div class="modal-actions">
+        <button id="cashBtn" class="btn">Cash</button>
+        <button id="gcashBtn" class="btn">GCash</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cashModal" class="modal">
+  <div class="modal-content">
+    <h3>Total Amount: <span id="cashTotal">&#8369;0.00</span></h3>
+    <input id="amountReceived" type="number" placeholder="Enter amount received" style="appearance: textfield; -moz-appearance: textfield;">
+    <p>Change: <span id="changeDisplay">&#8369;0.00</span></p>
+    <div class="modal-actions">
+      <button id="confirmCashBtn" class="btn">Confirm Payment</button>
+      <button class="btn" onclick="hideModal('cashModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+  <div id="gcashModal" class="modal">
+    <div class="modal-content">
+      <h3>Total Amount: <span id="gcashTotal">&#8369;0.00</span></h3>
+      <input id="gcashRefId" type="text" placeholder="Enter Reference ID">
+      <div class="modal-actions">
+        <button id="confirmGCashBtn" class="btn">Confirm Payment</button>
+        <button class="btn" onclick="hideModal('gcashModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <script src="../javascript/PointOfSale.js"></script>
 
