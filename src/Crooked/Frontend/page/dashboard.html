@@ -6,7 +6,7 @@
     <title>CRKD | Management</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../design/dashboard.css">
+    <link rel="stylesheet" href="../design/dashboard.css?v=2">
 </head>
 
 <body>
@@ -110,16 +110,86 @@
             </div>
 
             <!-- PRODUCTS SECTION -->
-            <div id="view-products" class="content-section" style="display:none; flex-direction:column;">
+            <div id="view-products" class="content-section" style="display:none; background-color: #ffffff; min-height: 100vh; padding: 40px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 1px solid #eee; padding: 20px;">
+                    <div>
+                        <h1 style="color: #000; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">Product Management</h1>
+                        <p style="color: #666; margin: 5px 0 0 0 ; font-size: 14px;">Review and manage Crooked Clothing stock levels.</p>
+                    </div>
 
-                <div class="category-header" style="display:flex; gap:10px; padding-bottom:20px;">
-                    <button class="btn-category active" onclick="filterCategory('all', this)">All Products</button>
-                    <button class="btn-category" onclick="filterCategory('men', this)">Men's Wear</button>
-                    <button class="btn-category" onclick="filterCategory('women', this)">Women's Wear</button>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                            <input type="text" id="productSearch" placeholder="Search products..." onkeyup="filterProducts()" 
+                            style="padding: 12px 15px 10px 35px; border: 1px solid #e0e0e0; border-radius: 6px; width: 280px; background: #f9f9f9; font-size: 14px; outline: none;">
+                            <span style="position: absolute; left: 12px; top: 10px; color: #aaa;">🔍</span>
+                        
+
+                        <button id="addNewProductBtn" class="owner-only" onclick="openAddModal()" 
+                           style="background: #000; color: #fff; padding: 12px 24px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.25s;">
+                           + Add Product
+                        </button>
+                    </div>
                 </div>
 
-                <div id="productGrid" class="product-grid-layout"></div>
+                <div class="category-tabs" style="display: flex; gap: 12px; margin-bottom: 35px;">
+                    <button onClick="filterBycategory('All')" class="tab-btn active">All</button>
+                    <button onClick="filterBycategory('Balaclavas')" class="tab-btn">Balaclavas</button>
+                    <button onClick="filterBycategory('T-Shirts')" class="tab-btn">T-Shirts</button>
+                    <button onClick="filterBycategory('Long Sleeves')" class="tab-btn">Long Sleeves</button>
+                    <button onClick="filterBycategory('Shorts')" class="tab-btn">Shorts</button>
+                    <button onClick="filterBycategory('Pants')" class="tab-btn">Pants</button>
+                    <button onClick="filterBycategory('Tee Kids')" class="tab-btn">Tee Kids</button>
+                </div>
+
+                <div id="productGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 30px;">
+                    <!-- Product cards will be dynamically inserted here -->
+                </div>
             </div>
+
+
+        <div id="addProductModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+            <div style="background:#fff; width:450px; padding:30px; border-radius:12px; position:relative;">
+                    <h2 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Add New Product</h2>
+        
+                <form id="productForm" onsubmit="saveProduct(event)">
+                     <label style="display:block; margin:10px 0 5px; font-size:12px; font-weight:bold;">Product Image</label>
+                     <input type="file" id="prodImage" accept="image/*" style="width:100%; margin-bottom:15px;">
+
+                    <input type="text" id="prodName" placeholder="Product Name" required style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
+            
+                    <select id="prodCategory" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
+                        <option value="Balaclavas">Balaclavas</option>
+                        <option value="T-Shirts">T-Shirts</option>
+                        <option value="Long Sleeves">Long Sleeves</option>
+                        <option value="Shorts">Shorts</option>
+                        <option value="Pants">Pants</option>
+                    </select>
+
+                    <div style="display:flex; gap:10px;">
+                       <input type="number" id="prodPrice" placeholder="Price (₱)" required style="flex:1; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
+                       <input type="number" id="prodStock" placeholder="Stock Qty" required style="flex:1; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                       <input type="text" id="prodSize" placeholder="Size (e.g. L, XL)" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                       <input type="text" id="prodColor" placeholder="Color" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                    </div>
+
+                    <div style="margin-top:25px; display:flex; gap:10px;">
+                        <button type="button" onclick="closeAddModal()" style="flex:1; background:#f0f0f0; border:none; padding:12px; border-radius:6px; cursor:pointer;">Cancel</button>
+                        <button type="submit" style="flex:1; background:#000; color:#fff; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold;">Save Product</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
+ 
+
+
+
+
+
+
 
             <!-- INVENTORY SECTION -->
             <div id="view-inventory" class="content-section" style="display:none; padding:20px;">
@@ -201,10 +271,10 @@
 
             </div>
 
-        </div>
+         </div>
     </div>
 
-    <script src="../javascript/dashboard.js"></script>
+    <script src="../javascript/dashboard.js?v=2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 </body>
