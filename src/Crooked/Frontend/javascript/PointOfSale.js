@@ -1,5 +1,12 @@
-// PointOfSale.js
-let cart = {}; // global cart so clearCheckout resets correctly
+let cart = {};
+
+function showModal(id) {
+  document.getElementById(id).classList.add("active");
+}
+
+function hideModal(id) {
+  document.getElementById(id).classList.remove("active");
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const grid = document.getElementById("productGrid");
@@ -7,36 +14,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const checkoutTotal = document.getElementById("checkoutTotal");
   const checkoutBtn = document.querySelector(".btn.checkout");
 
-  const paymentModal = document.getElementById("paymentModal");
-  const cashModal = document.getElementById("cashModal");
-  const gcashModal = document.getElementById("gcashModal");
-  const receiptModal = document.getElementById("receiptModal");
-
-  document.addEventListener("DOMContentLoaded", () => {
-  const cashBtn = document.getElementById("confirmCashBtn");
-  const gcashBtn = document.getElementById("confirmGCashBtn");
-
-  console.log("Cash button element:", cashBtn);
-  console.log("GCash button element:", gcashBtn);
-
-  if (cashBtn) {
-    cashBtn.addEventListener("click", () => {
-      console.log("Cash payment button clicked!");
-      alert("Cash payment handler fired!");
-    });
-  }
-
-  if (gcashBtn) {
-    gcashBtn.addEventListener("click", () => {
-      console.log("GCash payment button clicked!");
-      alert("GCash payment handler fired!");
-    });
-  }
-});
-
-
-
-  // Load products from API
   async function loadProducts() {
     try {
       const res = await fetch("http://localhost:5055/api/POS/products");
@@ -60,8 +37,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  
-  // Add product to cart with stock validation
   function addToCart(product) {
     const id = product.id || product.product_Id;
 
@@ -90,7 +65,6 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCheckout();
   }
 
-  // Render checkout list
   function renderCheckout() {
     checkoutList.innerHTML = "";
     let total = 0;
@@ -107,18 +81,15 @@ document.addEventListener("DOMContentLoaded", () => {
     checkoutTotal.textContent = `₱${total.toLocaleString()}`;
   }
 
-  // Generate unique reference ID
   function generateReferenceId() {
     return 'REF-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
   }
 
-  // Build transaction object
   function buildTransaction(method, received = null, change = null, refId = null) {
     return {
       referenceId: refId || generateReferenceId(),
       date_time: new Date().toISOString(),
       total_amount: Object.values(cart).reduce((sum, item) => sum + item.price * item.qty, 0),
-      customer_id: null,
       status: "Completed",
       items: Object.values(cart).map(item => ({
         productId: item.id,
@@ -132,21 +103,34 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // Save transaction to backend
-  function saveTransaction(tx) {
-    fetch("http://localhost:5055/api/POS/Transaction", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(tx)
-    })
-    .then(res => res.json())
-    .then(result => {
-      console.log("Transaction saved:", result);
-    })
-    .catch(err => console.error("Error saving transaction:", err));
+  async function processCheckout(tx) {
+    const cartPayload = Object.values(cart).map(item => ({
+      productId: item.id,
+      quantity: item.qty
+    }));
+
+    try {
+      const checkoutRes = await fetch("http://localhost:5055/api/POS/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cartPayload)
+      });
+
+      if (!checkoutRes.ok) throw new Error("Stock deduction failed");
+
+      await fetch("http://localhost:5055/api/POS/Transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tx)
+      });
+
+      console.log("Checkout and transaction saved.");
+    } catch (err) {
+      console.error("Error during checkout:", err);
+      alert("Checkout failed. Please try again.");
+    }
   }
 
-  // Print receipt
   function printReceipt(tx) {
     let receiptWindow = window.open("", "Receipt", "width=400,height=600");
     receiptWindow.document.write(`
@@ -155,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <p>Date: ${new Date(tx.date_time).toLocaleString()}</p>
       <hr>
       <ul>
-        ${tx.items.map(item => 
+        ${tx.items.map(item =>
           `<li>${item.name} x${item.quantity} — ₱${(item.quantity * item.price).toLocaleString()}</li>`
         ).join("")}
       </ul>
@@ -174,42 +158,43 @@ document.addEventListener("DOMContentLoaded", () => {
     receiptWindow.print();
   }
 
-  // Ask receipt modal
   function askReceipt(tx) {
-    receiptModal.style.display = "block";
+    showModal("receiptModal");
 
     document.getElementById("receiptYesBtn").onclick = () => {
-      printReceipt(tx); // YES → print
-      receiptModal.style.display = "none";
+      hideModal("receiptModal");
+      printReceipt(tx);
+      clearCheckout();
     };
 
     document.getElementById("receiptNoBtn").onclick = () => {
-      alert("Transaction saved without printing."); // NO → skip printing
-      receiptModal.style.display = "none";
+      hideModal("receiptModal");
+      clearCheckout();
     };
   }
 
-  // Checkout button
   checkoutBtn.addEventListener("click", () => {
+    if (Object.keys(cart).length === 0) {
+      alert("Cart is empty.");
+      return;
+    }
     const total = Object.values(cart).reduce((sum, item) => sum + item.price * item.qty, 0);
     document.getElementById("modalTotal").textContent = `₱${total.toLocaleString()}`;
-    paymentModal.style.display = "block";
+    showModal("paymentModal");
   });
 
-  // Payment method selection
   document.getElementById("cashBtn").addEventListener("click", () => {
-    paymentModal.style.display = "none";
-    cashModal.style.display = "block";
+    hideModal("paymentModal");
+    showModal("cashModal");
     document.getElementById("cashTotal").textContent = checkoutTotal.textContent;
   });
 
   document.getElementById("gcashBtn").addEventListener("click", () => {
-    paymentModal.style.display = "none";
-    gcashModal.style.display = "block";
+    hideModal("paymentModal");
+    showModal("gcashModal");
     document.getElementById("gcashTotal").textContent = checkoutTotal.textContent;
   });
 
-  // Live change calculation
   const amountReceivedInput = document.getElementById("amountReceived");
   amountReceivedInput.addEventListener("input", () => {
     const received = parseFloat(amountReceivedInput.value);
@@ -222,44 +207,45 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Cash payment
-  document.getElementById("confirmCashBtn").addEventListener("click", () => {
+  document.getElementById("confirmCashBtn").addEventListener("click", async () => {
     const received = parseFloat(document.getElementById("amountReceived").value);
     const total = parseFloat(checkoutTotal.textContent.replace(/[₱,]/g, ""));
+
     if (isNaN(received) || received < total) {
       alert("Insufficient amount received.");
       return;
     }
+
     const change = received - total;
     const tx = buildTransaction("Cash", received, change);
-    saveTransaction(tx);
-    askReceipt(tx); // show modal
-    clearCheckout();
-    cashModal.style.display = "none";
+
+    await processCheckout(tx);
+    hideModal("cashModal");
+    askReceipt(tx);
   });
 
-  // GCash payment
-  document.getElementById("confirmGCashBtn").addEventListener("click", () => {
+  document.getElementById("confirmGCashBtn").addEventListener("click", async () => {
     const refId = document.getElementById("gcashRefId").value.trim();
+
     if (!refId) {
       alert("Please enter a reference ID.");
       return;
     }
+
     const tx = buildTransaction("GCash", null, null, refId);
-    saveTransaction(tx);
-    askReceipt(tx); // show modal
-    clearCheckout();
-    gcashModal.style.display = "none";
+
+    await processCheckout(tx);
+    hideModal("gcashModal");
+    askReceipt(tx);
   });
 
-  // Profile dropdown logic
   const userIcon = document.getElementById("userIcon");
   const profileCard = document.getElementById("profileCard");
   const profileSection = document.querySelector(".profile-section");
 
   userIcon.addEventListener("click", (event) => {
     event.stopPropagation();
-    profileCard.style.display = (profileCard.style.display === "block") ? "none" : "block";
+    profileCard.style.display = (profileCard.style.display === "flex") ? "none" : "flex";
   });
 
   document.addEventListener("click", (event) => {
@@ -268,31 +254,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Initial load
   loadProducts();
 });
 
-// Global clearCheckout so HTML onclick works
 function clearCheckout() {
   const checkoutList = document.getElementById("checkoutList");
   const checkoutTotal = document.getElementById("checkoutTotal");
 
-  // Clear UI
   checkoutList.innerHTML = "";
   checkoutTotal.textContent = "₱0.00";
-
-  // Reset cart object
   cart = {};
 
-  // Hide any open modals
-  document.getElementById("paymentModal").style.display = "none";
-  document.getElementById("cashModal").style.display = "none";
-  document.getElementById("gcashModal").style.display = "none";
-  document.getElementById("receiptModal").style.display = "none";
+  hideModal("paymentModal");
+  hideModal("cashModal");
+  hideModal("gcashModal");
 }
-
-document.getElementById("confirmCashBtn").addEventListener("click", () => {
-  console.log("Cash payment button clicked!");
-  // rest of logic...
-});
-
