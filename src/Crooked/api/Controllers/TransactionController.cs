@@ -55,5 +55,47 @@ namespace Crooked.Controllers
                 return StatusCode(500, new { error = ex.Message, type = ex.GetType().Name });
             }
         }
+        
+[HttpGet]
+public IActionResult GetTransactions()
+{
+    try
+    {
+        var transactions = new List<object>();
+
+        using (var conn = new MySqlConnection(_connectionString))
+        {
+            conn.Open();
+
+            string sql = @"SELECT transaction_id, reference_id, date_time, total_amount, status 
+                           FROM Transactions 
+                           ORDER BY date_time DESC";
+
+            using (var cmd = new MySqlCommand(sql, conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    transactions.Add(new
+                    {
+                        transaction_id = reader["transaction_id"].ToString(),
+                        reference_id   = reader["reference_id"].ToString(),
+                        date_time      = Convert.ToDateTime(reader["date_time"])
+                                            .ToString("MMM dd, yyyy · hh:mm tt"),
+                        total_amount   = Convert.ToDecimal(reader["total_amount"]),
+                        status         = reader["status"].ToString()
+                    });
+                }
+            }
+        }
+
+        return Ok(transactions);
+    }
+    catch (Exception ex)
+    {
+                Console.WriteLine($"ERROR: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
     }
 }
