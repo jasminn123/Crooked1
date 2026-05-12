@@ -89,6 +89,10 @@ body {
   border: 1px solid #333;
 }
 
+.checkout-panel h2 {
+  color: #000;
+}
+
 /* Checkout List */
 .checkout-list {
   list-style: none;
@@ -297,5 +301,5 @@ input[type=number]::-webkit-outer-spin-button {
 
 input[type=number] {
   -moz-appearance: textfield;
-  appearance: textfield;
+  appearance: textfield
 }
