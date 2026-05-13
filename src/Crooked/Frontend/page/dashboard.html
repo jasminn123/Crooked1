@@ -38,22 +38,22 @@
                 <i class="fas fa-bell"></i>
 
                 <div class="profile-section">
-                 <span class="Owner">Main Owner</span>
-                   
-                   <div class="profile-icon" onClick="toggleProfileCard(event)">
-                    <i class="fa-solid fa-user"></i>
-                   </div>
+                    <span class="Owner">Main Owner</span>
 
-                   <div id="profileCard" class="profile-card">
+                    <div class="profile-icon" onClick="toggleProfileCard(event)">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+
+                    <div id="profileCard" class="profile-card">
                         <div class="profile-card-header">
-                          <i clas="fa-solid fa-user"></i>
-                         <span>Main Owner</span>
+                            <i class="fa-solid fa-user"></i>
+                            <span>Main Owner</span>
                         </div>
 
                         <div class="profile-card-body">
-                            <button onClick="window.location.href='../page/PointofSale.html'">
-                                Switch to POS
-                            </button>
+                            <button onClick="window.location.href='../page/PointofSale.html'">Switch to POS</button>
+                            <button onClick="toggleDarkMode()">Dark Mode</button>
+                            <button onClick="logout()">FAQ</button>
                             <button onClick="logout()">Logout</button>
                         </div>
                     </div>
@@ -70,7 +70,7 @@
             <!-- DASHBOARD SECTION -->
             <div id="view-dashboard" class="content-section">
 
-                <!-- TOP DASHBOARD CARDS -->
+                <!-- OWNER: SALES CHART + REVENUE -->
                 <div class="dashboard-stats-container" style="display:flex; gap:20px; margin-bottom:20px;">
 
                     <!-- SALES CHART -->
@@ -81,11 +81,25 @@
 
                     <!-- TODAY'S REVENUE -->
                     <div class="stat-card" style="flex:1; background:#1a1a1a; padding:25px; border-radius:8px; display:flex; flex-direction:column;">
-
                         <h3 style="color:#888; margin:0; font-size:1rem;">Today's Revenue</h3>
                         <h2 style="color:#fff; font-size:2.5rem; margin-top:10px;">₱0.00</h2>
-
                     </div>
+
+                </div>
+
+                <!-- STAFF: STOCK CARDS -->
+                <div id="staff-stats-container" style="display:none; gap:20px; margin-bottom:20px;">
+
+                    <div style="background:#1a1a1a; padding:25px; border-radius:8px; flex:1;">
+                        <h3 style="color:#888; margin:0; font-size:0.85rem; text-transform:uppercase; letter-spacing:1px;">Remaining Stock</h3>
+                        <h2 id="statRemainingStock" style="color:#2ecc71; font-size:2.5rem; margin-top:10px;">—</h2>
+                    </div>
+
+                    <div style="background:#1a1a1a; padding:25px; border-radius:8px; flex:1;">
+                        <h3 style="color:#888; margin:0; font-size:0.85rem; text-transform:uppercase; letter-spacing:1px;">Out of Stock</h3>
+                        <h2 id="statOutOfStock" style="color:#ff4d4d; font-size:2.5rem; margin-top:10px;">—</h2>
+                    </div>
+
                 </div>
 
                 <!-- RECENT ACTIVITY LOGS -->
@@ -110,27 +124,26 @@
             </div>
 
             <!-- PRODUCTS SECTION -->
-            <div id="view-products" class="content-section" style="display:none; background-color: #ffffff; min-height: 100vh; padding: 40px;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 1px solid #eee; padding: 20px;">
+            <div id="view-products" class="content-section" style="display:none; background-color:#ffffff; min-height:100vh; padding:40px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:30px; border-bottom:1px solid #eee; padding:20px;">
                     <div>
-                        <h1 style="color: #000; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">Product Management</h1>
-                        <p style="color: #666; margin: 5px 0 0 0 ; font-size: 14px;">Review and manage Crooked Clothing stock levels.</p>
+                        <h1 style="color:#000; margin:0; font-size:28px; font-weight:700; letter-spacing:-0.5px;">Product Management</h1>
+                        <p style="color:#666; margin:5px 0 0 0; font-size:14px;">Review and manage Crooked Clothing stock levels.</p>
                     </div>
 
-                    <div style="display: flex; gap: 20px; align-items: center;">
-                            <input type="text" id="productSearch" placeholder="Search products..." onkeyup="filterProducts()" 
-                            style="padding: 12px 15px 10px 35px; border: 1px solid #e0e0e0; border-radius: 6px; width: 280px; background: #f9f9f9; font-size: 14px; outline: none;">
-                            <span style="position: absolute; left: 12px; top: 10px; color: #aaa;">🔍</span>
-                        
+                    <div style="display:flex; gap:20px; align-items:center;">
+                        <input type="text" id="productSearch" placeholder="Search products..." onkeyup="filterProducts()"
+                            style="padding:12px 15px 10px 35px; border:1px solid #e0e0e0; border-radius:6px; width:280px; background:#f9f9f9; font-size:14px; outline:none;">
+                        <span style="position:absolute; left:12px; top:10px; color:#aaa;">🔍</span>
 
-                        <button id="addNewProductBtn" class="owner-only" onclick="openAddModal()" 
-                           style="background: #000; color: #fff; padding: 12px 24px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.25s;">
-                           + Add Product
+                        <button id="addNewProductBtn" class="owner-only" onclick="openAddModal()"
+                            style="background:#000; color:#fff; padding:12px 24px; border:none; border-radius:6px; font-weight:600; cursor:pointer; transition:0.25s;">
+                            + Add Product
                         </button>
                     </div>
                 </div>
 
-                <div class="category-tabs" style="display: flex; gap: 12px; margin-bottom: 35px;">
+                <div class="category-tabs" style="display:flex; gap:12px; margin-bottom:35px;">
                     <button onClick="filterBycategory('All')" class="tab-btn active">All</button>
                     <button onClick="filterBycategory('Balaclavas')" class="tab-btn">Balaclavas</button>
                     <button onClick="filterBycategory('T-Shirts')" class="tab-btn">T-Shirts</button>
@@ -140,83 +153,71 @@
                     <button onClick="filterBycategory('Tee Kids')" class="tab-btn">Tee Kids</button>
                 </div>
 
-                <div id="productGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 30px;">
-                    <!-- Product cards will be dynamically inserted here -->
+                <div id="productGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:30px;">
+                    <!-- Product cards injected here -->
                 </div>
             </div>
 
             <!-- TRANSACTION LOGS SECTION -->
-<!-- TRANSACTION LOGS SECTION -->
-<div id="view-transactions" class="content-section" style="padding:20px;">
+            <div id="view-transactions" class="content-section" style="padding:20px;">
 
-    <h2>Transaction Logs</h2>
+                <h2>Transaction Logs</h2>
 
-    <div class="transaction-table-wrapper">
-        <div class="transaction-table-scroll">
-            <table class="transaction-table">
-                <thead>
-                    <tr>
-                        <th>TRANSACTION ID</th>
-                        <th>DATE & TIME</th>
-                        <th>TOTAL AMOUNT</th>
-                        <th>REFERENCE ID</th>
-                        <th>STATUS</th>
-                    </tr>
-                </thead>
-                <tbody id="transactionTableBody"></tbody>
-            </table>
-        </div>
-    </div>
-
-</div>
-
-</div>
-
-
-        <div id="addProductModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-            <div style="background:#fff; width:450px; padding:30px; border-radius:12px; position:relative;">
-                    <h2 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Add New Product</h2>
-        
-                <form id="productForm" onsubmit="saveProduct(event)">
-                     <label style="display:block; margin:10px 0 5px; font-size:12px; font-weight:bold;">Product Image</label>
-                     <input type="file" id="prodImage" accept="image/*" style="width:100%; margin-bottom:15px;">
-
-                    <input type="text" id="prodName" placeholder="Product Name" required style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
-            
-                    <select id="prodCategory" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
-                        <option value="Balaclavas">Balaclavas</option>
-                        <option value="T-Shirts">T-Shirts</option>
-                        <option value="Long Sleeves">Long Sleeves</option>
-                        <option value="Shorts">Shorts</option>
-                        <option value="Pants">Pants</option>
-                    </select>
-
-                    <div style="display:flex; gap:10px;">
-                       <input type="number" id="prodPrice" placeholder="Price (₱)" required style="flex:1; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
-                       <input type="number" id="prodStock" placeholder="Stock Qty" required style="flex:1; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
+                <div class="transaction-table-wrapper">
+                    <div class="transaction-table-scroll">
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th>TRANSACTION ID</th>
+                                    <th>DATE & TIME</th>
+                                    <th>TOTAL AMOUNT</th>
+                                    <th>REFERENCE ID</th>
+                                    <th>STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionTableBody"></tbody>
+                        </table>
                     </div>
+                </div>
 
-                    <div style="display:flex; gap:10px;">
-                       <input type="text" id="prodSize" placeholder="Size (e.g. L, XL)" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;">
-                       <input type="text" id="prodColor" placeholder="Color" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;">
-                    </div>
-
-                    <div style="margin-top:25px; display:flex; gap:10px;">
-                        <button type="button" onclick="closeAddModal()" style="flex:1; background:#f0f0f0; border:none; padding:12px; border-radius:6px; cursor:pointer;">Cancel</button>
-                        <button type="submit" style="flex:1; background:#000; color:#fff; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold;">Save Product</button>
-                    </div>
-                </form>
             </div>
-        </div>
 
+            <!-- ADD PRODUCT MODAL -->
+            <div id="addProductModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+                <div style="background:#fff; width:450px; padding:30px; border-radius:12px; position:relative;">
+                    <h2 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Add New Product</h2>
 
- 
+                    <form id="productForm" onsubmit="saveProduct(event)">
+                        <label style="display:block; margin:10px 0 5px; font-size:12px; font-weight:bold;">Product Image</label>
+                        <input type="file" id="prodImage" accept="image/*" style="width:100%; margin-bottom:15px;">
 
+                        <input type="text" id="prodName" placeholder="Product Name" required style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
 
+                        <select id="prodCategory" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
+                            <option value="Balaclavas">Balaclavas</option>
+                            <option value="T-Shirts">T-Shirts</option>
+                            <option value="Long Sleeves">Long Sleeves</option>
+                            <option value="Shorts">Shorts</option>
+                            <option value="Pants">Pants</option>
+                        </select>
 
+                        <div style="display:flex; gap:10px;">
+                            <input type="number" id="prodPrice" placeholder="Price (₱)" required style="flex:1; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
+                            <input type="number" id="prodStock" placeholder="Stock Qty" required style="flex:1; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px;">
+                        </div>
 
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="prodSize" placeholder="Size (e.g. L, XL)" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                            <input type="text" id="prodColor" placeholder="Color" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                        </div>
 
-
+                        <div style="margin-top:25px; display:flex; gap:10px;">
+                            <button type="button" onclick="closeAddModal()" style="flex:1; background:#f0f0f0; border:none; padding:12px; border-radius:6px; cursor:pointer;">Cancel</button>
+                            <button type="submit" style="flex:1; background:#000; color:#fff; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold;">Save Product</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             <!-- INVENTORY SECTION -->
             <div id="view-inventory" class="content-section" style="display:none; padding:20px;">
@@ -298,7 +299,7 @@
 
             </div>
 
-         </div>
+        </div>
     </div>
 
     <script src="../javascript/dashboard.js?v=3"></script>

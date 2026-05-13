@@ -383,15 +383,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const profileName = document.querySelector('.Owner');
         if (profileName && name) profileName.innerText = name;
 
+        const profileCardName = document.querySelector('.profile-card-header span');
+        if (profileCardName && name) profileCardName.innerText = name;
+        
         // Role-based UI hiding
+        // After
         if (role && role.toLowerCase() !== 'owner') {
             document.querySelectorAll('.nav-item').forEach(item => {
                 const text = item.innerText.toUpperCase();
-                if (text.includes('STAFF MANAGEMENT') || text.includes('INVENTORY')) {
-                    item.style.display = 'none';
-                }
-            });
+                if (text.includes('STAFF MANAGEMENT') || text.includes('INVENTORY') || text.includes('SALES HISTORY')) {
+                item.style.display = 'none';
         }
+        const staffStats = document.getElementById('staff-stats-container');
+            if (staffStats) {
+            staffStats.style.display = 'flex';
+            fetchStaffStats();
+        }
+    });
+
+    // Hide sales chart and revenue card from staff
+    const statsContainer = document.querySelector('.dashboard-stats-container');
+    if (statsContainer) statsContainer.style.display = 'none';
+}
 
         if (typeof fetchStaff === 'function') fetchStaff();
 
@@ -399,3 +412,61 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Dashboard Init Error:', error);
     }
 });
+
+/* =========================
+   STAFF DASHBOARD STATS
+========================= */
+async function fetchStaffStats() {
+    try {
+        const response = await fetch(`${apiBase}/api/products/get-inventory`);
+        if (!response.ok) return;
+
+        const products = await response.json();
+        const remaining = products.reduce((sum, p) => sum + p.stock_quantity, 0);
+        const outOfStock = products.filter(p => p.stock_quantity === 0).length;
+
+        const remainingEl = document.getElementById('statRemainingStock');
+        const outEl       = document.getElementById('statOutOfStock');
+
+        if (remainingEl) remainingEl.innerText = remaining;
+        if (outEl)       outEl.innerText       = outOfStock;
+    } catch (error) {
+        console.error('Staff Stats Error:', error);
+    }
+}
+
+/* =========================
+   ADD STAFF
+========================= */
+async function addStaff() {
+    const fullName = document.getElementById('staffName').value.trim();
+    const username = document.getElementById('staffUser').value.trim();
+    const password = document.getElementById('staffPass').value.trim();
+
+    if (!fullName || !username || !password) {
+        alert('Please fill in all fields.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${apiBase}/api/Auth/register-staff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, username, password })
+        });
+
+        if (response.ok) {
+            alert('Staff account created successfully.');
+            document.getElementById('staffName').value = '';
+            document.getElementById('staffUser').value = '';
+            document.getElementById('staffPass').value = '';
+            fetchStaff();
+        } else {
+            const err = await response.text();
+            alert('Error: ' + err);
+        }
+    } catch (error) {
+        console.error('Create Staff Error:', error);
+        alert('Cannot connect to the server.');
+    }
+}

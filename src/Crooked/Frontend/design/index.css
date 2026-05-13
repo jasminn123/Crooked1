@@ -1,7 +1,7 @@
     body { 
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
         background: #0b0b0b; 
-        background-image: radial-gradient(circle at center, #1a1a1a 0%, #0b0b0b 100%);
+        background-image: radial-gradient(circle at center, #1a1a1a 0%, #fcf5ee 100%);
         color: white; 
         display: flex; 
         justify-content: center; 
@@ -15,8 +15,8 @@
 
     .login-card { 
         width: 100%;
-        max-width: 420px; 
-        padding: 50px;    
+        max-width: 360px; 
+        padding: 25px;    
         background: #141414; 
         border-radius: 28px;
         border: 1px solid #222;
@@ -47,9 +47,9 @@
     margin-top: 20px;
     display: block;
     }
-    
+
     .input-group { text-align: left; margin-bottom: 15px; }
-    label { 
+    label {     
         display: block; 
         font-size: 11px; 
         color: #888; 
@@ -147,8 +147,8 @@
    
     @media (min-width: 1024px) {
         .login-card {
-            max-width: 800px; 
-            padding: 80px;    
+            max-width: 700px; 
+            padding: 20px 50px;    
         }
         .logo-img { width: 160px; }
         h2 { font-size: 2.2rem; }

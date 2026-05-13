@@ -13,7 +13,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const checkoutList = document.getElementById("checkoutList");
   const checkoutTotal = document.getElementById("checkoutTotal");
   const checkoutBtn = document.querySelector(".btn.checkout");
+  // After loadProducts();
+  const name = localStorage.getItem('userName');
+  const profileCardName = document.querySelector('.profile-card-header span') || document.querySelector('#profileCard span');
+  if (profileCardName && name) profileCardName.innerText = name;
 
+  
   async function loadProducts() {
     try {
       const res = await fetch("http://localhost:5055/api/POS/products");
@@ -238,6 +243,13 @@ document.addEventListener("DOMContentLoaded", () => {
     hideModal("gcashModal");
     askReceipt(tx);
   });
+
+  const closePaymentBtn = document.getElementById("closePaymentBtn");
+if (closePaymentBtn) {
+    closePaymentBtn.addEventListener("click", () => {
+        hideModal("paymentModal");
+    });
+}
 
   const userIcon = document.getElementById("userIcon");
   const profileCard = document.getElementById("profileCard");

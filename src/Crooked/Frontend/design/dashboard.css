@@ -225,8 +225,13 @@ h1 {
     max-height: 300px; 
     overflow-y: auto; 
     margin-top: 15px; 
+    margin-bottom: 15px;
     border: 1px solid #222; 
     border-radius: 8px;
+}
+
+#view-users .card {
+    margin-bottom: 15px;
 }
 
 table { 
