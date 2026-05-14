@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Crooked.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Crooked.Controllers;
 
@@ -29,11 +30,11 @@ public class ProductsController : ControllerBase
                 while (reader.Read())
                 {
                     products.Add(new {
-                        product_name    = reader["product_name"].ToString(),
-                        category        = reader["category"].ToString(),
-                        price           = Convert.ToDecimal(reader["price"]),
-                        stock_quantity  = Convert.ToInt32(reader["stock_quantity"]),
-                        imageUrl        = reader["image_url"].ToString()
+                        product_name = reader["product_name"].ToString(),
+                        category = reader["category"].ToString(),
+                        price = Convert.ToDecimal(reader["price"]),
+                        stock_quantity = Convert.ToInt32(reader["stock_quantity"]),
+                        imageUrl = reader["image_url"].ToString()
                     });
                 }
             }
@@ -56,14 +57,14 @@ public IActionResult GetProducts()
             while (reader.Read())
             {
                 products.Add(new {
-                    id             = Convert.ToInt32(reader["id"]),
-                    product_name   = reader["product_name"].ToString(),
-                    category       = reader["category"].ToString(),
-                    price          = Convert.ToDecimal(reader["price"]),
+                    id = Convert.ToInt32(reader["id"]),
+                    product_name = reader["product_name"].ToString(),
+                    category = reader["category"].ToString(),
+                    price = Convert.ToDecimal(reader["price"]),
                     stock_quantity = Convert.ToInt32(reader["stock_quantity"]),
-                    size           = reader["size"].ToString(),
-                    color          = reader["color"].ToString(),
-                    image_url      = reader["image_url"].ToString()
+                    size = reader["size"].ToString(),
+                    color = reader["color"].ToString(),
+                    image_url = reader["image_url"].ToString()
                 });
             }
         }
@@ -72,6 +73,7 @@ public IActionResult GetProducts()
 }
 
     [HttpPost("add-product")]
+    [Authorize(Roles = "owner")]
     public async Task<IActionResult> AddProduct([FromForm] ProductUploadDTO dto)
     {
         if (dto == null) return BadRequest("Data is empty");
@@ -104,14 +106,13 @@ public IActionResult GetProducts()
 
                 using (var cmd = new MySqlCommand(sql, connection))
                 {
-                    cmd.Parameters.AddWithValue("@name",     dto.ProductName);
+                    cmd.Parameters.AddWithValue("@name", dto.ProductName);
                     cmd.Parameters.AddWithValue("@category", dto.Category);
-                    cmd.Parameters.AddWithValue("@price",    dto.Price);
-                    cmd.Parameters.AddWithValue("@stock",    dto.StockQuantity);
-                    cmd.Parameters.AddWithValue("@size",     dto.Size);
-                    cmd.Parameters.AddWithValue("@color",    dto.Color);
-                    cmd.Parameters.AddWithValue("@image",    imageUrl);
-
+                    cmd.Parameters.AddWithValue("@price", dto.Price);
+                    cmd.Parameters.AddWithValue("@stock", dto.StockQuantity);
+                    cmd.Parameters.AddWithValue("@size", dto.Size);
+                    cmd.Parameters.AddWithValue("@color", dto.Color);
+                    cmd.Parameters.AddWithValue("@image", imageUrl);
                     await cmd.ExecuteNonQueryAsync();
                 }
             }
@@ -123,27 +124,4 @@ public IActionResult GetProducts()
             return StatusCode(500, $"Internal error: {ex.Message}");
         }
     }
-
-    [HttpGet]
-    [Authorize(Roles = "owner,staff")] 
-    public IActionResult GetAllProducts()
-    {
-                return Ok(new { message = "Here are the products for everyone to see." });
-    }
-
-
-    [HttpPost]
-    [Authorize(Roles = "owner")] 
-    public IActionResult AddProduct([FromBody] ProductDto model)
-    {
-        if (!ModelState.IsValid) return BadRequest();
-
-        return Ok(new { message = "Product added successfully by the owner!" });
-    }
-}
-
-public class ProductDto 
-{
-    public string Name { get; set; }
-    public decimal Price { get; set; }
 }

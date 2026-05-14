@@ -15,9 +15,9 @@ function showSection(sectionId, element) {
     if (activeSection) {
         activeSection.style.display = 'block';
 
-        if (sectionId === 'view-products')      fetchProducts();
-        if (sectionId === 'view-inventory')     loadInventory();
-        if (sectionId === 'view-transactions')  loadTransactions();
+        if (sectionId === 'view-products') fetchProducts();
+        if (sectionId === 'view-inventory') loadInventory();
+        if (sectionId === 'view-transactions') loadTransactions();
     }
 
     document.querySelectorAll('.nav-item').forEach(nav => {
@@ -202,7 +202,7 @@ function toggleProfileCard(event) {
 }
 
 document.addEventListener('click', (event) => {
-    const card          = document.getElementById('profileCard');
+    const card = document.getElementById('profileCard');
     const profileSection = document.querySelector('.profile-section');
     if (card && profileSection && !profileSection.contains(event.target)) {
         card.style.display = 'none';
@@ -241,8 +241,8 @@ function renderTransactionTable(transactions) {
     tbody.innerHTML = transactions.map(txn => {
         const statusClass = {
             'Completed': 'status-completed',
-            'Pending':   'status-pending',
-            'Voided':    'status-voided'
+            'Pending': 'status-pending',
+            'Voided': 'status-voided'
         }[txn.status] || '';
 
         return `
@@ -260,7 +260,7 @@ function renderTransactionTable(transactions) {
    PRODUCT MANAGEMENT
 ========================= */
 function renderProductGrid(products) {
-    const grid     = document.getElementById('productGrid');
+    const grid = document.getElementById('productGrid');
     const userRole = localStorage.getItem('userRole')?.toLowerCase();
 
     if (!grid) return;
@@ -306,19 +306,19 @@ function renderProductGrid(products) {
     });
 }
 
-function openAddModal()  { document.getElementById('addProductModal').style.display = 'flex'; }
+function openAddModal() { document.getElementById('addProductModal').style.display = 'flex'; }
 function closeAddModal() { document.getElementById('addProductModal').style.display = 'none'; }
 
 async function saveProduct(event) {
     event.preventDefault();
 
     const formData = new FormData();
-    formData.append("ProductName",    document.getElementById('prodName').value);
-    formData.append("Category",       document.getElementById('prodCategory').value);
-    formData.append("Price",          document.getElementById('prodPrice').value);
-    formData.append("StockQuantity",  document.getElementById('prodStock').value);
-    formData.append("Size",           document.getElementById('prodSize').value);
-    formData.append("Color",          document.getElementById('prodColor').value);
+    formData.append("ProductName", document.getElementById('prodName').value);
+    formData.append("Category", document.getElementById('prodCategory').value);
+    formData.append("Price", document.getElementById('prodPrice').value);
+    formData.append("StockQuantity", document.getElementById('prodStock').value);
+    formData.append("Size", document.getElementById('prodSize').value);
+    formData.append("Color", document.getElementById('prodColor').value);
 
     const imageFile = document.getElementById('prodImage').files[0];
     if (imageFile) formData.append("ImageFile", imageFile);
@@ -399,6 +399,10 @@ document.addEventListener('DOMContentLoaded', () => {
             staffStats.style.display = 'flex';
             fetchStaffStats();
         }
+        const addProductBtn = document.getElementById('addNewProductBtn');
+        if (addProductBtn && role?.toLowerCase() !== 'owner') {
+        addProductBtn.style.display = 'none';
+        }
     });
 
     // Hide sales chart and revenue card from staff
@@ -426,10 +430,10 @@ async function fetchStaffStats() {
         const outOfStock = products.filter(p => p.stock_quantity === 0).length;
 
         const remainingEl = document.getElementById('statRemainingStock');
-        const outEl       = document.getElementById('statOutOfStock');
+        const outEl = document.getElementById('statOutOfStock');
 
         if (remainingEl) remainingEl.innerText = remaining;
-        if (outEl)       outEl.innerText       = outOfStock;
+        if (outEl) outEl.innerText = outOfStock;
     } catch (error) {
         console.error('Staff Stats Error:', error);
     }

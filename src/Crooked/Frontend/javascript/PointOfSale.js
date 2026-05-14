@@ -244,12 +244,8 @@ document.addEventListener("DOMContentLoaded", () => {
     askReceipt(tx);
   });
 
-  const closePaymentBtn = document.getElementById("closePaymentBtn");
-if (closePaymentBtn) {
-    closePaymentBtn.addEventListener("click", () => {
-        hideModal("paymentModal");
-    });
-}
+  document.getElementById("closeReceiptBtn")?.addEventListener("click", () => hideModal("receiptModal"));
+  document.getElementById("closePaymentBtn")?.addEventListener("click", () => hideModal("paymentModal"));
 
   const userIcon = document.getElementById("userIcon");
   const profileCard = document.getElementById("profileCard");

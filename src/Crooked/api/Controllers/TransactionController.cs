@@ -79,11 +79,10 @@ namespace Crooked.Controllers
                             transactions.Add(new
                             {
                                 transaction_id = reader["transaction_id"].ToString(),
-                                reference_id   = reader["reference_id"].ToString(),
-                                date_time      = Convert.ToDateTime(reader["date_time"])
-                                                    .ToString("MMM dd, yyyy · hh:mm tt"),
-                                total_amount   = Convert.ToDecimal(reader["total_amount"]),
-                                status         = reader["status"].ToString()
+                                reference_id = reader["reference_id"].ToString(),
+                                date_time = Convert.ToDateTime(reader["date_time"]) .ToString("MMM dd, yyyy · hh:mm tt"),
+                                total_amount = Convert.ToDecimal(reader["total_amount"]),
+                                status = reader["status"].ToString()
                             });
                         }
                     }
