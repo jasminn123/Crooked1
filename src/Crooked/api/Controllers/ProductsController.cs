@@ -123,4 +123,27 @@ public IActionResult GetProducts()
             return StatusCode(500, $"Internal error: {ex.Message}");
         }
     }
+
+    [HttpGet]
+    [Authorize(Roles = "owner,staff")] 
+    public IActionResult GetAllProducts()
+    {
+                return Ok(new { message = "Here are the products for everyone to see." });
+    }
+
+
+    [HttpPost]
+    [Authorize(Roles = "owner")] 
+    public IActionResult AddProduct([FromBody] ProductDto model)
+    {
+        if (!ModelState.IsValid) return BadRequest();
+
+        return Ok(new { message = "Product added successfully by the owner!" });
+    }
+}
+
+public class ProductDto 
+{
+    public string Name { get; set; }
+    public decimal Price { get; set; }
 }
