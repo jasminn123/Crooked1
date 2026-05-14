@@ -391,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (role && role.toLowerCase() !== 'owner') {
             document.querySelectorAll('.nav-item').forEach(item => {
                 const text = item.innerText.toUpperCase();
-                if (text.includes('STAFF MANAGEMENT') || text.includes('INVENTORY') || text.includes('SALES HISTORY')) {
+                if (text.includes('STAFF MANAGEMENT') || text.includes('SALES HISTORY')) {
                 item.style.display = 'none';
         }
         const staffStats = document.getElementById('staff-stats-container');
