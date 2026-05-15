@@ -45,11 +45,14 @@ async function loadInventory() {
 
         tableBody.innerHTML = '';
         products.forEach(item => {
-            const isLow = item.stock_quantity <= 5;
-            const status = isLow
-                ? '<span style="color:#ff4d4d;font-weight:bold;">LOW STOCK</span>'
-                : '<span style="color:#2ecc71;">OK</span>';
-
+            const isOut = item.stock_quantity === 0;
+            const isLow = item.stock_quantity <= 5 && item.stock_quantity > 0;
+            const status = isOut
+            ? '<span style="color:#ff0000;font-weight:bold;">OUT OF STOCK</span>'
+            : isLow
+            ? '<span style="color:#ff4d4d;font-weight:bold;">LOW STOCK</span>'
+            : '<span style="color:#2ecc71;">OK</span>';
+            
             tableBody.innerHTML += `
                 <tr style="border-bottom:1px solid #222;">
                     <td style="padding:12px;color:white;">${item.product_name}</td>
@@ -297,7 +300,7 @@ function renderProductGrid(products) {
             <div style="display:flex; gap:10px; font-size:12px; color:#666;">
                 <span>Size: <strong>${p.size || '-'}</strong></span>
                 <span>Color: <strong>${p.color || '-'}</strong></span>
-                <span>Stock: <strong style="color:${p.stock_quantity <= 5 ? '#ff4d4d' : '#000'}">${p.stock_quantity}</strong></span>
+                <span>Stock: <strong style="color:${p.stock_quantity === 0 ? '#ff4d4d' : p.stock_quantity <= 5 ? '#ff4d4d' : '#000'}">${p.stock_quantity}</strong></span>
             </div>
 
             ${ownerActions}
