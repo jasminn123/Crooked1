@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Crooked.Models;
-using Microsoft.AspNetCore.Authorization;
 
 namespace Crooked.Controllers;
 
@@ -73,7 +72,6 @@ public IActionResult GetProducts()
 }
 
     [HttpPost("add-product")]
-    [Authorize(Roles = "owner")]
     public async Task<IActionResult> AddProduct([FromForm] ProductUploadDTO dto)
     {
         if (dto == null) return BadRequest("Data is empty");

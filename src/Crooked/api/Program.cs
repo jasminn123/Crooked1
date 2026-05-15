@@ -22,8 +22,6 @@ var app = builder.Build();
 
 EnsureDatabaseSetup();
 
-app.UseCors("AllowAll");
-app.UseAuthorization();
 
 var pageProvider = new PhysicalFileProvider(
     Path.Combine(builder.Environment.ContentRootPath, "Frontend", "page")
