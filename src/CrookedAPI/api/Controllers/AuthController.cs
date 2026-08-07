@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+using Npgsql;
 using Crooked.Models;
 using System.Collections.Generic;
 using System;
@@ -18,12 +18,12 @@ namespace Crooked.Controllers
         {
             try 
             {
-                using (var connection = new MySqlConnection(_connectionString))
+                using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     connection.Open();
 
-                    string sql = "SELECT role, full_name FROM users WHERE username = @user AND password = @pass AND is_active = 1";
-                    using (var cmd = new MySqlCommand(sql, connection))
+                    string sql = "SELECT role, full_name FROM users WHERE username = @user AND password = @pass AND is_active = true";
+                    using (var cmd = new NpgsqlCommand(sql, connection))
                     {
                         cmd.Parameters.AddWithValue("@user", loginRequest.Username);
                         cmd.Parameters.AddWithValue("@pass", loginRequest.Password);
@@ -37,7 +37,7 @@ namespace Crooked.Controllers
                                 reader.Close(); 
 
                                 var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES (@name, 'Logged into the system', NOW())";                            
-                                using (var logCmd = new MySqlCommand(logSql, connection))
+                                using (var logCmd = new NpgsqlCommand(logSql, connection))
                                 {
                                     logCmd.Parameters.AddWithValue("@name", fullName);
                                     logCmd.ExecuteNonQuery();
@@ -52,6 +52,7 @@ namespace Crooked.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine("Database Error: " + ex.Message);
                 return StatusCode(500, new { message = "Database Error: " + ex.Message });
             }
         }
@@ -61,11 +62,11 @@ namespace Crooked.Controllers
         {
             try
             {
-                using (var connection = new MySqlConnection(_connectionString))
+                using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     connection.Open();
-                    var sql = "SELECT COUNT(*) FROM users WHERE is_active = 1";
-                    using (var cmd = new MySqlCommand(sql, connection))
+                    var sql = "SELECT COUNT(*) FROM users WHERE is_active = true";
+                    using (var cmd = new NpgsqlCommand(sql, connection))
                     {
                         var count = Convert.ToInt32(cmd.ExecuteScalar());
                         return Ok(new { totalUsers = count });
@@ -81,18 +82,18 @@ namespace Crooked.Controllers
         [HttpPost("toggle-archive/{id}")]
         public IActionResult ToggleArchive(int id, [FromQuery] bool archive)
         {
-            using (var connection = new MySqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString)) 
             {
                 connection.Open();
                 var sql = "UPDATE users SET is_active = @status WHERE id = @id";
                 
                 string staffName = "";
-                using (var nameCmd = new MySqlCommand("SELECT full_name FROM users WHERE id = @id", connection)) {
+                using (var nameCmd = new NpgsqlCommand("SELECT full_name FROM users WHERE id = @id", connection)) {
                     nameCmd.Parameters.AddWithValue("@id", id);
                     staffName = nameCmd.ExecuteScalar()?.ToString();
                 }
 
-                using (var cmd = new MySqlCommand(sql, connection))
+                using (var cmd = new NpgsqlCommand(sql, connection))
                 {
                     cmd.Parameters.AddWithValue("@status", archive ? 0 : 1);
                     cmd.Parameters.AddWithValue("@id", id);
@@ -100,7 +101,7 @@ namespace Crooked.Controllers
                 }
 
                 var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES ('Main Owner', @action, NOW())";                
-                using (var logCmd = new MySqlCommand(logSql, connection))
+                using (var logCmd = new NpgsqlCommand(logSql, connection))
                 {
                     logCmd.Parameters.AddWithValue("@action", archive ? $"Archived: {staffName}" : $"Unarchived: {staffName}");
                     logCmd.ExecuteNonQuery();
@@ -113,11 +114,11 @@ namespace Crooked.Controllers
         public IActionResult GetStaff()
         {
             var staffList = new List<object>();
-            using (var connection = new MySqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
                 connection.Open();
                 var sql = "SELECT id, full_name, username, is_active FROM users WHERE role = 'staff'";
-                using (var cmd = new MySqlCommand(sql, connection))
+                using (var cmd = new NpgsqlCommand(sql, connection))
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -138,11 +139,11 @@ namespace Crooked.Controllers
         public IActionResult GetLogs()
         {
             var logs = new List<object>();
-            using (var connection = new MySqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
                 connection.Open();
                 var sql = "SELECT staff_name, action, date_occurred FROM activity_logs ORDER BY date_occurred DESC LIMIT 10";
-                using (var cmd = new MySqlCommand(sql, connection))
+                using (var cmd = new NpgsqlCommand(sql, connection))
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -161,11 +162,11 @@ namespace Crooked.Controllers
         [HttpPost("register-staff")]
         public IActionResult RegisterStaff([FromBody] User request)
         {
-            using (var connection = new MySqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
                 connection.Open();
                 var sql = "INSERT INTO users (username, password, role, full_name, is_active) VALUES (@user, @pass, 'staff', @name, 1)";
-                using (var cmd = new MySqlCommand(sql, connection))
+                using (var cmd = new NpgsqlCommand(sql, connection))
                 {
                     cmd.Parameters.AddWithValue("@user", request.Username);
                     cmd.Parameters.AddWithValue("@pass", request.Password);
@@ -189,12 +190,12 @@ public IActionResult ResetPassword([FromBody] ResetRequest request)
 
     try
     {
-        using (var connection = new MySqlConnection(_connectionString))
+        using (var connection = new NpgsqlConnection(_connectionString))
         {
             connection.Open();
 
             var sql = "UPDATE users SET password = @newPass WHERE username = @user AND role = 'owner'";
-            using (var cmd = new MySqlCommand(sql, connection))
+            using (var cmd = new NpgsqlCommand(sql, connection))
             {
                 cmd.Parameters.AddWithValue("@newPass", request.NewPassword);
                 cmd.Parameters.AddWithValue("@user", request.Username);

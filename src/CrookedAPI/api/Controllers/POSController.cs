@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+using Npgsql;
 using Crooked.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -18,10 +18,10 @@ namespace Crooked.Controllers
         {
             var products = new List<Product>();
 
-            using (var conn = new MySqlConnection(_connectionString))
+            using (var conn = new NpgsqlConnection(_connectionString))
             {
                 string query = "SELECT id, product_name, price, stock_quantity, image_url FROM Products";
-                var cmd = new MySqlCommand(query, conn);
+                var cmd = new NpgsqlCommand(query, conn);
                 await conn.OpenAsync();
                 var reader = await cmd.ExecuteReaderAsync();
 
@@ -44,13 +44,13 @@ namespace Crooked.Controllers
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] List<CartItem> cart)
         {
-            using (var conn = new MySqlConnection(_connectionString))
+            using (var conn = new NpgsqlConnection(_connectionString))
             {
                 await conn.OpenAsync();
 
                 foreach (var item in cart)
                 {
-                    var update = new MySqlCommand(
+                    var update = new NpgsqlCommand(
                         "UPDATE Products SET stock_quantity = stock_quantity - @qty WHERE id = @id",
                         conn
                     );

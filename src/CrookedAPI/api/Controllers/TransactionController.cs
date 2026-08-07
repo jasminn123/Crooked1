@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+using Npgsql;
 using Crooked.Models;
 using System;
 
@@ -24,7 +24,7 @@ namespace Crooked.Controllers
 
                 Console.WriteLine($"Received: RefId={tx.ReferenceId}, Date={tx.Date_Time}, Total={tx.Total_Amount}, Status={tx.Status}");
 
-                using (var conn = new MySqlConnection(_connectionString))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
                     Console.WriteLine("DB connection opened");
@@ -33,7 +33,7 @@ namespace Crooked.Controllers
                                    (reference_id, date_time, total_amount, status) 
                                    VALUES (@referenceId, @dateTime, @total, @status)";
 
-                    using (var cmd = new MySqlCommand(sql, conn))
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@referenceId", tx.ReferenceId ?? (object)DBNull.Value);
                         cmd.Parameters.AddWithValue("@dateTime", tx.Date_Time);
@@ -63,7 +63,7 @@ namespace Crooked.Controllers
             {
                 var transactions = new List<object>();
 
-                using (var conn = new MySqlConnection(_connectionString))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
 
@@ -71,7 +71,7 @@ namespace Crooked.Controllers
                                    FROM Transactions 
                                    ORDER BY date_time DESC";
 
-                    using (var cmd = new MySqlCommand(sql, conn))
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     using (var reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
