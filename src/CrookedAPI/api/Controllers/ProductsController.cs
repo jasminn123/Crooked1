@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,12 +18,12 @@ public class ProductsController : ControllerBase
     public IActionResult GetInventory()
     {
         var products = new List<object>();
-        using (var connection = new MySqlConnection(_connectionString))
+        using (var connection = new NpgsqlConnection(_connectionString))
         {
             connection.Open();
             string sql = "SELECT id, product_name, category, price, stock_quantity, image_url FROM products";
 
-            using (var cmd = new MySqlCommand(sql, connection))
+            using (var cmd = new NpgsqlCommand(sql, connection))
             using (var reader = cmd.ExecuteReader())
             {
                 while (reader.Read())
@@ -45,12 +45,12 @@ public class ProductsController : ControllerBase
 public IActionResult GetProducts()
 {
     var products = new List<object>();
-    using (var connection = new MySqlConnection(_connectionString))
+    using (var connection = new NpgsqlConnection(_connectionString))
     {
         connection.Open();
         string sql = "SELECT id, product_name, category, price, stock_quantity, size, color, image_url FROM products";
 
-        using (var cmd = new MySqlCommand(sql, connection))
+        using (var cmd = new NpgsqlCommand(sql, connection))
         using (var reader = cmd.ExecuteReader())
         {
             while (reader.Read())
@@ -94,7 +94,7 @@ public IActionResult GetProducts()
                 imageUrl = "/images/products/" + fileName;
             }
 
-            using (var connection = new MySqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
 
@@ -102,7 +102,7 @@ public IActionResult GetProducts()
                     (product_name, category, price, stock_quantity, size, color, image_url) 
                     VALUES (@name, @category, @price, @stock, @size, @color, @image)";
 
-                using (var cmd = new MySqlCommand(sql, connection))
+                using (var cmd = new NpgsqlCommand(sql, connection))
                 {
                     cmd.Parameters.AddWithValue("@name", dto.ProductName);
                     cmd.Parameters.AddWithValue("@category", dto.Category);
