@@ -4,6 +4,7 @@ using Crooked.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
+using Crooked.Services;
 
 namespace Crooked.Controllers
 {
@@ -12,6 +13,12 @@ namespace Crooked.Controllers
     public class POSController : ControllerBase
     {
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
+        private readonly ThresholdForecastService _forecastService;
+
+        public POSController(ThresholdForecastService forecastService)
+        {
+            _forecastService = forecastService;
+        }
 
         [HttpGet("products")]
         public async Task<IActionResult> GetProducts()
@@ -27,17 +34,17 @@ namespace Crooked.Controllers
 
                 while (await reader.ReadAsync())
                 {
-                products.Add(new Product
-                {
-                Id = reader.GetInt32(0),
-                Product_Name = reader.IsDBNull(1) ? "" : reader.GetString(1),
-                Price = reader.IsDBNull(2) ? 0 : reader.GetDecimal(2),
-                Stock_Quantity = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
-                ImageUrl = reader.IsDBNull(4) ? "" : reader.GetString(4)
-    });
-}
-
+                    products.Add(new Product
+                    {
+                        Id = reader.GetInt32(0),
+                        Product_Name = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                        Price = reader.IsDBNull(2) ? 0 : reader.GetDecimal(2),
+                        Stock_Quantity = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
+                        ImageUrl = reader.IsDBNull(4) ? "" : reader.GetString(4)
+                    });
+                }
             }
+
             return Ok(products);
         }
 
@@ -48,15 +55,31 @@ namespace Crooked.Controllers
             {
                 await conn.OpenAsync();
 
-                foreach (var item in cart)
+                using (var transaction = await conn.BeginTransactionAsync())
                 {
-                    var update = new NpgsqlCommand(
-                        "UPDATE Products SET stock_quantity = stock_quantity - @qty WHERE id = @id",
-                        conn
-                    );
-                    update.Parameters.AddWithValue("@qty", item.Quantity);
-                    update.Parameters.AddWithValue("@id", item.ProductId);
-                    await update.ExecuteNonQueryAsync();
+                    try
+                    {
+                        foreach (var item in cart)
+                        {
+                            // Update stock quantity
+                            var updateStock = new NpgsqlCommand(
+                                "UPDATE Products SET stock_quantity = stock_quantity - @qty WHERE id = @id",
+                                conn, transaction);
+                            updateStock.Parameters.AddWithValue("@qty", item.Quantity);
+                            updateStock.Parameters.AddWithValue("@id", item.ProductId);
+                            await updateStock.ExecuteNonQueryAsync();
+
+                            // Increment sales counter for forecasting
+                            await _forecastService.IncrementSalesAsync(item.ProductId, item.Quantity);
+                        }
+
+                        await transaction.CommitAsync();
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
                 }
             }
 

@@ -2,11 +2,17 @@ using System.IO;
 using Microsoft.Extensions.FileProviders;
 using MySql.Data.MySqlClient;
 using Crooked;
+using Crooked.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// Register threshold forecast options and service
+builder.Services.Configure<ThresholdForecastOptions>(builder.Configuration.GetSection("ThresholdForecast"));
+builder.Services.AddHostedService<ThresholdForecastService>();
 
 builder.Services.AddCors(options =>
 {
