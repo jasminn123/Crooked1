@@ -11,6 +11,35 @@ namespace Crooked.Controllers
     {
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
+        [HttpGet("today-revenue")]
+        public IActionResult GetTodayRevenue()
+        {
+            try
+            {
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    connection.Open();
+                    const string sql = @"
+                        SELECT COALESCE(SUM(total_amount), 0)
+                        FROM transactions
+                        WHERE status = 'Completed'
+                          AND date_time >= ((NOW() AT TIME ZONE 'Asia/Manila')::date::timestamp AT TIME ZONE 'Asia/Manila')
+                          AND date_time < (((NOW() AT TIME ZONE 'Asia/Manila')::date + 1)::timestamp AT TIME ZONE 'Asia/Manila')";
+
+                    using (var command = new NpgsqlCommand(sql, connection))
+                    {
+                        var revenue = Convert.ToDecimal(command.ExecuteScalar());
+                        return Ok(new { revenue });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Today's Revenue Error: {ex.Message}");
+                return StatusCode(500, new { error = "Unable to load today's revenue." });
+            }
+        }
+
         [HttpPost]
         public IActionResult SaveTransaction([FromBody] Transaction tx)
         {
@@ -30,8 +59,8 @@ namespace Crooked.Controllers
                     Console.WriteLine("DB connection opened");
 
                     string sql = @"INSERT INTO Transactions 
-                                   (reference_id, date_time, total_amount, status) 
-                                   VALUES (@referenceId, @dateTime, @total, @status)";
+                                   (reference_id, date_time, total_amount, status, assisted_by) 
+                                   VALUES (@referenceId, @dateTime, @total, @status, @assistedBy)";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -39,6 +68,8 @@ namespace Crooked.Controllers
                         cmd.Parameters.AddWithValue("@dateTime", tx.Date_Time);
                         cmd.Parameters.AddWithValue("@total", tx.Total_Amount);
                         cmd.Parameters.AddWithValue("@status", tx.Status ?? "Completed");
+                        cmd.Parameters.AddWithValue("@assistedBy",
+                            string.IsNullOrWhiteSpace(tx.AssistedBy) ? "Unknown" : tx.AssistedBy.Trim());
 
                         int rows = cmd.ExecuteNonQuery();
                         Console.WriteLine($"Rows affected: {rows}");
@@ -67,7 +98,7 @@ namespace Crooked.Controllers
                 {
                     conn.Open();
 
-                    string sql = @"SELECT transaction_id, reference_id, date_time, total_amount, status 
+                    string sql = @"SELECT transaction_id, reference_id, date_time, total_amount, status, assisted_by 
                                    FROM Transactions 
                                    ORDER BY date_time DESC";
 
@@ -82,7 +113,8 @@ namespace Crooked.Controllers
                                 reference_id = reader["reference_id"].ToString(),
                                 date_time = DateTime.SpecifyKind(Convert.ToDateTime(reader["date_time"]), DateTimeKind.Utc).ToLocalTime().ToString("MMM dd, yyyy · hh:mm tt"),
                                 total_amount = Convert.ToDecimal(reader["total_amount"]),
-                                status = reader["status"].ToString()
+                                status = reader["status"].ToString(),
+                                assisted_by = reader["assisted_by"].ToString()
                             });
                         }
                     }

@@ -76,15 +76,16 @@
                     <div class="chart-card" style="flex:2; background:#1a1a1a; padding:20px; border-radius:8px;">
                         <h3 style="color:white; margin-bottom:8px;">Product Sales by Day</h3>
                         <p id="salesAnalyticsStatus" style="color:#aaa; margin:0 0 15px;">Loading the last 7 days of sales...</p>
+                        <p style="color:#fff; margin:0 0 12px;">Total units sold (7 days): <strong id="totalProductsSold">—</strong></p>
                         <div style="height:320px; position:relative;">
-                        <canvas id="salesChart"></canvas>
+                            <canvas id="salesChart"></canvas>
                         </div>
                     </div>
 
                     <!-- TODAY'S REVENUE -->
                     <div class="stat-card" style="flex:1; background:#1a1a1a; padding:25px; border-radius:8px; display:flex; flex-direction:column;">
                         <h3 style="color:#888; margin:0; font-size:1rem;">Today's Revenue</h3>
-                        <h2 style="color:#fff; font-size:2.5rem; margin-top:10px;">₱0.00</h2>
+                        <h2 id="todayRevenue" style="color:#fff; font-size:2.5rem; margin-top:10px;">Loading...</h2>
                     </div>
 
                 </div>
@@ -159,7 +160,7 @@
                     <!-- Product cards injected here -->
                 </div>
 
-                <section class="archived-products">
+                <section id="archivedProductsSection" class="archived-products" style="display:none;">
                     <div class="archived-products-header">
                         <div>
                             <h2>Archived Products</h2>
@@ -194,7 +195,26 @@
                         </table>
                     </div>
                 </div>
+            </div>
 
+            <!-- SALES HISTORY SECTION -->
+            <div id="view-sales-history" class="content-section" style="display:none; padding:20px;">
+                <div class="transaction-table-wrapper">
+                    <div class="transaction-table-scroll">
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th>DATE & TIME</th>
+                                    <th>REFERENCE ID</th>
+                                    <th>TOTAL AMOUNT</th>
+                                    <th>ASSISTED BY</th>
+                                    <th>STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesHistoryTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- ADD PRODUCT MODAL -->
@@ -379,7 +399,7 @@
         </div>
     </div>
 
-    <script src="../javascript/dashboard.js?v=6"></script>
+    <script src="../javascript/dashboard.js?v=10"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 </body>

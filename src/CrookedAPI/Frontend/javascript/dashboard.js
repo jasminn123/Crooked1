@@ -137,6 +137,7 @@ function showSection(sectionId, element) {
         if (sectionId === 'view-products') fetchProducts();
         if (sectionId === 'view-inventory') loadInventory();
         if (sectionId === 'view-transactions') loadTransactions();
+        if (sectionId === 'view-sales-history') loadSalesHistory();
         if (sectionId === 'view-forecasting') loadSalesAnalytics(false);
     }
 
@@ -198,10 +199,33 @@ let salesChartInstance;
 async function loadSalesAnalytics(updateChart = true) {
     const status = document.getElementById('salesAnalyticsStatus');
     try {
-        const response = await fetch(`${apiBase}/api/POS/daily-sales`);
-        if (!response.ok) throw new Error(`Daily sales request failed (${response.status})`);
+        const [salesResponse, revenueResponse] = await Promise.all([
+            fetch(`${apiBase}/api/POS/daily-sales`),
+            fetch(`${apiBase}/api/POS/Transaction/today-revenue`)
+        ]);
+        if (!salesResponse.ok) throw new Error(`Daily sales request failed (${salesResponse.status})`);
+        if (!revenueResponse.ok) throw new Error(`Today's revenue request failed (${revenueResponse.status})`);
 
-        const analytics = await response.json();
+        const [analytics, revenueData] = await Promise.all([
+            salesResponse.json(),
+            revenueResponse.json()
+        ]);
+        const totalUnitsSold = analytics.products.reduce(
+            (total, product) => total + product.dailySales.reduce((dailyTotal, units) => dailyTotal + units, 0),
+            0
+        );
+        const totalProductsSold = document.getElementById('totalProductsSold');
+        if (totalProductsSold) totalProductsSold.textContent = totalUnitsSold.toLocaleString('en-PH');
+
+        const todayRevenue = document.getElementById('todayRevenue');
+        if (todayRevenue) {
+            todayRevenue.textContent = Number(revenueData.revenue).toLocaleString('en-PH', {
+                style: 'currency',
+                currency: 'PHP',
+                minimumFractionDigits: 2
+            });
+        }
+
         renderSalesAnalytics(analytics, updateChart);
         if (status) status.textContent = analytics.products.length
             ? 'Units sold per active product, per day, over the last 7 days.'
@@ -498,6 +522,10 @@ async function archiveProduct(id) {
 async function fetchArchivedProducts() {
     const grid = document.getElementById('archivedProductGrid');
     if (!grid) return;
+    if (localStorage.getItem('userRole')?.toLowerCase() !== 'owner') {
+        document.getElementById('archivedProductsSection')?.remove();
+        return;
+    }
 
     try {
         const response = await fetch(`${apiBase}/api/Products/get-archived-products`);
@@ -604,6 +632,55 @@ async function loadTransactions() {
         renderTransactionTable(transactions);
     } catch (error) {
         console.error('Transaction Error:', error);
+    }
+}
+
+async function loadSalesHistory() {
+    const tbody = document.getElementById('salesHistoryTableBody');
+    if (!tbody) return;
+
+    try {
+        const response = await fetch(`${apiBase}/api/POS/Transaction`);
+        if (!response.ok) throw new Error(`Sales history request failed (${response.status})`);
+        const transactions = await response.json();
+
+        tbody.replaceChildren();
+        if (!transactions.length) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 5;
+            cell.className = 'transaction-empty';
+            cell.textContent = 'No sales recorded yet.';
+            row.appendChild(cell);
+            tbody.appendChild(row);
+            return;
+        }
+
+        transactions.forEach(transaction => {
+            const row = document.createElement('tr');
+            [
+                transaction.date_time,
+                transaction.reference_id,
+                `₱${Number(transaction.total_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+                transaction.assisted_by || 'Unknown',
+                transaction.status
+            ].forEach(value => {
+                const cell = document.createElement('td');
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Sales History Error:', error);
+        tbody.replaceChildren();
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.className = 'transaction-empty';
+        cell.textContent = 'Unable to load sales history.';
+        row.appendChild(cell);
+        tbody.appendChild(row);
     }
 }
 
@@ -852,6 +929,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const role = localStorage.getItem('userRole');
         const name = localStorage.getItem('userName');
+        const isOwner = role?.toLowerCase() === 'owner';
+        const archivedProductsSection = document.getElementById('archivedProductsSection');
+        if (archivedProductsSection) {
+            archivedProductsSection.style.display = isOwner ? '' : 'none';
+        }
 
         const profileName = document.querySelector('.Owner');
         if (profileName && name) profileName.innerText = name;

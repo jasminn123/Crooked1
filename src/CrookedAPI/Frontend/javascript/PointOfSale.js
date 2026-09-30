@@ -214,6 +214,7 @@ document.addEventListener("DOMContentLoaded", () => {
       date_time: new Date().toISOString(),
       total_amount: Object.values(cart).reduce((sum, item) => sum + item.price * item.qty, 0),
       status: "Completed",
+      assistedBy: localStorage.getItem("userName")?.trim() || "Unknown",
       items: Object.values(cart).map(item => ({
         productId: item.id,
         name: item.name,
@@ -241,25 +242,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!checkoutRes.ok) throw new Error("Stock deduction failed");
 
-      await fetch("http://localhost:5055/api/POS/Transaction", {
+      const transactionRes = await fetch("http://localhost:5055/api/POS/Transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(tx)
       });
+      if (!transactionRes.ok) throw new Error("Transaction could not be saved");
 
       console.log("Checkout and transaction saved.");
+      return true;
     } catch (err) {
       console.error("Error during checkout:", err);
       showToast("Checkout failed. Please try again.", true);
+      return false;
     }
   }
 
   function printReceipt(tx) {
     let receiptWindow = window.open("", "Receipt", "width=400,height=600");
+    const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[character]);
     receiptWindow.document.write(`
       <h2>CRKD POS Receipt</h2>
       <p>Reference ID: ${tx.referenceId}</p>
       <p>Date: ${new Date(tx.date_time).toLocaleString()}</p>
+      <p>Assisted by: ${escapeHtml(tx.assistedBy)}</p>
       <hr>
       <ul>
         ${tx.items.map(item =>
@@ -349,7 +361,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const change = received - total;
     const tx = buildTransaction("Cash", received, change);
 
-    await processCheckout(tx);
+    if (!await processCheckout(tx)) return;
     hideModal("cashModal");
     askReceipt(tx);
   });
@@ -364,7 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const tx = buildTransaction("GCash", null, null, refId);
 
-    await processCheckout(tx);
+    if (!await processCheckout(tx)) return;
     hideModal("gcashModal");
     askReceipt(tx);
   });

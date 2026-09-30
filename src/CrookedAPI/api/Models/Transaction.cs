@@ -9,5 +9,6 @@ namespace Crooked.Models
         public DateTime Date_Time { get; set; }
         public decimal Total_Amount { get; set; }
         public string Status { get; set; }
+        public string AssistedBy { get; set; } = "Unknown";
     }
 }

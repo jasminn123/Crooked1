@@ -102,7 +102,9 @@ void EnsureDatabaseSetup()
               sale_date DATE NOT NULL,
               quantity_sold INTEGER NOT NULL DEFAULT 0 CHECK (quantity_sold >= 0),
               PRIMARY KEY (product_id, sale_date)
-          );",
+          );
+          ALTER TABLE transactions
+              ADD COLUMN IF NOT EXISTS assisted_by TEXT NOT NULL DEFAULT 'Unknown';",
         connection);
     command.ExecuteNonQuery();
 }
