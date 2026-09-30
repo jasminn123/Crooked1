@@ -27,7 +27,7 @@ namespace Crooked.Controllers
 
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                string query = "SELECT id, product_name, price, stock_quantity, image_url FROM Products";
+                string query = "SELECT id, product_name, price, stock_quantity, image_url FROM Products WHERE is_active = true";
                 var cmd = new NpgsqlCommand(query, conn);
                 await conn.OpenAsync();
                 var reader = await cmd.ExecuteReaderAsync();

@@ -75,8 +75,7 @@ const API_BASE = "http://localhost:5055/api/Auth";
 
                 if (response.ok) {
                     msgField.style.color = "#4caf50";
-                    alert("Password updated! Please login.");
-                    closeReset();
+                    showDialog("Success", "Password updated! Please login.", closeReset);
                 } else {
                     msgField.style.color = "#ff5555";
                 }

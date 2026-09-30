@@ -82,32 +82,50 @@ namespace Crooked.Controllers
         [HttpPost("toggle-archive/{id}")]
         public IActionResult ToggleArchive(int id, [FromQuery] bool archive)
         {
-            using (var connection = new NpgsqlConnection(_connectionString)) 
+            try
             {
-                connection.Open();
-                var sql = "UPDATE users SET is_active = @status WHERE id = @id";
-                
-                string staffName = "";
-                using (var nameCmd = new NpgsqlCommand("SELECT full_name FROM users WHERE id = @id", connection)) {
-                    nameCmd.Parameters.AddWithValue("@id", id);
-                    staffName = nameCmd.ExecuteScalar()?.ToString();
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    connection.Open();
+                    string staffName;
+
+                    using (var nameCmd = new NpgsqlCommand(
+                        "SELECT full_name FROM users WHERE id = @id AND role = 'staff'", connection))
+                    {
+                        nameCmd.Parameters.AddWithValue("@id", id);
+                        staffName = nameCmd.ExecuteScalar()?.ToString();
+                    }
+
+                    if (staffName == null)
+                    {
+                        return NotFound(new { message = "Staff account not found." });
+                    }
+
+                    const string updateSql = "UPDATE users SET is_active = @status WHERE id = @id AND role = 'staff'";
+                    using (var cmd = new NpgsqlCommand(updateSql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@status", !archive);
+                        cmd.Parameters.AddWithValue("@id", id);
+                        if (cmd.ExecuteNonQuery() == 0)
+                        {
+                            return NotFound(new { message = "Staff account not found." });
+                        }
+                    }
+
+                    var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES ('Main Owner', @action, NOW())";
+                    using (var logCmd = new NpgsqlCommand(logSql, connection))
+                    {
+                        logCmd.Parameters.AddWithValue("@action", archive ? $"Archived: {staffName}" : $"Unarchived: {staffName}");
+                        logCmd.ExecuteNonQuery();
+                    }
                 }
 
-                using (var cmd = new NpgsqlCommand(sql, connection))
-                {
-                    cmd.Parameters.AddWithValue("@status", archive ? 0 : 1);
-                    cmd.Parameters.AddWithValue("@id", id);
-                    cmd.ExecuteNonQuery();
-                }
-
-                var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES ('Main Owner', @action, NOW())";                
-                using (var logCmd = new NpgsqlCommand(logSql, connection))
-                {
-                    logCmd.Parameters.AddWithValue("@action", archive ? $"Archived: {staffName}" : $"Unarchived: {staffName}");
-                    logCmd.ExecuteNonQuery();
-                }
+                return Ok(new { message = archive ? "Staff account archived." : "Staff account restored." });
             }
-            return Ok();
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
 
         [HttpGet("get-staff")]
@@ -165,7 +183,7 @@ namespace Crooked.Controllers
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 connection.Open();
-                var sql = "INSERT INTO users (username, password, role, full_name, is_active) VALUES (@user, @pass, 'staff', @name, 1)";
+                var sql = "INSERT INTO users (username, password, role, full_name, is_active) VALUES (@user, @pass, 'staff', @name, true)";
                 using (var cmd = new NpgsqlCommand(sql, connection))
                 {
                     cmd.Parameters.AddWithValue("@user", request.Username);

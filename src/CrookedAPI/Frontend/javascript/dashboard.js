@@ -3,6 +3,125 @@ const apiBase = window.location.origin.startsWith('http')
     : 'http://127.0.0.1:5055';
 
 /* =========================
+   CUSTOM DIALOG BOX
+========================= */
+function showDialog(title, message, onConfirm, onCancel) {
+    const existing = document.getElementById('customDialog');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'customDialog';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: Arial, sans-serif;
+    `;
+
+    const card = document.createElement('div');
+    card.style.cssText = `
+        background: var(--card-bg, #1a1a1a);
+        color: var(--text-color, #ffffff);
+        padding: 28px 32px;
+        border-radius: 12px;
+        min-width: 320px;
+        max-width: 90vw;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    `;
+
+    const titleEl = document.createElement('h3');
+    titleEl.id = 'customDialogTitle';
+    titleEl.style.cssText = 'margin: 0 0 12px; font-size: 1.1rem; font-weight: 600;';
+    titleEl.textContent = title;
+
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    card.setAttribute('aria-labelledby', titleEl.id);
+
+    const msgEl = document.createElement('p');
+    msgEl.style.cssText = 'margin: 0 0 20px; font-size: 0.95rem; line-height: 1.5; opacity: 0.9;';
+    msgEl.textContent = message;
+
+    const buttons = document.createElement('div');
+    buttons.style.cssText = 'display: flex; gap: 10px; justify-content: center;';
+
+    const okBtn = document.createElement('button');
+    okBtn.textContent = onConfirm ? 'OK' : 'Close';
+    okBtn.style.cssText = `
+        padding: 10px 24px;
+        border: none;
+        border-radius: 6px;
+        background: #000;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.9rem;
+    `;
+    okBtn.addEventListener('click', () => {
+        overlay.remove();
+        if (onConfirm) onConfirm();
+    });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+        padding: 10px 24px;
+        border: none;
+        border-radius: 6px;
+        background: #f0f0f0;
+        color: #000;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.9rem;
+    `;
+    cancelBtn.addEventListener('click', () => {
+        overlay.remove();
+        if (onCancel) onCancel();
+    });
+
+    if (onConfirm) {
+        buttons.appendChild(cancelBtn);
+        buttons.appendChild(okBtn);
+    } else {
+        buttons.appendChild(okBtn);
+    }
+
+    card.appendChild(titleEl);
+    card.appendChild(msgEl);
+    card.appendChild(buttons);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.remove();
+            if (onCancel) onCancel();
+        }
+    });
+}
+
+function showToast(message, isError) {
+    showDialog(isError ? 'Error' : 'Notice', message);
+}
+
+function limitAmountInput(input) {
+    const parts = input.value.replace(/[^\d.]/g, '').split('.');
+    const wholeAmount = parts.shift().slice(0, 5);
+    const decimalAmount = parts.join('').slice(0, 2);
+    input.value = parts.length || input.value.includes('.')
+        ? `${wholeAmount}.${decimalAmount}`
+        : wholeAmount;
+}
+
+/* =========================
    SECTION SWITCHING
 ========================= */
 function showSection(sectionId, element) {
@@ -105,7 +224,7 @@ async function fetchProducts() {
         const response = await fetch(`${apiBase}/api/Products/get-products`);
 
         if (!response.ok) {
-            console.error(`Server error: ${response.status}`);
+            showToast(`Server error: ${response.status}`, true);
             return;
         }
 
@@ -121,11 +240,11 @@ async function fetchProducts() {
                 renderProductGrid(products);
             }
         } catch (parseError) {
-            console.error('JSON Parse Error. Raw Response:', text);
+            showToast('JSON Parse Error. Raw Response: ' + text, true);
         }
 
     } catch (error) {
-        console.error('Network Error fetching products:', error);
+        showToast('Network Error fetching products.', true);
     }
 }
 
@@ -178,7 +297,7 @@ async function fetchStaff() {
                     <td>${s.fullName}</td>
                     <td>${s.username}</td>
                     <td>
-                        <button onclick="archiveStaff(${s.id})"
+                        <button onclick="${s.isActive ? `archiveStaff(${s.id})` : `unarchiveStaff(${s.id})`}"
                             class="${s.isActive ? 'btn-archive' : 'btn-unarchive'}">
                             ${s.isActive ? 'Archive' : 'Unarchive'}
                         </button>
@@ -193,6 +312,109 @@ async function fetchStaff() {
     } catch (error) {
         console.error('Staff Error:', error);
     }
+}
+
+/* =========================
+   ARCHIVE STAFF
+========================= */
+async function archiveStaff(id) {
+    const staff = document.getElementById('staffTableBody');
+    if (!staff) return;
+
+    const row = [...staff.children].find(r => r.querySelector(`button[onclick="archiveStaff(${id})"]`));
+    const nameCell = row ? row.querySelector('td:first-child') : null;
+    const staffName = nameCell ? nameCell.textContent.trim() : 'this staff member';
+
+    showDialog(
+        'Archive Staff Member',
+        `Are you sure you want to archive "${staffName}"?`,
+        async () => {
+            try {
+                const response = await fetch(`${apiBase}/api/Auth/toggle-archive/${id}?archive=true`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showDialog('Staff Archived', `"${staffName}" has been archived.`);
+                    fetchStaff();
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    showDialog('Archive Failed', errorData.message || 'Failed to archive staff member.');
+                }
+            } catch (error) {
+                console.error('Archive Staff Error:', error);
+                showDialog('Connection Error', 'Cannot connect to the server.');
+            }
+        }
+    );
+}
+
+async function unarchiveStaff(id) {
+    const staff = document.getElementById('archiveTableBody');
+    if (!staff) return;
+
+    const row = [...staff.children].find(r => r.querySelector(`button[onclick="unarchiveStaff(${id})"]`));
+    const nameCell = row ? row.querySelector('td:first-child') : null;
+    const staffName = nameCell ? nameCell.textContent.trim() : 'this staff member';
+
+    showDialog(
+        'Unarchive Staff Member',
+        `Are you sure you want to unarchive "${staffName}"?`,
+        async () => {
+            try {
+                const response = await fetch(`${apiBase}/api/Auth/toggle-archive/${id}?archive=false`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showDialog('Staff Restored', `"${staffName}" has been unarchived.`);
+                    fetchStaff();
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    showDialog('Restore Failed', errorData.message || 'Failed to unarchive staff member.');
+                }
+            } catch (error) {
+                console.error('Unarchive Staff Error:', error);
+                showDialog('Connection Error', 'Cannot connect to the server.');
+            }
+        }
+    );
+}
+
+/* =========================
+   ARCHIVE PRODUCT
+========================= */
+async function archiveProduct(id) {
+    const grid = document.getElementById('productGrid');
+    if (!grid) return;
+
+    const card = [...grid.children].find(c => c.querySelector(`button[onclick="archiveProduct(${id})"]`));
+    const nameEl = card ? card.querySelector('h3') : null;
+    const productName = nameEl ? nameEl.textContent.trim() : 'this product';
+
+    showDialog(
+        'Archive Product',
+        `Are you sure you want to archive "${productName}"?`,
+        async () => {
+            try {
+                const response = await fetch(`${apiBase}/api/Products/archive-product/${id}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showDialog('Product Archived', `"${productName}" has been archived.`);
+                    await fetchProducts();
+                    await loadInventory();
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    showDialog('Archive Failed', errorData.message || 'Failed to archive product.');
+                }
+            } catch (error) {
+                console.error('Archive Product Error:', error);
+                showDialog('Connection Error', 'Cannot connect to the server.');
+            }
+        }
+    );
 }
 
 /* =========================
@@ -274,6 +496,7 @@ function renderProductGrid(products) {
         card.className = 'product-card';
 
         let ownerActions = '';
+        
         if (userRole === 'owner') {
             ownerActions = `
                 <div style="margin-top:15px; display:flex; gap:8px; border-top:1px solid #f8f8f8; padding-top:15px;">
@@ -315,10 +538,17 @@ function closeAddModal() { document.getElementById('addProductModal').style.disp
 async function saveProduct(event) {
     event.preventDefault();
 
+    const priceInput = document.getElementById('prodPrice');
+    const priceText = priceInput.value.trim();
+    if (!/^\d{1,5}(?:\.\d{0,2})?$/.test(priceText)) {
+        showDialog('Invalid Price', 'Enter a price with up to 5 whole-number digits and 2 decimal places.');
+        return;
+    }
+
     const formData = new FormData();
     formData.append("ProductName", document.getElementById('prodName').value);
     formData.append("Category", document.getElementById('prodCategory').value);
-    formData.append("Price", document.getElementById('prodPrice').value);
+    formData.append("Price", priceText);
     formData.append("StockQuantity", document.getElementById('prodStock').value);
     formData.append("Size", document.getElementById('prodSize').value);
     formData.append("Color", document.getElementById('prodColor').value);
@@ -333,18 +563,18 @@ async function saveProduct(event) {
         });
 
         if (response.ok) {
-            alert("Product successfully added to Crooked Clothing Shop!");
+            showToast("Product successfully added to Crooked Clothing Shop!", false);
             closeAddModal();
             document.getElementById('productForm').reset();
             fetchProducts();
         } else {
             const errorText = await response.text();
             console.error("Backend Error:", errorText);
-            alert("Error adding product: " + errorText);
+            showToast("Error adding product: " + errorText, true);
         }
     } catch (error) {
         console.error("Network Error:", error);
-        alert("Cannot connect to the server. Check if XAMPP and VS are running.");
+        showToast("Cannot connect to the server. Check if XAMPP and VS are running.", true);
     }
 }
 
@@ -451,7 +681,7 @@ async function addStaff() {
     const password = document.getElementById('staffPass').value.trim();
 
     if (!fullName || !username || !password) {
-        alert('Please fill in all fields.');
+        showToast('Please fill in all fields.', true);
         return;
     }
 
@@ -463,17 +693,17 @@ async function addStaff() {
         });
 
         if (response.ok) {
-            alert('Staff account created successfully.');
+            showToast('Staff account created successfully.', false);
             document.getElementById('staffName').value = '';
             document.getElementById('staffUser').value = '';
             document.getElementById('staffPass').value = '';
             fetchStaff();
         } else {
             const err = await response.text();
-            alert('Error: ' + err);
+            showToast('Error: ' + err, true);
         }
     } catch (error) {
         console.error('Create Staff Error:', error);
-        alert('Cannot connect to the server.');
+        showToast('Cannot connect to the server.', true);
     }
 }

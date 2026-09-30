@@ -827,3 +827,23 @@ input:checked + .pill-slider .night-text {
     background: #111;
     z-index: 1;
 }
+
+/* Custom Dialog & Toast Animations */
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+#customDialog button:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+}
+
+#customDialog button:active {
+    transform: scale(0.98);
+}

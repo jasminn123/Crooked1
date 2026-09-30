@@ -1,11 +1,129 @@
 let cart = {};
 
+function showDialog(title, message, onConfirm, onCancel, confirmText = 'OK', cancelText = 'Cancel') {
+    const existing = document.getElementById('customDialog');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'customDialog';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: Arial, sans-serif;
+    `;
+
+    const card = document.createElement('div');
+    card.style.cssText = `
+        background: var(--card-bg, #1a1a1a);
+        color: var(--text-color, #ffffff);
+        padding: 28px 32px;
+        border-radius: 12px;
+        min-width: 320px;
+        max-width: 90vw;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    `;
+
+    const titleEl = document.createElement('h3');
+    titleEl.id = 'customDialogTitle';
+    titleEl.style.cssText = 'margin: 0 0 12px; font-size: 1.1rem; font-weight: 600;';
+    titleEl.textContent = title;
+
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    card.setAttribute('aria-labelledby', titleEl.id);
+
+    const msgEl = document.createElement('p');
+    msgEl.style.cssText = 'margin: 0 0 20px; font-size: 0.95rem; line-height: 1.5; opacity: 0.9;';
+    msgEl.textContent = message;
+
+    const buttons = document.createElement('div');
+    buttons.style.cssText = 'display: flex; gap: 10px; justify-content: center;';
+
+    const okBtn = document.createElement('button');
+    okBtn.textContent = onConfirm ? confirmText : 'Close';
+    okBtn.style.cssText = `
+        padding: 10px 24px;
+        border: none;
+        border-radius: 6px;
+        background: #000;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.9rem;
+    `;
+    okBtn.addEventListener('click', () => {
+        overlay.remove();
+        if (onConfirm) onConfirm();
+    });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = cancelText;
+    cancelBtn.style.cssText = `
+        padding: 10px 24px;
+        border: none;
+        border-radius: 6px;
+        background: #f0f0f0;
+        color: #000;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.9rem;
+    `;
+    cancelBtn.addEventListener('click', () => {
+        overlay.remove();
+        if (onCancel) onCancel();
+    });
+
+    if (onConfirm) {
+        buttons.appendChild(cancelBtn);
+        buttons.appendChild(okBtn);
+    } else {
+        buttons.appendChild(okBtn);
+    }
+
+    card.appendChild(titleEl);
+    card.appendChild(msgEl);
+    card.appendChild(buttons);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.remove();
+            if (onCancel) onCancel();
+        }
+    });
+}
+
+function showToast(message, isError) {
+    showDialog(isError ? 'Error' : 'Notice', message);
+}
+
 function showModal(id) {
   document.getElementById(id).classList.add("active");
 }
 
 function hideModal(id) {
   document.getElementById(id).classList.remove("active");
+}
+
+function confirmCancelCheckout() {
+  showDialog(
+    "Cancel Checkout",
+    "Are you sure you want to cancel?",
+    clearCheckout,
+    undefined,
+    "Yes, cancel",
+    "Keep checkout"
+  );
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -46,7 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const id = product.id || product.product_Id;
 
     if (product.stock_Quantity <= 0) {
-      alert("Out of stock!");
+      showToast("Out of stock!", true);
       return;
     }
 
@@ -54,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (cart[id].qty < product.stock_Quantity) {
         cart[id].qty++;
       } else {
-        alert("No more stock available for " + product.product_Name);
+        showToast("No more stock available for " + product.product_Name, true);
         return;
       }
     } else {
@@ -132,7 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("Checkout and transaction saved.");
     } catch (err) {
       console.error("Error during checkout:", err);
-      alert("Checkout failed. Please try again.");
+      showToast("Checkout failed. Please try again.", true);
     }
   }
 
@@ -180,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   checkoutBtn.addEventListener("click", () => {
     if (Object.keys(cart).length === 0) {
-      alert("Cart is empty.");
+      showDialog("Notice", "Cart is empty.");
       return;
     }
     const total = Object.values(cart).reduce((sum, item) => sum + item.price * item.qty, 0);
@@ -202,6 +320,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const amountReceivedInput = document.getElementById("amountReceived");
   amountReceivedInput.addEventListener("input", () => {
+    const parts = amountReceivedInput.value.replace(/[^\d.]/g, '').split('.');
+    const wholeAmount = parts.shift().slice(0, 5);
+    const decimalAmount = parts.join('').slice(0, 2);
+    amountReceivedInput.value = parts.length || amountReceivedInput.value.includes('.')
+      ? `${wholeAmount}.${decimalAmount}`
+      : wholeAmount;
+
     const received = parseFloat(amountReceivedInput.value);
     const total = parseFloat(checkoutTotal.textContent.replace(/[₱,]/g, ""));
     if (!isNaN(received) && received >= 0) {
@@ -217,7 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const total = parseFloat(checkoutTotal.textContent.replace(/[₱,]/g, ""));
 
     if (isNaN(received) || received < total) {
-      alert("Insufficient amount received.");
+      showDialog("Payment Not Accepted", "The amount received is less than the total.");
       return;
     }
 
@@ -233,7 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const refId = document.getElementById("gcashRefId").value.trim();
 
     if (!refId) {
-      alert("Please enter a reference ID.");
+      showToast("Please enter a reference ID.", true);
       return;
     }
 

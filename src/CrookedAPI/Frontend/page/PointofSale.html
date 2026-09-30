@@ -43,7 +43,7 @@
       </div>
       <div class="checkout-actions">
         <button class="btn checkout">CHECK OUT</button>
-        <button class="btn cancel" onclick="clearCheckout()">CANCEL</button>
+        <button class="btn cancel" onclick="confirmCancelCheckout()">CANCEL</button>
       </div>
     </aside>
   </main>
@@ -76,7 +76,7 @@
   <div id="cashModal" class="modal">
   <div class="modal-content">
     <h3>Total Amount: <span id="cashTotal">&#8369;0.00</span></h3>
-    <input id="amountReceived" type="number" placeholder="Enter amount received" style="appearance: textfield; -moz-appearance: textfield;">
+    <input id="amountReceived" type="text" inputmode="decimal" maxlength="8" placeholder="Enter amount received" autocomplete="off">
     <p>Change: <span id="changeDisplay">&#8369;0.00</span></p>
     <div class="modal-actions">
       <button id="confirmCashBtn" class="btn">Confirm Payment</button>
@@ -96,7 +96,7 @@
     </div>
   </div>
 
-  <script src="../javascript/PointOfSale.js"></script>
+  <script src="../javascript/PointOfSale.js?v=4"></script>
 
 </body>
 </html>

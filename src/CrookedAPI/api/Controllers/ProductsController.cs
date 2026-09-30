@@ -21,7 +21,7 @@ public class ProductsController : ControllerBase
         using (var connection = new NpgsqlConnection(_connectionString))
         {
             connection.Open();
-            string sql = "SELECT id, product_name, category, price, stock_quantity, image_url FROM products";
+            string sql = "SELECT id, product_name, category, price, stock_quantity, image_url FROM products WHERE is_active = true";
 
             using (var cmd = new NpgsqlCommand(sql, connection))
             using (var reader = cmd.ExecuteReader())
@@ -48,7 +48,7 @@ public IActionResult GetProducts()
     using (var connection = new NpgsqlConnection(_connectionString))
     {
         connection.Open();
-        string sql = "SELECT id, product_name, category, price, stock_quantity, size, color, image_url FROM products";
+        string sql = "SELECT id, product_name, category, price, stock_quantity, size, color, image_url FROM products WHERE is_active = true";
 
         using (var cmd = new NpgsqlCommand(sql, connection))
         using (var reader = cmd.ExecuteReader())
@@ -70,6 +70,33 @@ public IActionResult GetProducts()
     }
     return Ok(products);
 }
+
+    [HttpPost("archive-product/{id}")]
+    public IActionResult ArchiveProduct(int id)
+    {
+        try
+        {
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                connection.Open();
+
+                string sql = "UPDATE products SET is_active = false WHERE id = @id AND is_active = true";
+                using (var cmd = new NpgsqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    if (cmd.ExecuteNonQuery() == 0)
+                    {
+                        return NotFound(new { message = "Product was not found or is already archived." });
+                    }
+                }
+            }
+            return Ok(new { message = "Product archive status updated successfully!" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal error: {ex.Message}");
+        }
+    }
 
     [HttpPost("add-product")]
     public async Task<IActionResult> AddProduct([FromForm] ProductUploadDTO dto)

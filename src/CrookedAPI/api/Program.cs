@@ -1,6 +1,6 @@
 using System.IO;
 using Microsoft.Extensions.FileProviders;
-using MySql.Data.MySqlClient;
+using Npgsql;
 using Crooked;
 using Crooked.Services;
 using Microsoft.Extensions.Options;
@@ -88,5 +88,11 @@ app.Run();
 
 void EnsureDatabaseSetup()
 {
-    Console.WriteLine("Database setup checked.");
+    using var connection = new NpgsqlConnection(DatabaseConfig.ConnectionString);
+    connection.Open();
+
+    using var command = new NpgsqlCommand(
+        "ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE",
+        connection);
+    command.ExecuteNonQuery();
 }
