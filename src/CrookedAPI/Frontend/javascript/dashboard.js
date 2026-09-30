@@ -137,6 +137,7 @@ function showSection(sectionId, element) {
         if (sectionId === 'view-products') fetchProducts();
         if (sectionId === 'view-inventory') loadInventory();
         if (sectionId === 'view-transactions') loadTransactions();
+        if (sectionId === 'view-forecasting') loadSalesAnalytics(false);
     }
 
     document.querySelectorAll('.nav-item').forEach(nav => {
@@ -164,8 +165,9 @@ async function loadInventory() {
 
         tableBody.innerHTML = '';
         products.forEach(item => {
+            const threshold = item.low_stock_threshold || 5;
             const isOut = item.stock_quantity === 0;
-            const isLow = item.stock_quantity <= 5 && item.stock_quantity > 0;
+            const isLow = item.stock_quantity <= threshold && item.stock_quantity > 0;
             const status = isOut
             ? '<span style="color:#ff0000;font-weight:bold;">OUT OF STOCK</span>'
             : isLow
@@ -178,6 +180,7 @@ async function loadInventory() {
                     <td style="padding:12px;color:#888;">${item.category}</td>
                     <td style="padding:12px;color:white;">₱${item.price.toLocaleString()}</td>
                     <td style="padding:12px;color:white;">${item.stock_quantity}</td>
+                    <td style="padding:12px;color:white;">${threshold}</td>
                     <td style="padding:12px;">${status}</td>
                 </tr>
             `;
@@ -190,30 +193,104 @@ async function loadInventory() {
 /* =========================
    SALES CHART
 ========================= */
-function initSalesChart() {
-    const canvas = document.getElementById('salesChart');
-    if (!canvas || typeof Chart === 'undefined') return;
+let salesChartInstance;
 
-    const ctx = canvas.getContext('2d');
-    new Chart(ctx, {
+async function loadSalesAnalytics(updateChart = true) {
+    const status = document.getElementById('salesAnalyticsStatus');
+    try {
+        const response = await fetch(`${apiBase}/api/POS/daily-sales`);
+        if (!response.ok) throw new Error(`Daily sales request failed (${response.status})`);
+
+        const analytics = await response.json();
+        renderSalesAnalytics(analytics, updateChart);
+        if (status) status.textContent = analytics.products.length
+            ? 'Units sold per active product, per day, over the last 7 days.'
+            : 'No active products or sales data to display.';
+    } catch (error) {
+        console.error('Sales Analytics Error:', error);
+        if (status) status.textContent = 'Unable to load sales analytics. Please try again later.';
+    }
+}
+
+function renderSalesAnalytics(analytics, updateChart) {
+    renderForecastTable(analytics.products);
+    if (!updateChart) return;
+
+    const canvas = document.getElementById('salesChart');
+    if (!canvas || typeof Chart === 'undefined') {
+        throw new Error('Sales chart is unavailable.');
+    }
+
+    if (salesChartInstance) salesChartInstance.destroy();
+
+    const labels = analytics.dates.map(date =>
+        new Date(`${date}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }));
+    salesChartInstance = new Chart(canvas.getContext('2d'), {
         type: 'line',
         data: {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            datasets: [{
-                label: 'Sales',
-                data: [1200, 1900, 800, 1500, 2200, 3000, 2500],
-                borderColor: '#ff0000',
-                backgroundColor: 'rgba(255,0,0,0.08)',
+            labels,
+            datasets: analytics.products.map((product, index) => ({
+                label: product.productName,
+                data: product.dailySales,
+                borderColor: `hsl(${(index * 137.5) % 360}, 70%, 58%)`,
+                backgroundColor: `hsla(${(index * 137.5) % 360}, 70%, 58%, 0.12)`,
                 borderWidth: 2,
                 tension: 0.4,
-                fill: true
-            }]
+                fill: false
+            }))
         },
         options: {
             responsive: true,
-            plugins: { legend: { display: false } }
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { ticks: { color: '#ddd' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#ddd', precision: 0 },
+                    grid: { color: 'rgba(255,255,255,0.08)' }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: { color: '#ddd' }
+                }
+            }
         }
     });
+
+}
+
+function renderForecastTable(products) {
+    const tableBody = document.getElementById('forecastTableBody');
+    if (!tableBody) return;
+
+    tableBody.replaceChildren();
+    products.forEach(product => {
+        const row = document.createElement('tr');
+        [
+            product.productName,
+            Number(product.averageDailySales).toFixed(2),
+            product.lowStockThreshold,
+            product.salesVelocityRating
+        ].forEach(value => {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.appendChild(cell);
+        });
+        tableBody.appendChild(row);
+    });
+
+    if (products.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 4;
+        cell.textContent = 'No forecast data available.';
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+    }
 }
 
 /* =========================
@@ -607,7 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('view-dashboard').style.display = 'block';
 
-        initSalesChart();
+        loadSalesAnalytics();
         fetchLogs();
 
         const role = localStorage.getItem('userRole');

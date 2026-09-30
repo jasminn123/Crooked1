@@ -92,7 +92,17 @@ void EnsureDatabaseSetup()
     connection.Open();
 
     using var command = new NpgsqlCommand(
-        "ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE",
+        @"ALTER TABLE products
+              ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE,
+              ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER NOT NULL DEFAULT 5,
+              ADD COLUMN IF NOT EXISTS sales_velocity_rating TEXT NOT NULL DEFAULT 'slow',
+              ADD COLUMN IF NOT EXISTS last_threshold_update TIMESTAMPTZ;
+          CREATE TABLE IF NOT EXISTS product_daily_sales (
+              product_id INTEGER NOT NULL,
+              sale_date DATE NOT NULL,
+              quantity_sold INTEGER NOT NULL DEFAULT 0 CHECK (quantity_sold >= 0),
+              PRIMARY KEY (product_id, sale_date)
+          );",
         connection);
     command.ExecuteNonQuery();
 }

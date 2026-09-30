@@ -76,8 +76,11 @@
 
                     <!-- SALES CHART -->
                     <div class="chart-card" style="flex:2; background:#1a1a1a; padding:20px; border-radius:8px;">
-                        <h3 style="color:white; margin-bottom:15px;">Weekly Sales Analytics</h3>
+                        <h3 style="color:white; margin-bottom:8px;">Product Sales by Day</h3>
+                        <p id="salesAnalyticsStatus" style="color:#aaa; margin:0 0 15px;">Loading the last 7 days of sales...</p>
+                        <div style="height:320px; position:relative;">
                         <canvas id="salesChart"></canvas>
+                        </div>
                     </div>
 
                     <!-- TODAY'S REVENUE -->
@@ -234,6 +237,7 @@
                                 <th style="padding:15px 12px;">Category</th>
                                 <th style="padding:15px 12px;">Price</th>
                                 <th style="padding:15px 12px;">Stock</th>
+                                <th style="padding:15px 12px;">Low-stock threshold</th>
                                 <th style="padding:15px 12px;">Status</th>
                             </tr>
                         </thead>
@@ -243,6 +247,31 @@
                     </table>
                 </div>
 
+            </div>
+
+            <!-- FORECASTING SECTION -->
+            <div id="view-forecasting" class="content-section" style="display:none; padding:20px;">
+                <div class="card">
+                    <h2>Demand-based Stock Forecast</h2>
+                    <p>Low-stock thresholds are recalculated from each active product's average daily sales over the last 7 days, with 2 days of demand coverage.</p>
+                    <div class="transaction-table-wrapper">
+                        <div class="transaction-table-scroll">
+                            <table class="transaction-table">
+                                <thead>
+                                    <tr>
+                                        <th>PRODUCT</th>
+                                        <th>AVERAGE SOLD / DAY</th>
+                                        <th>LOW-STOCK THRESHOLD</th>
+                                        <th>SALES VELOCITY</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="forecastTableBody">
+                                    <tr><td colspan="4">Loading forecast data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- STAFF MANAGEMENT SECTION -->
@@ -303,7 +332,7 @@
         </div>
     </div>
 
-    <script src="../javascript/dashboard.js?v=4"></script>
+    <script src="../javascript/dashboard.js?v=5"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 </body>

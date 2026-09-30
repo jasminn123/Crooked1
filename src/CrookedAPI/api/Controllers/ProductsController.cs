@@ -21,7 +21,7 @@ public class ProductsController : ControllerBase
         using (var connection = new NpgsqlConnection(_connectionString))
         {
             connection.Open();
-            string sql = "SELECT id, product_name, category, price, stock_quantity, image_url FROM products WHERE is_active = true";
+            string sql = "SELECT id, product_name, category, price, stock_quantity, low_stock_threshold, image_url FROM products WHERE is_active = true";
 
             using (var cmd = new NpgsqlCommand(sql, connection))
             using (var reader = cmd.ExecuteReader())
@@ -33,6 +33,7 @@ public class ProductsController : ControllerBase
                         category = reader["category"].ToString(),
                         price = Convert.ToDecimal(reader["price"]),
                         stock_quantity = Convert.ToInt32(reader["stock_quantity"]),
+                        low_stock_threshold = Convert.ToInt32(reader["low_stock_threshold"]),
                         imageUrl = reader["image_url"].ToString()
                     });
                 }
