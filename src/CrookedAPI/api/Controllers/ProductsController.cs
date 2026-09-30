@@ -72,6 +72,132 @@ public IActionResult GetProducts()
     return Ok(products);
 }
 
+    [HttpGet("get-archived-products")]
+    public IActionResult GetArchivedProducts()
+    {
+        var products = new List<object>();
+        using (var connection = new NpgsqlConnection(_connectionString))
+        {
+            connection.Open();
+            const string sql = @"SELECT id, product_name, category, price, stock_quantity,
+                                        size, color, image_url
+                                 FROM products
+                                 WHERE is_active = false
+                                 ORDER BY product_name";
+            using (var cmd = new NpgsqlCommand(sql, connection))
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    products.Add(new
+                    {
+                        id = Convert.ToInt32(reader["id"]),
+                        product_name = reader["product_name"].ToString(),
+                        category = reader["category"].ToString(),
+                        price = Convert.ToDecimal(reader["price"]),
+                        stock_quantity = Convert.ToInt32(reader["stock_quantity"]),
+                        size = reader["size"].ToString(),
+                        color = reader["color"].ToString(),
+                        image_url = reader["image_url"].ToString()
+                    });
+                }
+            }
+        }
+
+        return Ok(products);
+    }
+
+    [HttpPost("restore-product/{id}")]
+    public IActionResult RestoreProduct(int id)
+    {
+        try
+        {
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                connection.Open();
+                const string sql = "UPDATE products SET is_active = true WHERE id = @id AND is_active = false";
+                using (var cmd = new NpgsqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    if (cmd.ExecuteNonQuery() == 0)
+                    {
+                        return NotFound(new { message = "Archived product was not found." });
+                    }
+                }
+            }
+
+            return Ok(new { message = "Product restored successfully." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("update-product/{id}")]
+    public async Task<IActionResult> UpdateProduct(int id, [FromForm] ProductUploadDTO dto)
+    {
+        if (dto == null || string.IsNullOrWhiteSpace(dto.ProductName))
+        {
+            return BadRequest(new { message = "Product name is required." });
+        }
+
+        try
+        {
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                string? imageUrl = null;
+
+                if (dto.ImageFile != null && dto.ImageFile.Length > 0)
+                {
+                    var folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images/products");
+                    Directory.CreateDirectory(folder);
+                    var fileName = Guid.NewGuid() + "_" + Path.GetFileName(dto.ImageFile.FileName);
+                    var filePath = Path.Combine(folder, fileName);
+                    await using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await dto.ImageFile.CopyToAsync(stream);
+                    }
+
+                    imageUrl = "/images/products/" + fileName;
+                }
+
+                const string sql = @"
+                    UPDATE products
+                    SET product_name = @name,
+                        category = @category,
+                        price = @price,
+                        stock_quantity = @stock,
+                        size = @size,
+                        color = @color,
+                        image_url = COALESCE(@image, image_url)
+                    WHERE id = @id AND is_active = true";
+                using (var cmd = new NpgsqlCommand(sql, connection))
+                {
+                    cmd.Parameters.AddWithValue("@name", dto.ProductName.Trim());
+                    cmd.Parameters.AddWithValue("@category", dto.Category);
+                    cmd.Parameters.AddWithValue("@price", dto.Price);
+                    cmd.Parameters.AddWithValue("@stock", dto.StockQuantity);
+                    cmd.Parameters.AddWithValue("@size", dto.Size ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@color", dto.Color ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@image", (object?)imageUrl ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@id", id);
+                    if (await cmd.ExecuteNonQueryAsync() == 0)
+                    {
+                        return NotFound(new { message = "Active product was not found." });
+                    }
+                }
+            }
+
+            return Ok(new { message = "Product updated successfully." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
     [HttpPost("archive-product/{id}")]
     public IActionResult ArchiveProduct(int id)
     {

@@ -316,6 +316,7 @@ async function fetchProducts() {
             if (typeof renderProductGrid === 'function') {
                 renderProductGrid(products);
             }
+            await fetchArchivedProducts();
         } catch (parseError) {
             showToast('JSON Parse Error. Raw Response: ' + text, true);
         }
@@ -494,6 +495,81 @@ async function archiveProduct(id) {
     );
 }
 
+async function fetchArchivedProducts() {
+    const grid = document.getElementById('archivedProductGrid');
+    if (!grid) return;
+
+    try {
+        const response = await fetch(`${apiBase}/api/Products/get-archived-products`);
+        if (!response.ok) throw new Error(`Archived products request failed (${response.status})`);
+
+        const products = await response.json();
+        grid.replaceChildren();
+        if (products.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'archived-products-empty';
+            empty.textContent = 'No archived products.';
+            grid.appendChild(empty);
+            return;
+        }
+
+        products.forEach(product => {
+            const card = document.createElement('article');
+            card.className = 'archived-product-card';
+
+            const image = document.createElement('img');
+            image.src = product.image_url || '';
+            image.alt = product.product_name;
+
+            const info = document.createElement('div');
+            info.className = 'archived-product-info';
+            const name = document.createElement('strong');
+            name.textContent = product.product_name;
+            const description = document.createElement('span');
+            description.textContent = `${product.category} · ₱${Number(product.price).toLocaleString('en-PH')}`;
+            info.append(name, description);
+
+            const restoreButton = document.createElement('button');
+            restoreButton.type = 'button';
+            restoreButton.className = 'btn-unarchive';
+            restoreButton.textContent = 'Restore';
+            restoreButton.addEventListener('click', () => restoreProduct(product.id, product.product_name));
+
+            card.append(image, info, restoreButton);
+            grid.appendChild(card);
+        });
+    } catch (error) {
+        console.error('Archived Products Error:', error);
+        const message = document.createElement('p');
+        message.className = 'archived-products-empty';
+        message.textContent = 'Unable to load archived products. Restart the API if you just added archive support, then refresh.';
+        grid.replaceChildren(message);
+    }
+}
+
+async function restoreProduct(id, productName) {
+    showDialog(
+        'Restore Product',
+        `Restore "${productName}" to active products and POS?`,
+        async () => {
+            try {
+                const response = await fetch(`${apiBase}/api/Products/restore-product/${id}`, { method: 'POST' });
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    throw new Error(error.message || `Restore failed (${response.status})`);
+                }
+
+                await fetchProducts();
+                await loadInventory();
+                showDialog('Product Restored', `"${productName}" is active again.`);
+            } catch (error) {
+                console.error('Restore Product Error:', error);
+                showDialog('Restore Failed', error.message || 'Unable to restore product.');
+            }
+        }
+    );
+}
+
 /* =========================
    PROFILE & LOGOUT
 ========================= */
@@ -561,14 +637,18 @@ function renderTransactionTable(transactions) {
 /* =========================
    PRODUCT MANAGEMENT
 ========================= */
+const productsById = new Map();
+
 function renderProductGrid(products) {
     const grid = document.getElementById('productGrid');
     const userRole = localStorage.getItem('userRole')?.toLowerCase();
 
     if (!grid) return;
     grid.innerHTML = '';
+    productsById.clear();
 
     products.forEach(p => {
+        productsById.set(p.id, p);
         const card = document.createElement('div');
         card.className = 'product-card';
 
@@ -577,7 +657,7 @@ function renderProductGrid(products) {
         if (userRole === 'owner') {
             ownerActions = `
                 <div style="margin-top:15px; display:flex; gap:8px; border-top:1px solid #f8f8f8; padding-top:15px;">
-                    <button class="action-btn btn-edit" onclick="editProduct(${p.id})" style="flex:1;">Edit</button>
+                    <button class="action-btn btn-edit" onclick="openEditProductModal(${p.id})" style="flex:1;">Edit</button>
                     <button class="action-btn btn-archive" onclick="archiveProduct(${p.id})" style="flex:1;">Archive</button>
                 </div>
             `;
@@ -611,6 +691,76 @@ function renderProductGrid(products) {
 
 function openAddModal() { document.getElementById('addProductModal').style.display = 'flex'; }
 function closeAddModal() { document.getElementById('addProductModal').style.display = 'none'; }
+
+function openEditProductModal(id) {
+    const product = productsById.get(id);
+    if (!product) {
+        showDialog('Product Unavailable', 'Refresh the product list and try again.');
+        return;
+    }
+
+    document.getElementById('editProdId').value = product.id;
+    document.getElementById('editProdName').value = product.product_name || '';
+    const categorySelect = document.getElementById('editProdCategory');
+    const category = product.category || 'T-Shirts';
+    if (![...categorySelect.options].some(option => option.value === category)) {
+        categorySelect.add(new Option(category, category));
+    }
+    categorySelect.value = category;
+    document.getElementById('editProdPrice').value = product.price;
+    document.getElementById('editProdStock').value = product.stock_quantity;
+    document.getElementById('editProdSize').value = product.size || '';
+    document.getElementById('editProdColor').value = product.color || '';
+
+    const preview = document.getElementById('editProdImagePreview');
+    preview.src = product.image_url || '';
+    preview.style.display = product.image_url ? 'block' : 'none';
+    document.getElementById('editProdImage').value = '';
+    document.getElementById('editProductModal').style.display = 'flex';
+}
+
+function closeEditProductModal() {
+    document.getElementById('editProductModal').style.display = 'none';
+}
+
+async function saveProductEdit(event) {
+    event.preventDefault();
+    const priceText = document.getElementById('editProdPrice').value.trim();
+    if (!/^\d{1,5}(?:\.\d{0,2})?$/.test(priceText)) {
+        showDialog('Invalid Price', 'Enter a price with up to 5 whole-number digits and 2 decimal places.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('ProductName', document.getElementById('editProdName').value.trim());
+    formData.append('Category', document.getElementById('editProdCategory').value);
+    formData.append('Price', priceText);
+    formData.append('StockQuantity', document.getElementById('editProdStock').value);
+    formData.append('Size', document.getElementById('editProdSize').value);
+    formData.append('Color', document.getElementById('editProdColor').value);
+    const imageFile = document.getElementById('editProdImage').files[0];
+    if (imageFile) formData.append('ImageFile', imageFile);
+
+    const id = document.getElementById('editProdId').value;
+    try {
+        const response = await fetch(`${apiBase}/api/Products/update-product/${id}`, {
+            method: 'PUT',
+            body: formData
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || `Product update failed (${response.status})`);
+        }
+
+        closeEditProductModal();
+        await fetchProducts();
+        await loadInventory();
+        showDialog('Product Updated', 'Product details were saved successfully.');
+    } catch (error) {
+        console.error('Update Product Error:', error);
+        showDialog('Update Failed', error.message || 'Unable to update product.');
+    }
+}
 
 async function saveProduct(event) {
     event.preventDefault();
@@ -677,6 +827,16 @@ function filterBycategory(category) {
    PAGE LOAD
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('editProdImage')?.addEventListener('change', event => {
+        const input = event.currentTarget;
+        const preview = document.getElementById('editProdImagePreview');
+        const imageFile = input.files[0];
+        if (!imageFile) return;
+
+        preview.src = URL.createObjectURL(imageFile);
+        preview.style.display = 'block';
+    });
+
     try {
         // Hide all sections, show dashboard
         document.querySelectorAll('.content-section').forEach(sec => {

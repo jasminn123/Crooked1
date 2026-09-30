@@ -6,7 +6,7 @@
     <title>CRKD | Management</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../design/dashboard.css?v=2">
+    <link rel="stylesheet" href="../design/dashboard.css?v=3">
 </head>
 
 <body>
@@ -34,8 +34,6 @@
         <!-- TOP HEADER -->
         <div class="top-header">
             <div class="header-icons">
-
-                <i class="fas fa-bell"></i>
 
                 <div class="profile-section">
                     <span class="Owner">Main Owner</span>
@@ -160,6 +158,19 @@
                 <div id="productGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:30px;">
                     <!-- Product cards injected here -->
                 </div>
+
+                <section class="archived-products">
+                    <div class="archived-products-header">
+                        <div>
+                            <h2>Archived Products</h2>
+                            <p>Archived items are hidden from inventory and POS until restored.</p>
+                        </div>
+                        <button type="button" class="btn-unarchive" onclick="fetchArchivedProducts()">Refresh</button>
+                    </div>
+                    <div id="archivedProductGrid" class="archived-product-grid">
+                        <p class="archived-products-empty">Loading archived products...</p>
+                    </div>
+                </section>
             </div>
 
             <!-- TRANSACTION LOGS SECTION -->
@@ -203,6 +214,7 @@
                             <option value="Long Sleeves">Long Sleeves</option>
                             <option value="Shorts">Shorts</option>
                             <option value="Pants">Pants</option>
+                            <option value="Tee Kids">Tee Kids</option>
                         </select>
 
                         <div style="display:flex; gap:10px;">
@@ -218,6 +230,41 @@
                         <div style="margin-top:25px; display:flex; gap:10px;">
                             <button type="button" onclick="closeAddModal()" style="flex:1; background:#f0f0f0; border:none; padding:12px; border-radius:6px; cursor:pointer;">Cancel</button>
                             <button type="submit" style="flex:1; background:#000; color:#fff; border:none; padding:12px; border-radius:6px; cursor:pointer; font-weight:bold;">Save Product</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- EDIT PRODUCT MODAL -->
+            <div id="editProductModal" class="product-modal" style="display:none;">
+                <div class="product-modal-content">
+                    <h2>Edit Product</h2>
+                    <form id="editProductForm" onsubmit="saveProductEdit(event)">
+                        <input type="hidden" id="editProdId">
+                        <label for="editProdImage">Replace Product Image</label>
+                        <input type="file" id="editProdImage" accept="image/*">
+                        <img id="editProdImagePreview" class="edit-product-image-preview" alt="Current product image">
+
+                        <input type="text" id="editProdName" placeholder="Product Name" required>
+                        <select id="editProdCategory" required>
+                            <option value="Balaclavas">Balaclavas</option>
+                            <option value="T-Shirts">T-Shirts</option>
+                            <option value="Long Sleeves">Long Sleeves</option>
+                            <option value="Shorts">Shorts</option>
+                            <option value="Pants">Pants</option>
+                            <option value="Tee Kids">Tee Kids</option>
+                        </select>
+                        <div class="product-edit-fields">
+                            <input type="text" id="editProdPrice" placeholder="Price (₱)" inputmode="decimal" maxlength="8" required oninput="limitAmountInput(this)">
+                            <input type="number" id="editProdStock" placeholder="Stock Qty" min="0" required>
+                        </div>
+                        <div class="product-edit-fields">
+                            <input type="text" id="editProdSize" placeholder="Size">
+                            <input type="text" id="editProdColor" placeholder="Color">
+                        </div>
+                        <div class="product-modal-actions">
+                            <button type="button" class="btn-edit-cancel" onclick="closeEditProductModal()">Cancel</button>
+                            <button type="submit" class="btn-edit-save">Save Changes</button>
                         </div>
                     </form>
                 </div>
@@ -252,7 +299,7 @@
             <!-- FORECASTING SECTION -->
             <div id="view-forecasting" class="content-section" style="display:none; padding:20px;">
                 <div class="card">
-                    <h2>Demand-based Stock Forecast</h2>
+                    <h2 style="color:#fff;">Demand-based Stock Forecast</h2>
                     <p>Low-stock thresholds are recalculated from each active product's average daily sales over the last 7 days, with 2 days of demand coverage.</p>
                     <div class="transaction-table-wrapper">
                         <div class="transaction-table-scroll">
@@ -332,7 +379,7 @@
         </div>
     </div>
 
-    <script src="../javascript/dashboard.js?v=5"></script>
+    <script src="../javascript/dashboard.js?v=6"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 </body>
