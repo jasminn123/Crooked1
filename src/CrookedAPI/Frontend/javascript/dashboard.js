@@ -749,7 +749,10 @@ async function saveProductEdit(event) {
         });
         if (!response.ok) {
             const error = await response.json().catch(() => ({}));
-            throw new Error(error.message || `Product update failed (${response.status})`);
+            const validationMessages = error.errors
+                ? Object.values(error.errors).flat().join(' ')
+                : '';
+            throw new Error(validationMessages || error.message || error.title || `Product update failed (${response.status})`);
         }
 
         closeEditProductModal();

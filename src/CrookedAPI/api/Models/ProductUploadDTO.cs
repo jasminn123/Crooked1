@@ -10,6 +10,6 @@ namespace Crooked.Models
         public int StockQuantity { get; set; }
         public string Size { get; set; }
         public string Color { get; set; }
-        public IFormFile ImageFile { get; set; }
+        public IFormFile? ImageFile { get; set; }
     }
 }
