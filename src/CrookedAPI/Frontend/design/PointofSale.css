@@ -107,6 +107,65 @@ body {
   color: #000;
 }
 
+.checkout-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.checkout-item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.checkout-item-name {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.checkout-item-subtotal {
+  color: #555;
+  font-size: 0.85rem;
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.quantity-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #222;
+  border-radius: 5px;
+  background: #000;
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.quantity-button:hover:not(:disabled) {
+  background: #333;
+}
+
+.quantity-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.quantity-value {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 600;
+}
+
 /* Total and Buttons */
 .checkout-total {
   margin-top: 15px;

@@ -125,6 +125,11 @@ function limitAmountInput(input) {
    SECTION SWITCHING
 ========================= */
 function showSection(sectionId, element) {
+    const isOwner = localStorage.getItem('userRole')?.toLowerCase() === 'owner';
+    if (!isOwner && ['view-products', 'view-forecasting'].includes(sectionId)) {
+        return;
+    }
+
     document.querySelectorAll('.content-section').forEach(sec => {
         sec.style.display = 'none';
     });
@@ -944,6 +949,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Role-based UI hiding
         // After
         if (role && role.toLowerCase() !== 'owner') {
+            document.getElementById('nav-products')?.remove();
+            document.getElementById('nav-forecasting')?.remove();
             document.querySelectorAll('.nav-item').forEach(item => {
                 const text = item.innerText.toUpperCase();
                 if (text.includes('STAFF MANAGEMENT') || text.includes('SALES HISTORY')) {

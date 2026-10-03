@@ -188,6 +188,25 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCheckout();
   }
 
+  function changeCartQuantity(id, change) {
+    const item = cart[id];
+    if (!item) return;
+
+    const newQuantity = item.qty + change;
+    if (newQuantity > item.stock) {
+      showToast("No more stock available for " + item.name, true);
+      return;
+    }
+
+    if (newQuantity <= 0) {
+      delete cart[id];
+    } else {
+      item.qty = newQuantity;
+    }
+
+    renderCheckout();
+  }
+
   function renderCheckout() {
     checkoutList.innerHTML = "";
     let total = 0;
@@ -197,7 +216,43 @@ document.addEventListener("DOMContentLoaded", () => {
       total += subtotal;
 
       const li = document.createElement("li");
-      li.textContent = `${item.name} x${item.qty} — ₱${subtotal.toLocaleString()}`;
+      li.className = "checkout-item";
+
+      const details = document.createElement("div");
+      details.className = "checkout-item-details";
+      const name = document.createElement("span");
+      name.className = "checkout-item-name";
+      name.textContent = item.name;
+      const itemSubtotal = document.createElement("span");
+      itemSubtotal.className = "checkout-item-subtotal";
+      itemSubtotal.textContent = `₱${subtotal.toLocaleString()}`;
+      details.append(name, itemSubtotal);
+
+      const quantityControls = document.createElement("div");
+      quantityControls.className = "quantity-controls";
+
+      const minusButton = document.createElement("button");
+      minusButton.type = "button";
+      minusButton.className = "quantity-button";
+      minusButton.textContent = "−";
+      minusButton.setAttribute("aria-label", `Decrease ${item.name} quantity`);
+      minusButton.addEventListener("click", () => changeCartQuantity(item.id, -1));
+
+      const quantity = document.createElement("span");
+      quantity.className = "quantity-value";
+      quantity.textContent = item.qty;
+      quantity.setAttribute("aria-label", "Quantity");
+
+      const plusButton = document.createElement("button");
+      plusButton.type = "button";
+      plusButton.className = "quantity-button";
+      plusButton.textContent = "+";
+      plusButton.setAttribute("aria-label", `Increase ${item.name} quantity`);
+      plusButton.disabled = item.qty >= item.stock;
+      plusButton.addEventListener("click", () => changeCartQuantity(item.id, 1));
+
+      quantityControls.append(minusButton, quantity, plusButton);
+      li.append(details, quantityControls);
       checkoutList.appendChild(li);
     });
 
