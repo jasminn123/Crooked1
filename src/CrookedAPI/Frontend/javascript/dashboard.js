@@ -143,7 +143,7 @@ function showSection(sectionId, element) {
         if (sectionId === 'view-inventory') loadInventory();
         if (sectionId === 'view-transactions') loadTransactions();
         if (sectionId === 'view-sales-history') loadSalesHistory();
-        if (sectionId === 'view-forecasting') loadSalesAnalytics(false);
+        if (sectionId === 'view-forecasting') window.loadSalesAnalytics(false);
     }
 
     document.querySelectorAll('.nav-item').forEach(nav => {
@@ -193,132 +193,6 @@ async function loadInventory() {
         });
     } catch (error) {
         console.error('Inventory Error:', error);
-    }
-}
-
-/* =========================
-   SALES CHART
-========================= */
-let salesChartInstance;
-
-async function loadSalesAnalytics(updateChart = true) {
-    const status = document.getElementById('salesAnalyticsStatus');
-    try {
-        const [salesResponse, revenueResponse] = await Promise.all([
-            fetch(`${apiBase}/api/POS/daily-sales`),
-            fetch(`${apiBase}/api/POS/Transaction/today-revenue`)
-        ]);
-        if (!salesResponse.ok) throw new Error(`Daily sales request failed (${salesResponse.status})`);
-        if (!revenueResponse.ok) throw new Error(`Today's revenue request failed (${revenueResponse.status})`);
-
-        const [analytics, revenueData] = await Promise.all([
-            salesResponse.json(),
-            revenueResponse.json()
-        ]);
-        const totalUnitsSold = analytics.products.reduce(
-            (total, product) => total + product.dailySales.reduce((dailyTotal, units) => dailyTotal + units, 0),
-            0
-        );
-        const totalProductsSold = document.getElementById('totalProductsSold');
-        if (totalProductsSold) totalProductsSold.textContent = totalUnitsSold.toLocaleString('en-PH');
-
-        const todayRevenue = document.getElementById('todayRevenue');
-        if (todayRevenue) {
-            todayRevenue.textContent = Number(revenueData.revenue).toLocaleString('en-PH', {
-                style: 'currency',
-                currency: 'PHP',
-                minimumFractionDigits: 2
-            });
-        }
-
-        renderSalesAnalytics(analytics, updateChart);
-        if (status) status.textContent = analytics.products.length
-            ? 'Units sold per active product, per day, over the last 7 days.'
-            : 'No active products or sales data to display.';
-    } catch (error) {
-        console.error('Sales Analytics Error:', error);
-        if (status) status.textContent = 'Unable to load sales analytics. Please try again later.';
-    }
-}
-
-function renderSalesAnalytics(analytics, updateChart) {
-    renderForecastTable(analytics.products);
-    if (!updateChart) return;
-
-    const canvas = document.getElementById('salesChart');
-    if (!canvas || typeof Chart === 'undefined') {
-        throw new Error('Sales chart is unavailable.');
-    }
-
-    if (salesChartInstance) salesChartInstance.destroy();
-
-    const labels = analytics.dates.map(date =>
-        new Date(`${date}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }));
-    salesChartInstance = new Chart(canvas.getContext('2d'), {
-        type: 'line',
-        data: {
-            labels,
-            datasets: analytics.products.map((product, index) => ({
-                label: product.productName,
-                data: product.dailySales,
-                borderColor: `hsl(${(index * 137.5) % 360}, 70%, 58%)`,
-                backgroundColor: `hsla(${(index * 137.5) % 360}, 70%, 58%, 0.12)`,
-                borderWidth: 2,
-                tension: 0.4,
-                fill: false
-            }))
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            scales: {
-                x: { ticks: { color: '#ddd' }, grid: { color: 'rgba(255,255,255,0.08)' } },
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: '#ddd', precision: 0 },
-                    grid: { color: 'rgba(255,255,255,0.08)' }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: { color: '#ddd' }
-                }
-            }
-        }
-    });
-
-}
-
-function renderForecastTable(products) {
-    const tableBody = document.getElementById('forecastTableBody');
-    if (!tableBody) return;
-
-    tableBody.replaceChildren();
-    products.forEach(product => {
-        const row = document.createElement('tr');
-        [
-            product.productName,
-            Number(product.averageDailySales).toFixed(2),
-            product.lowStockThreshold,
-            product.salesVelocityRating
-        ].forEach(value => {
-            const cell = document.createElement('td');
-            cell.textContent = value;
-            row.appendChild(cell);
-        });
-        tableBody.appendChild(row);
-    });
-
-    if (products.length === 0) {
-        const row = document.createElement('tr');
-        const cell = document.createElement('td');
-        cell.colSpan = 4;
-        cell.textContent = 'No forecast data available.';
-        row.appendChild(cell);
-        tableBody.appendChild(row);
     }
 }
 
@@ -929,7 +803,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('view-dashboard').style.display = 'block';
 
-        loadSalesAnalytics();
         fetchLogs();
 
         const role = localStorage.getItem('userRole');

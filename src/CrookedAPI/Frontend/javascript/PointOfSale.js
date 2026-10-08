@@ -314,7 +314,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function printReceipt(tx) {
-    let receiptWindow = window.open("", "Receipt", "width=400,height=600");
+    const receiptWindow = window.open("", "Receipt", "width=420,height=700");
+    if (!receiptWindow) {
+      showToast("The receipt window was blocked. Allow pop-ups and try printing again.", true);
+      return;
+    }
+
     const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
       "&": "&amp;",
       "<": "&lt;",
@@ -322,29 +327,103 @@ document.addEventListener("DOMContentLoaded", () => {
       '"': "&quot;",
       "'": "&#39;"
     })[character]);
-    receiptWindow.document.write(`
-      <h2>CRKD POS Receipt</h2>
-      <p>Reference ID: ${tx.referenceId}</p>
-      <p>Date: ${new Date(tx.date_time).toLocaleString()}</p>
-      <p>Assisted by: ${escapeHtml(tx.assistedBy)}</p>
-      <hr>
-      <ul>
-        ${tx.items.map(item =>
-          `<li>${item.name} x${item.quantity} — ₱${(item.quantity * item.price).toLocaleString()}</li>`
-        ).join("")}
-      </ul>
-      <hr>
-      <p>Total: ₱${tx.total_amount.toLocaleString()}</p>
-      ${tx.payment_method === "Cash" ? `
-        <p>Amount Received: ₱${tx.amount_received.toLocaleString()}</p>
-        <p>Change: ₱${tx.change_given.toLocaleString()}</p>
-      ` : `
-        <p>Payment Method: GCash</p>
-      `}
-      <p>Status: ${tx.status}</p>
-      <p>Thank you for your purchase!</p>
+
+    const formatPeso = amount => `₱${Number(amount || 0).toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+    const items = tx.items.map(item => `
+      <div class="item">
+        <div class="item-name">${escapeHtml(item.name)}</div>
+        <div class="item-details">
+          <span>${item.quantity} x ${formatPeso(item.price)}</span>
+          <span>${formatPeso(item.quantity * item.price)}</span>
+        </div>
+      </div>
+    `).join("");
+    const paymentDetails = tx.payment_method === "Cash" ? `
+      <div class="row"><span>Cash</span><span>${formatPeso(tx.amount_received)}</span></div>
+      <div class="row"><span>Change</span><span>${formatPeso(tx.change_given)}</span></div>
+    ` : `
+      <div class="row"><span>Payment</span><span>${escapeHtml(tx.payment_method || "GCash")}</span></div>
+      ${tx.referenceId ? `<div class="row"><span>Reference</span><span>${escapeHtml(tx.referenceId)}</span></div>` : ""}
+    `;
+
+    receiptWindow.document.write(`<!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Crooked Receipt</title>
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              width: 72mm;
+              margin: 0 auto;
+              padding: 5mm 4mm;
+              background: #fff;
+              color: #000;
+              font: 12px/1.4 "Courier New", monospace;
+            }
+            .receipt { width: 100%; }
+            .center { text-align: center; }
+            .shop-name {
+              margin: 0;
+              font-size: 23px;
+              font-weight: 900;
+              letter-spacing: 2px;
+              line-height: 1.1;
+            }
+            .address { margin: 5px 0 12px; font-size: 11px; }
+            .divider { border: 0; border-top: 1px dashed #000; margin: 9px 0; }
+            .row, .item-details {
+              display: flex;
+              justify-content: space-between;
+              gap: 8px;
+            }
+            .meta { font-size: 11px; }
+            .meta div { margin: 2px 0; }
+            .item { margin: 8px 0; }
+            .item-name { overflow-wrap: anywhere; }
+            .item-details { margin-top: 2px; padding-left: 8px; font-size: 11px; }
+            .total { font-size: 15px; font-weight: bold; }
+            .footer { margin-top: 14px; }
+            @media print {
+              @page { size: 80mm auto; margin: 0; }
+              body { width: 72mm; padding: 4mm; }
+            }
+          </style>
+        </head>
+        <body>
+          <main class="receipt">
+            <header class="center">
+              <h1 class="shop-name">CROOKED</h1>
+              <p class="address">2057 Bagong Sikat St., Baclaran,<br>Parañaque City</p>
+            </header>
+            <hr class="divider">
+            <section class="meta">
+              <div>Receipt: ${escapeHtml(tx.referenceId)}</div>
+              <div>Date: ${escapeHtml(new Date(tx.date_time).toLocaleString("en-PH"))}</div>
+              <div>Cashier: ${escapeHtml(tx.assistedBy)}</div>
+            </section>
+            <hr class="divider">
+            <section aria-label="Purchased items">${items}</section>
+            <hr class="divider">
+            <div class="row total"><span>TOTAL</span><span>${formatPeso(tx.total_amount)}</span></div>
+            <hr class="divider">
+            <section class="meta">${paymentDetails}</section>
+            <hr class="divider">
+            <footer class="center footer">
+              <div>Thank you for shopping at</div>
+              <strong>CROOKED</strong>
+              <div>Please come again!</div>
+            </footer>
+          </main>
+        </body>
+      </html>
     `);
     receiptWindow.document.close();
+    receiptWindow.focus();
     receiptWindow.print();
   }
 

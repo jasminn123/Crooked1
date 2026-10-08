@@ -2,18 +2,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using Crooked.Models;
 
 namespace Crooked.Services
 {
-    public class ThresholdForecastOptions
-    {
-        public int CheckIntervalMinutes { get; set; } = 60;
-        public int MinThreshold { get; set; } = 1;
-        public int MaxThreshold { get; set; } = 500;
-        public int DebounceHours { get; set; } = 24;
-        public int CoverageDays { get; set; } = 2;
-    }
-
     public class ThresholdForecastService : BackgroundService
     {
         private readonly string _connectionString;
@@ -63,7 +55,8 @@ namespace Crooked.Services
             await connection.OpenAsync(cancellationToken);
 
             const string query = @"
-                SELECT p.id, p.product_name, p.low_stock_threshold,
+                SELECT p.id, p.product_name, p.image_url, p.low_stock_threshold,
+                       p.sales_velocity_rating,
                        COALESCE(SUM(s.quantity_sold), 0) AS units_sold_last_7_days,
                        COALESCE(p.last_threshold_update IS NULL OR
                            p.last_threshold_update <= NOW() - (@debounce_hours * INTERVAL '1 hour'), TRUE)
@@ -86,9 +79,11 @@ namespace Crooked.Services
                     products.Add(new ForecastProduct(
                         reader.GetInt32(0),
                         reader.GetString(1),
-                        reader.GetInt32(2),
-                        Convert.ToInt32(reader.GetInt64(3)),
-                        reader.GetBoolean(4)));
+                        reader.IsDBNull(2) ? null : reader.GetString(2),
+                        reader.GetInt32(3),
+                        reader.IsDBNull(4) ? "slow" : reader.GetString(4),
+                        Convert.ToInt32(reader.GetInt64(5)),
+                        reader.GetBoolean(6)));
                 }
             }
 
@@ -111,27 +106,48 @@ namespace Crooked.Services
                     SET low_stock_threshold = @threshold,
                         sales_velocity_rating = @velocity,
                         last_threshold_update = NOW()
-                    WHERE id = @id";
-                await using var updateCommand = new NpgsqlCommand(update, connection);
+                    WHERE id = @id
+                      AND (low_stock_threshold IS DISTINCT FROM @threshold
+                           OR sales_velocity_rating IS DISTINCT FROM @velocity)";
+                await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+                await using var updateCommand = new NpgsqlCommand(update, connection, transaction);
                 updateCommand.Parameters.AddWithValue("@threshold", threshold);
                 updateCommand.Parameters.AddWithValue("@velocity", velocity);
                 updateCommand.Parameters.AddWithValue("@id", product.Id);
-                await updateCommand.ExecuteNonQueryAsync(cancellationToken);
+                var changed = await updateCommand.ExecuteNonQueryAsync(cancellationToken);
 
-                if (threshold != product.CurrentThreshold)
+                if (changed > 0)
                 {
+                    var thresholdChanged = threshold != product.CurrentThreshold;
+                    var velocityChanged = velocity != product.CurrentVelocity
+                        && (velocity == "fast" || velocity == "slow"
+                            || product.CurrentVelocity == "fast" || product.CurrentVelocity == "slow");
+
+                    if (thresholdChanged || velocityChanged)
+                    {
+                        const string notificationSql = @"
+                            INSERT INTO forecast_notifications
+                                (product_id, product_name, image_url, old_threshold, new_threshold, old_velocity, new_velocity)
+                            VALUES
+                                (@id, @name, @image, @old_threshold, @new_threshold, @old_velocity, @new_velocity)";
+                        await using var notificationCommand = new NpgsqlCommand(notificationSql, connection, transaction);
+                        notificationCommand.Parameters.AddWithValue("@id", product.Id);
+                        notificationCommand.Parameters.AddWithValue("@name", product.Name);
+                        notificationCommand.Parameters.AddWithValue("@image", (object?)product.ImageUrl ?? DBNull.Value);
+                        notificationCommand.Parameters.AddWithValue("@old_threshold", product.CurrentThreshold);
+                        notificationCommand.Parameters.AddWithValue("@new_threshold", threshold);
+                        notificationCommand.Parameters.AddWithValue("@old_velocity", product.CurrentVelocity);
+                        notificationCommand.Parameters.AddWithValue("@new_velocity", velocity);
+                        await notificationCommand.ExecuteNonQueryAsync(cancellationToken);
+                    }
+
+                    await transaction.CommitAsync(cancellationToken);
                     _logger.LogInformation(
-                        "Adjusted low-stock threshold for {ProductName}: {OldThreshold} -> {NewThreshold}, based on {UnitsSold} units sold in 7 days",
-                        product.Name, product.CurrentThreshold, threshold, product.UnitsSoldLast7Days);
+                        "Updated forecast for {ProductName}: threshold {OldThreshold} -> {NewThreshold}; velocity {OldVelocity} -> {NewVelocity}; sales {UnitsSold} in 7 days",
+                        product.Name, product.CurrentThreshold, threshold,
+                        product.CurrentVelocity, velocity, product.UnitsSoldLast7Days);
                 }
             }
         }
-
-        private sealed record ForecastProduct(
-            int Id,
-            string Name,
-            int CurrentThreshold,
-            int UnitsSoldLast7Days,
-            bool CanUpdate);
     }
 }

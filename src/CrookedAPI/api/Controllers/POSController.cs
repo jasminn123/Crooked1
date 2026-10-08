@@ -42,74 +42,6 @@ namespace Crooked.Controllers
             return Ok(products);
         }
 
-        [HttpGet("daily-sales")]
-        public async Task<IActionResult> GetDailySales()
-        {
-            var today = DateTime.UtcNow.AddHours(8).Date;
-            var dates = Enumerable.Range(0, 7)
-                .Select(offset => today.AddDays(offset - 6))
-                .ToList();
-            var products = new Dictionary<int, DailyProductSales>();
-
-            const string query = @"
-                SELECT p.id, p.product_name, p.low_stock_threshold, p.sales_velocity_rating,
-                       d.sale_date, COALESCE(s.quantity_sold, 0)
-                FROM products p
-                CROSS JOIN generate_series(
-                    ((NOW() AT TIME ZONE 'Asia/Manila')::date - 6)::timestamp,
-                    ((NOW() AT TIME ZONE 'Asia/Manila')::date)::timestamp,
-                    INTERVAL '1 day'
-                ) AS d(sale_date)
-                LEFT JOIN product_daily_sales s
-                    ON s.product_id = p.id
-                    AND s.sale_date = d.sale_date::date
-                WHERE p.is_active = TRUE
-                ORDER BY p.id, d.sale_date";
-
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
-            await using var command = new NpgsqlCommand(query, connection);
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
-            {
-                var id = reader.GetInt32(0);
-                if (!products.TryGetValue(id, out var product))
-                {
-                    product = new DailyProductSales
-                    {
-                        Id = id,
-                        ProductName = reader.IsDBNull(1) ? "" : reader.GetString(1),
-                        LowStockThreshold = reader.GetInt32(2),
-                        SalesVelocityRating = reader.IsDBNull(3) ? "slow" : reader.GetString(3)
-                    };
-                    products.Add(id, product);
-                }
-
-                var dayIndex = (reader.GetDateTime(4).Date - dates[0]).Days;
-                if (dayIndex >= 0 && dayIndex < product.DailySales.Length)
-                {
-                    product.DailySales[dayIndex] = reader.GetInt32(5);
-                }
-            }
-
-            return Ok(new
-            {
-                dates = dates.Select(date => date.ToString("yyyy-MM-dd")),
-                products = products.Values
-                    .OrderByDescending(product => product.DailySales.Sum())
-                    .Select(product => new
-                    {
-                        id = product.Id,
-                        productName = product.ProductName,
-                        lowStockThreshold = product.LowStockThreshold,
-                        averageDailySales = Math.Round(product.DailySales.Average(), 2),
-                        salesVelocityRating = product.SalesVelocityRating,
-                        dailySales = product.DailySales
-                    })
-            });
-        }
-
         [HttpPost("checkout")]
         public async Task<IActionResult> Checkout([FromBody] List<CartItem> cart)
         {
@@ -172,12 +104,4 @@ namespace Crooked.Controllers
         public int Quantity { get; set; }
     }
 
-    internal sealed class DailyProductSales
-    {
-        public int Id { get; set; }
-        public string ProductName { get; set; } = "";
-        public int LowStockThreshold { get; set; }
-        public string SalesVelocityRating { get; set; } = "slow";
-        public int[] DailySales { get; } = new int[7];
-    }
 }

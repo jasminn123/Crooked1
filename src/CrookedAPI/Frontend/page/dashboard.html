@@ -6,7 +6,8 @@
     <title>CRKD | Management</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../design/dashboard.css?v=3">
+    <link rel="stylesheet" href="../design/dashboard.css?v=5">
+    <link rel="stylesheet" href="../design/forecasting.css?v=1">
 </head>
 
 <body>
@@ -34,6 +35,20 @@
         <!-- TOP HEADER -->
         <div class="top-header">
             <div class="header-icons">
+
+                <div id="forecastNotifications" class="forecast-notifications" style="display:none;">
+                    <button id="forecastNotificationButton" class="forecast-notification-button" type="button"
+                        aria-label="Forecast notifications" aria-expanded="false">
+                        <i class="fa-solid fa-bell"></i>
+                        <span id="forecastNotificationCount" class="forecast-notification-count" style="display:none;">0</span>
+                    </button>
+                    <div id="forecastNotificationPanel" class="forecast-notification-panel" style="display:none;">
+                        <h3>Forecast Notifications</h3>
+                        <div id="forecastNotificationList" class="forecast-notification-list">
+                            <p class="forecast-notification-empty">Loading notifications...</p>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="profile-section">
                     <span class="Owner">Main Owner</span>
@@ -317,9 +332,9 @@
             </div>
 
             <!-- FORECASTING SECTION -->
-            <div id="view-forecasting" class="content-section" style="display:none; padding:20px;">
+            <div id="view-forecasting" class="content-section forecasting-section" style="display:none;">
                 <div class="card">
-                    <h2 style="color:#fff;">Demand-based Stock Forecast</h2>
+                    <h2>Demand-based Stock Forecast</h2>
                     <p>Low-stock thresholds are recalculated from each active product's average daily sales over the last 7 days, with 2 days of demand coverage.</p>
                     <div class="transaction-table-wrapper">
                         <div class="transaction-table-scroll">
@@ -399,8 +414,9 @@
         </div>
     </div>
 
-    <script src="../javascript/dashboard.js?v=11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../javascript/forecasting.js?v=1"></script>
+    <script src="../javascript/dashboard.js?v=13"></script>
 
 </body>
 </html>
