@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Point of Sale</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="../design/PointofSale.css?v=3">
+  <link rel="stylesheet" href="../design/PointofSale.css?v=4">
 </head>
 <body>
 
@@ -32,7 +32,14 @@
   </header>
 
   <main class="pos-main">
-    <section class="product-grid" id="productGrid"></section>
+    <div class="product-catalog">
+      <label class="pos-search">
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input id="productSearch" type="search" placeholder="Search products..." autocomplete="off"
+          aria-label="Search products">
+      </label>
+      <section class="product-grid" id="productGrid" aria-label="Products"></section>
+    </div>
 
     <aside class="checkout-panel">
       <h2>Checkout</h2>
@@ -48,6 +55,28 @@
   </main>
 
   <!-- Modals outside main -->
+
+  <div id="variantModal" class="modal" role="dialog" aria-modal="true"
+    aria-labelledby="variantModalTitle" aria-hidden="true">
+    <div class="modal-content variant-modal-content">
+      <button id="closeVariantModalBtn" class="modal-close-btn" type="button" aria-label="Close">✕</button>
+      <h2 id="variantModalTitle">Choose product options</h2>
+      <p id="variantProductName" class="variant-product-name"></p>
+      <label class="variant-field">
+        <span>Size</span>
+        <select id="variantSize"></select>
+      </label>
+      <label class="variant-field">
+        <span>Color</span>
+        <select id="variantColor"></select>
+      </label>
+      <p id="variantAvailability" class="variant-availability" aria-live="polite"></p>
+      <div class="modal-actions">
+        <button id="cancelVariantBtn" class="btn" type="button">Cancel</button>
+        <button id="addVariantBtn" class="btn" type="button">Add to Checkout</button>
+      </div>
+    </div>
+  </div>
 
   <div id="receiptModal" class="modal">
     <div class="modal-content">
@@ -95,7 +124,7 @@
     </div>
   </div>
 
-  <script src="../javascript/PointOfSale.js?v=7"></script>
+  <script src="../javascript/PointOfSale.js?v=8"></script>
 
 </body>
 </html>

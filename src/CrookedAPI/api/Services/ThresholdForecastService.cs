@@ -106,9 +106,7 @@ namespace Crooked.Services
                     SET low_stock_threshold = @threshold,
                         sales_velocity_rating = @velocity,
                         last_threshold_update = NOW()
-                    WHERE id = @id
-                      AND (low_stock_threshold IS DISTINCT FROM @threshold
-                           OR sales_velocity_rating IS DISTINCT FROM @velocity)";
+                    WHERE id = @id";
                 await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
                 await using var updateCommand = new NpgsqlCommand(update, connection, transaction);
                 updateCommand.Parameters.AddWithValue("@threshold", threshold);

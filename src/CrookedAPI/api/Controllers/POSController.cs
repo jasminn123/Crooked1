@@ -21,7 +21,10 @@ namespace Crooked.Controllers
 
             using (var conn = new NpgsqlConnection(_connectionString))
             {
-                string query = "SELECT id, product_name, price, stock_quantity, image_url FROM Products WHERE is_active = true";
+                string query = @"SELECT id, product_name, category, price, stock_quantity, size, color, image_url
+                                 FROM Products
+                                 WHERE is_active = true
+                                 ORDER BY product_name, size, color";
                 var cmd = new NpgsqlCommand(query, conn);
                 await conn.OpenAsync();
                 var reader = await cmd.ExecuteReaderAsync();
@@ -32,9 +35,12 @@ namespace Crooked.Controllers
                     {
                         Id = reader.GetInt32(0),
                         Product_Name = reader.IsDBNull(1) ? "" : reader.GetString(1),
-                        Price = reader.IsDBNull(2) ? 0 : reader.GetDecimal(2),
-                        Stock_Quantity = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
-                        ImageUrl = reader.IsDBNull(4) ? "" : reader.GetString(4)
+                        Category = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                        Price = reader.IsDBNull(3) ? 0 : reader.GetDecimal(3),
+                        Stock_Quantity = reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
+                        Size = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                        Color = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                        ImageUrl = reader.IsDBNull(7) ? "" : reader.GetString(7)
                     });
                 }
             }

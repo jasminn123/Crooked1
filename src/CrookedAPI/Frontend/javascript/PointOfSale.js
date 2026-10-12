@@ -108,11 +108,15 @@ function showToast(message, isError) {
 }
 
 function showModal(id) {
-  document.getElementById(id).classList.add("active");
+  const modal = document.getElementById(id);
+  modal.classList.add("active");
+  modal.setAttribute("aria-hidden", "false");
 }
 
 function hideModal(id) {
-  document.getElementById(id).classList.remove("active");
+  const modal = document.getElementById(id);
+  modal.classList.remove("active");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 function confirmCancelCheckout() {
@@ -131,6 +135,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const checkoutList = document.getElementById("checkoutList");
   const checkoutTotal = document.getElementById("checkoutTotal");
   const checkoutBtn = document.querySelector(".btn.checkout");
+  const productSearch = document.getElementById("productSearch");
+  const variantModal = document.getElementById("variantModal");
+  const variantSize = document.getElementById("variantSize");
+  const variantColor = document.getElementById("variantColor");
+  const variantAvailability = document.getElementById("variantAvailability");
+  const addVariantBtn = document.getElementById("addVariantBtn");
+  let productGroups = [];
+  let selectedVariants = [];
+
   // After loadProducts();
   const name = localStorage.getItem('userName');
   const profileCardName = document.querySelector('.profile-card-header span') || document.querySelector('#profileCard span');
@@ -140,24 +153,127 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadProducts() {
     try {
       const res = await fetch("http://localhost:5055/api/POS/products");
+      if (!res.ok) throw new Error(`Product request failed (${res.status})`);
       const products = await res.json();
 
-      grid.innerHTML = "";
+      const groups = new Map();
       products.forEach(product => {
-        const card = document.createElement("div");
-        card.className = "product-card";
-        card.innerHTML = `
-          <img src="${product.imageUrl}" alt="${product.product_Name}">
-          <h3>${product.product_Name}</h3>
-          <p>₱${product.price}</p>
-          <small>Stock: ${product.stock_Quantity}</small>
-        `;
-        card.addEventListener("click", () => addToCart(product));
-        grid.appendChild(card);
+        const groupKey = JSON.stringify([product.product_Name, product.category]);
+        if (!groups.has(groupKey)) groups.set(groupKey, []);
+        groups.get(groupKey).push(product);
       });
+      productGroups = [...groups.values()];
+      renderProductGrid();
     } catch (err) {
       console.error("Error loading products:", err);
+      grid.replaceChildren();
+      const message = document.createElement("p");
+      message.className = "product-grid-empty";
+      message.textContent = "Unable to load products. Please try again.";
+      grid.appendChild(message);
     }
+  }
+
+  function renderProductGrid() {
+    const searchTerm = productSearch.value.trim().toLowerCase();
+    grid.replaceChildren();
+
+    const visibleGroups = productGroups.filter(variants =>
+      variants.some(product => [
+        product.product_Name,
+        product.category,
+        product.size,
+        product.color
+      ].some(value => String(value || "").toLowerCase().includes(searchTerm)))
+    );
+
+    visibleGroups.forEach(variants => {
+        const product = variants[0];
+        const card = document.createElement("div");
+        card.className = "product-card";
+        card.tabIndex = 0;
+        card.setAttribute("role", "button");
+
+        const image = document.createElement("img");
+        image.src = product.imageUrl || "";
+        image.alt = product.product_Name;
+        const name = document.createElement("h3");
+        name.textContent = product.product_Name;
+        const prices = variants.map(variant => Number(variant.price));
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        const price = document.createElement("p");
+        price.textContent = minPrice === maxPrice
+          ? `₱${minPrice.toLocaleString()}`
+          : `₱${minPrice.toLocaleString()} – ₱${maxPrice.toLocaleString()}`;
+        const stock = document.createElement("small");
+        stock.textContent = `Stock: ${variants.reduce((total, variant) => total + variant.stock_Quantity, 0)}`;
+        const options = document.createElement("small");
+        options.className = "product-variants";
+        options.textContent = `${variants.length} size/color option${variants.length === 1 ? "" : "s"} — select options`;
+        card.append(image, name, price, stock, document.createElement("br"), options);
+        card.addEventListener("click", () => openVariantPicker(variants));
+        card.addEventListener("keydown", event => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openVariantPicker(variants);
+          }
+        });
+        grid.appendChild(card);
+      });
+
+    if (!visibleGroups.length) {
+      const empty = document.createElement("p");
+      empty.className = "product-grid-empty";
+      empty.textContent = searchTerm ? "No products match your search." : "No products available.";
+      grid.appendChild(empty);
+    }
+  }
+
+  function variantSizeOf(product) {
+    return product.size?.trim() || "One Size";
+  }
+
+  function variantColorOf(product) {
+    return product.color?.trim() || "Default";
+  }
+
+  function openVariantPicker(variants) {
+    selectedVariants = variants;
+    document.getElementById("variantProductName").textContent = variants[0].product_Name;
+
+    const sizes = [...new Set(variants.map(variantSizeOf))];
+    variantSize.replaceChildren(...sizes.map(size => new Option(size, size)));
+    const firstInStock = variants.find(variant => variant.stock_Quantity > 0) || variants[0];
+    variantSize.value = variantSizeOf(firstInStock);
+    renderColorOptions(variantColorOf(firstInStock));
+    showModal("variantModal");
+    variantSize.focus();
+  }
+
+  function selectedProductVariant() {
+    return selectedVariants.find(variant =>
+      variantSizeOf(variant) === variantSize.value
+      && variantColorOf(variant) === variantColor.value
+    );
+  }
+
+  function renderColorOptions(preferredColor) {
+    const matchingVariants = selectedVariants.filter(variant => variantSizeOf(variant) === variantSize.value);
+    const colors = [...new Set(matchingVariants.map(variantColorOf))];
+    variantColor.replaceChildren(...colors.map(color => new Option(color, color)));
+    variantColor.value = colors.includes(preferredColor) ? preferredColor : colors[0];
+    updateVariantAvailability();
+  }
+
+  function updateVariantAvailability() {
+    const product = selectedProductVariant();
+    addVariantBtn.disabled = !product || product.stock_Quantity <= 0;
+    variantAvailability.textContent = product
+      ? product.stock_Quantity > 0
+        ? `Available stock: ${product.stock_Quantity} · ₱${Number(product.price).toLocaleString()}`
+        : "This size and color are out of stock."
+      : "This size and color combination is unavailable.";
   }
 
   function addToCart(product) {
@@ -179,6 +295,8 @@ document.addEventListener("DOMContentLoaded", () => {
       cart[id] = {
         id: id,
         name: product.product_Name,
+        size: variantSizeOf(product),
+        color: variantColorOf(product),
         price: product.price,
         qty: 1,
         stock: product.stock_Quantity
@@ -222,7 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
       details.className = "checkout-item-details";
       const name = document.createElement("span");
       name.className = "checkout-item-name";
-      name.textContent = item.name;
+      name.textContent = `${item.name} · ${item.size} / ${item.color}`;
       const itemSubtotal = document.createElement("span");
       itemSubtotal.className = "checkout-item-subtotal";
       itemSubtotal.textContent = `₱${subtotal.toLocaleString()}`;
@@ -272,7 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
       assistedBy: localStorage.getItem("userName")?.trim() || "Unknown",
       items: Object.values(cart).map(item => ({
         productId: item.id,
-        name: item.name,
+        name: `${item.name} (${item.size} / ${item.color})`,
         quantity: item.qty,
         price: item.price
       })),
@@ -517,6 +635,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("closeReceiptBtn")?.addEventListener("click", () => hideModal("receiptModal"));
   document.getElementById("closePaymentBtn")?.addEventListener("click", () => hideModal("paymentModal"));
+  document.getElementById("closeVariantModalBtn")?.addEventListener("click", () => hideModal("variantModal"));
+  document.getElementById("cancelVariantBtn")?.addEventListener("click", () => hideModal("variantModal"));
+  variantModal.addEventListener("click", event => {
+    if (event.target === variantModal) hideModal("variantModal");
+  });
+  productSearch.addEventListener("input", renderProductGrid);
+  variantSize.addEventListener("change", () => renderColorOptions());
+  variantColor.addEventListener("change", updateVariantAvailability);
+  addVariantBtn.addEventListener("click", () => {
+    const product = selectedProductVariant();
+    if (!product || product.stock_Quantity <= 0) return;
+    addToCart(product);
+    hideModal("variantModal");
+  });
 
   const userIcon = document.getElementById("userIcon");
   const profileCard = document.getElementById("profileCard");
