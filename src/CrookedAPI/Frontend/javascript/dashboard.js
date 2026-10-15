@@ -160,41 +160,78 @@ function showSection(sectionId, element) {
 /* =========================
    INVENTORY
 ========================= */
+let inventoryProducts = [];
+
 async function loadInventory() {
     try {
         const response = await fetch(`${apiBase}/api/products/get-inventory`);
         if (!response.ok) throw new Error('Inventory fetch failed');
 
-        const products = await response.json();
-        const tableBody = document.getElementById('inventory-list-main');
-        if (!tableBody) return;
-
-        tableBody.innerHTML = '';
-        products.forEach(item => {
-            const threshold = item.low_stock_threshold || 5;
-            const isOut = item.stock_quantity === 0;
-            const isLow = item.stock_quantity <= threshold && item.stock_quantity > 0;
-            const status = isOut
-            ? '<span style="color:#ff0000;font-weight:bold;">OUT OF STOCK</span>'
-            : isLow
-            ? '<span style="color:#ff4d4d;font-weight:bold;">LOW STOCK</span>'
-            : '<span style="color:#2ecc71;">OK</span>';
-            
-            tableBody.innerHTML += `
-                <tr style="border-bottom:1px solid #222;">
-                    <td style="padding:12px;color:white;">${item.product_name}</td>
-                    <td style="padding:12px;color:#888;">${item.category}</td>
-                    <td style="padding:12px;color:white;">₱${item.price.toLocaleString()}</td>
-                    <td style="padding:12px;color:white;">${item.stock_quantity}</td>
-                    <td style="padding:12px;color:white;">${threshold}</td>
-                    <td style="padding:12px;">${status}</td>
-                </tr>
-            `;
-        });
+        inventoryProducts = await response.json();
+        renderInventoryTable();
     } catch (error) {
         console.error('Inventory Error:', error);
     }
 }
+
+function renderInventoryTable() {
+    const tableBody = document.getElementById('inventory-list-main');
+    if (!tableBody) return;
+
+    const query = document.getElementById('inventorySearch')?.value.trim().toLocaleLowerCase() || '';
+    const products = inventoryProducts.filter(item =>
+        [item.product_name, item.category, item.size, item.color]
+            .some(value => String(value || '').toLocaleLowerCase().includes(query))
+    );
+    tableBody.replaceChildren();
+
+    if (!products.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 8;
+        cell.className = 'transaction-empty';
+        cell.textContent = query ? 'No inventory matches your search.' : 'No inventory products found.';
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+
+    products.forEach(item => {
+        const threshold = item.low_stock_threshold || 5;
+        const isOut = item.stock_quantity === 0;
+        const isLow = item.stock_quantity <= threshold && item.stock_quantity > 0;
+        const status = document.createElement('span');
+        status.className = isOut
+            ? 'inventory-stock-out'
+            : isLow
+                ? 'inventory-stock-low'
+                : 'inventory-stock-available';
+        status.textContent = isOut ? 'OUT OF STOCK' : isLow ? 'LOW STOCK' : 'OK';
+
+        const row = document.createElement('tr');
+        [
+            item.product_name,
+            item.category,
+            item.size || '—',
+            item.color || '—',
+            `₱${Number(item.price).toLocaleString('en-PH')}`,
+            item.stock_quantity,
+            threshold
+        ].forEach((value, index) => {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            if (index === 1) cell.className = 'col-muted';
+            row.appendChild(cell);
+        });
+
+        const statusCell = document.createElement('td');
+        statusCell.appendChild(status);
+        row.appendChild(statusCell);
+        tableBody.appendChild(row);
+    });
+}
+
+document.getElementById('inventorySearch')?.addEventListener('input', renderInventoryTable);
 
 /* =========================
    PRODUCTS
@@ -542,7 +579,7 @@ async function loadSalesHistory() {
                 transaction.reference_id,
                 `₱${Number(transaction.total_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
                 transaction.assisted_by || 'Unknown',
-                transaction.status
+                transaction.has_exchange ? 'Exchanged' : transaction.status
             ].forEach(value => {
                 const cell = document.createElement('td');
                 cell.textContent = value;
@@ -567,27 +604,279 @@ function renderTransactionTable(transactions) {
     const tbody = document.getElementById('transactionTableBody');
     if (!tbody) return;
 
+    tbody.replaceChildren();
     if (!transactions || !transactions.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="transaction-empty">No transactions found.</td></tr>`;
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 6;
+        cell.className = 'transaction-empty';
+        cell.textContent = 'No transactions found.';
+        row.appendChild(cell);
+        tbody.appendChild(row);
         return;
     }
 
-    tbody.innerHTML = transactions.map(txn => {
+    transactions.forEach(txn => {
+        const displayStatus = txn.has_exchange ? 'Exchanged' : txn.status;
         const statusClass = {
             'Completed': 'status-completed',
+            'Exchanged': 'status-exchanged',
             'Pending': 'status-pending',
             'Voided': 'status-voided'
-        }[txn.status] || '';
+        }[displayStatus] || '';
 
-        return `
-        <tr>
-            <td>${txn.transaction_id}</td>
-            <td class="col-muted">${txn.date_time}</td>
-            <td>₱${Number(txn.total_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
-            <td class="col-muted">${txn.reference_id}</td>
-            <td class="${statusClass}">${txn.status}</td>
-        </tr>`;
-    }).join('');
+        const row = document.createElement('tr');
+        [
+            txn.transaction_id,
+            txn.date_time,
+            `₱${Number(txn.total_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+            txn.reference_id || '—',
+            displayStatus
+        ].forEach((value, index) => {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            if (index === 1 || index === 3) cell.className = 'col-muted';
+            if (index === 4) cell.className = statusClass;
+            row.appendChild(cell);
+        });
+
+        const editCell = document.createElement('td');
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'transaction-edit-button';
+        editButton.setAttribute('aria-label', `Edit items in transaction ${txn.transaction_id}`);
+        editButton.title = 'Edit or exchange purchased items';
+        editButton.innerHTML = '<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>';
+        editButton.disabled = txn.status !== 'Completed';
+        editButton.addEventListener('click', () => openTransactionExchange(txn));
+        editCell.appendChild(editButton);
+        row.appendChild(editCell);
+        tbody.appendChild(row);
+    });
+}
+
+let exchangeEditorItems = [];
+let exchangeEditorVariants = [];
+let exchangeTransaction = null;
+
+function formatTransactionAmount(amount) {
+    return `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+async function openTransactionExchange(transaction) {
+    const modal = document.getElementById('exchangeTransactionModal');
+    const body = document.getElementById('exchangeItemsBody');
+    const status = document.getElementById('exchangeModalStatus');
+    const saveButton = document.getElementById('saveExchangeButton');
+    exchangeTransaction = transaction;
+    exchangeEditorItems = [];
+    exchangeEditorVariants = [];
+    body.replaceChildren();
+    status.textContent = 'Loading purchased items...';
+    status.className = 'exchange-modal-status';
+    saveButton.disabled = true;
+    document.getElementById('exchangeModalTitle').textContent = `Edit purchased items · #${transaction.transaction_id}`;
+    document.getElementById('exchangeUpdatedTotal').textContent = formatTransactionAmount(transaction.total_amount);
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+
+    try {
+        const response = await fetch(`${apiBase}/api/POS/Transaction/${encodeURIComponent(transaction.transaction_id)}/items`);
+        const responseText = await response.text();
+        let data = {};
+        if (responseText) {
+            try {
+                data = JSON.parse(responseText);
+            } catch {
+                data = {};
+            }
+        }
+        if (!response.ok) throw new Error(data.message || `Could not load transaction items (${response.status})`);
+
+        exchangeEditorItems = data.items.flatMap(item =>
+            Array.from({ length: item.quantity }, () => ({
+                ...item,
+                originalTransactionItemId: item.transactionItemId,
+                originalProductId: item.productId,
+                originalQuantity: item.quantity,
+                productId: item.productId,
+                quantity: 1,
+                reason: item.exchangeReason || ''
+            }))
+        );
+        exchangeEditorVariants = data.variants;
+        renderExchangeItems();
+        updateExchangeTotal();
+        status.textContent = 'Each row represents one unit. Exchange reasons are optional.';
+        saveButton.disabled = false;
+    } catch (error) {
+        console.error('Transaction Items Error:', error);
+        status.textContent = error.message || 'Unable to load purchased items.';
+        status.classList.add('error');
+    }
+}
+
+function matchingExchangeVariants(item) {
+    return exchangeEditorVariants.filter(variant =>
+        variant.productName.toLowerCase() === item.productName.toLowerCase()
+        && variant.category.toLowerCase() === item.category.toLowerCase()
+        && Number(variant.price) === Number(item.unitPrice)
+    );
+}
+
+function renderExchangeItems() {
+    const body = document.getElementById('exchangeItemsBody');
+    body.replaceChildren();
+
+    exchangeEditorItems.forEach(item => {
+        const row = document.createElement('tr');
+        const productCell = document.createElement('td');
+        productCell.textContent = item.productName;
+
+        const variants = matchingExchangeVariants(item);
+        const selectedVariant = variants.find(variant => variant.id === item.productId);
+        if (!selectedVariant && item.productId) {
+            variants.unshift({
+                id: item.productId,
+                productName: item.productName,
+                category: item.category,
+                size: item.size,
+                color: item.color,
+                price: item.unitPrice,
+                stockQuantity: 0
+            });
+        }
+
+        const sizeCell = document.createElement('td');
+        const sizeSelect = document.createElement('select');
+        sizeSelect.className = 'exchange-select';
+        sizeSelect.setAttribute('aria-label', `Size for ${item.productName}`);
+        sizeSelect.replaceChildren(...[...new Set(variants.map(variant => variant.size || 'One Size'))]
+            .map(size => new Option(size, size)));
+
+        const colorCell = document.createElement('td');
+        const colorSelect = document.createElement('select');
+        colorSelect.className = 'exchange-select';
+        colorSelect.setAttribute('aria-label', `Color for ${item.productName}`);
+
+        const quantityCell = document.createElement('td');
+        const quantityLabel = document.createElement('span');
+        quantityLabel.className = 'exchange-static-quantity';
+        quantityLabel.textContent = '1×';
+
+        const reasonCell = document.createElement('td');
+        const reasonSelect = document.createElement('select');
+        reasonSelect.className = 'exchange-select exchange-reason-select';
+        reasonSelect.setAttribute('aria-label', `Exchange reason for ${item.productName}`);
+        reasonSelect.replaceChildren(
+            new Option('Select reason', ''),
+            new Option('Change Color', 'Change Color'),
+            new Option('Change Size', 'Change Size'),
+            new Option('Damaged', 'Damaged')
+        );
+        reasonSelect.value = item.reason;
+        reasonSelect.addEventListener('change', () => {
+            item.reason = reasonSelect.value;
+        });
+
+        function renderColors(preferredColor) {
+            const matchingSizeVariants = variants.filter(variant =>
+                (variant.size || 'One Size') === sizeSelect.value);
+            const colors = [...new Set(matchingSizeVariants.map(variant => variant.color || 'Default'))];
+            colorSelect.replaceChildren(...colors.map(color => new Option(color, color)));
+            colorSelect.value = colors.includes(preferredColor) ? preferredColor : colors[0];
+            updateSelectedVariant();
+        }
+
+        function updateSelectedVariant() {
+            const variant = variants.find(candidate =>
+                (candidate.size || 'One Size') === sizeSelect.value
+                && (candidate.color || 'Default') === colorSelect.value);
+            item.productId = variant?.id || 0;
+            updateExchangeTotal();
+        }
+
+        sizeSelect.value = item.size || 'One Size';
+        renderColors(item.color || 'Default');
+        sizeSelect.addEventListener('change', () => renderColors());
+        colorSelect.addEventListener('change', updateSelectedVariant);
+        sizeCell.appendChild(sizeSelect);
+        colorCell.appendChild(colorSelect);
+        quantityCell.appendChild(quantityLabel);
+        reasonCell.appendChild(reasonSelect);
+        row.append(productCell, sizeCell, colorCell, quantityCell, reasonCell);
+        body.appendChild(row);
+    });
+}
+
+function updateExchangeTotal() {
+    const total = exchangeEditorItems.reduce((sum, item) =>
+        sum + Number(item.unitPrice) * Math.max(1, Number(item.quantity) || 1), 0);
+    document.getElementById('exchangeUpdatedTotal').textContent = formatTransactionAmount(total);
+}
+
+async function saveTransactionExchange() {
+    if (!exchangeTransaction || !exchangeEditorItems.length) return;
+
+    const saveButton = document.getElementById('saveExchangeButton');
+    const status = document.getElementById('exchangeModalStatus');
+    const items = exchangeEditorItems.map(item => ({
+        transactionItemId: item.originalTransactionItemId,
+        productId: item.productId,
+        reason: item.reason
+    }));
+    if (items.some(item => item.productId <= 0)) {
+        status.textContent = 'Select a valid size and color for every item.';
+        status.className = 'exchange-modal-status error';
+        return;
+    }
+    saveButton.disabled = true;
+    status.textContent = 'Saving exchange...';
+    status.className = 'exchange-modal-status';
+    try {
+        const response = await fetch(
+            `${apiBase}/api/POS/Transaction/${encodeURIComponent(exchangeTransaction.transaction_id)}/items`,
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items })
+            }
+        );
+        const responseText = await response.text();
+        let result = {};
+        if (responseText) {
+            try {
+                result = JSON.parse(responseText);
+            } catch {
+                result = {};
+            }
+        }
+        if (!response.ok) throw new Error(result.message || `Could not save exchange (${response.status})`);
+
+        closeTransactionExchange();
+        await loadTransactions();
+        await loadSalesHistory();
+        if (typeof window.loadSalesAnalytics === 'function') {
+            window.loadSalesAnalytics();
+        }
+        showDialog('Exchange Saved', 'Purchased items and inventory have been updated.');
+    } catch (error) {
+        console.error('Transaction Exchange Error:', error);
+        status.textContent = error.message || 'Unable to save exchange.';
+        status.className = 'exchange-modal-status error';
+        saveButton.disabled = false;
+    }
+}
+
+function closeTransactionExchange() {
+    const modal = document.getElementById('exchangeTransactionModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
+    exchangeEditorItems = [];
+    exchangeEditorVariants = [];
+    exchangeTransaction = null;
 }
 
 /* =========================
@@ -786,6 +1075,13 @@ function filterBycategory(category) {
    PAGE LOAD
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('closeExchangeModal')?.addEventListener('click', closeTransactionExchange);
+    document.getElementById('cancelExchangeButton')?.addEventListener('click', closeTransactionExchange);
+    document.getElementById('saveExchangeButton')?.addEventListener('click', saveTransactionExchange);
+    document.getElementById('exchangeTransactionModal')?.addEventListener('click', event => {
+        if (event.target.id === 'exchangeTransactionModal') closeTransactionExchange();
+    });
+
     document.getElementById('editProdImage')?.addEventListener('change', event => {
         const input = event.currentTarget;
         const preview = document.getElementById('editProdImagePreview');

@@ -390,7 +390,9 @@ document.addEventListener("DOMContentLoaded", () => {
       assistedBy: localStorage.getItem("userName")?.trim() || "Unknown",
       items: Object.values(cart).map(item => ({
         productId: item.id,
-        name: `${item.name} (${item.size} / ${item.color})`,
+        name: item.name,
+        size: item.size,
+        color: item.color,
         quantity: item.qty,
         price: item.price
       })),

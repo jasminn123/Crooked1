@@ -119,12 +119,18 @@
     color: #fff;
 }
 
-.forecasting-section {
-    padding: 20px;
+.forecasting-section > .card {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
 }
 
-.forecasting-section .card > h2 {
-    color: #fff;
+.forecasting-section .card > h2,
+.forecasting-section .card > p {
+    color: #000;
 }
 
 .forecasting-section .card > p {

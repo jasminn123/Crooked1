@@ -6,8 +6,8 @@
     <title>CRKD | Management</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../design/dashboard.css?v=5">
-    <link rel="stylesheet" href="../design/forecasting.css?v=1">
+    <link rel="stylesheet" href="../design/dashboard.css?v=8">
+    <link rel="stylesheet" href="../design/forecasting.css?v=3">
 </head>
 
 <body>
@@ -190,11 +190,11 @@
             </div>
 
             <!-- TRANSACTION LOGS SECTION -->
-            <div id="view-transactions" class="content-section" style="padding:20px;">
+            <div id="view-transactions" class="content-section table-page-section" style="display:none;">
 
                
 
-                <div class="transaction-table-wrapper">
+                <div class="data-table-panel">
                     <div class="transaction-table-scroll">
                         <table class="transaction-table">
                             <thead>
@@ -204,17 +204,55 @@
                                     <th>TOTAL AMOUNT</th>
                                     <th>REFERENCE ID</th>
                                     <th>STATUS</th>
+                                    <th>EDIT</th>
                                 </tr>
                             </thead>
                             <tbody id="transactionTableBody"></tbody>
                         </table>
                     </div>
                 </div>
+
+                <div id="exchangeTransactionModal" class="exchange-modal" style="display:none;"
+                    role="dialog" aria-modal="true" aria-labelledby="exchangeModalTitle">
+                    <div class="exchange-modal-content">
+                        <div class="exchange-modal-header">
+                            <div>
+                                <h2 id="exchangeModalTitle">Edit purchased items</h2>
+                                <p>Each purchased unit is listed separately. Choose its size, color, and exchange reason.</p>
+                            </div>
+                            <button id="closeExchangeModal" class="exchange-close-button" type="button"
+                                aria-label="Close exchange editor">&times;</button>
+                        </div>
+                        <div class="exchange-table-scroll">
+                            <table class="exchange-table">
+                                <thead>
+                                    <tr>
+                                        <th>ITEM</th>
+                                        <th>SIZE</th>
+                                        <th>COLOR</th>
+                                        <th>QUANTITY</th>
+                                        <th>STATUS / REASON</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="exchangeItemsBody"></tbody>
+                            </table>
+                        </div>
+                        <p id="exchangeModalStatus" class="exchange-modal-status" role="status"></p>
+                        <div class="exchange-total-row">
+                            <span>Updated transaction total</span>
+                            <strong id="exchangeUpdatedTotal">₱0.00</strong>
+                        </div>
+                        <div class="exchange-modal-actions">
+                            <button id="cancelExchangeButton" class="exchange-cancel-button" type="button">Cancel</button>
+                            <button id="saveExchangeButton" class="exchange-save-button" type="button">Save changes</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- SALES HISTORY SECTION -->
-            <div id="view-sales-history" class="content-section" style="display:none; padding:20px;">
-                <div class="transaction-table-wrapper">
+            <div id="view-sales-history" class="content-section table-page-section" style="display:none;">
+                <div class="data-table-panel">
                     <div class="transaction-table-scroll">
                         <table class="transaction-table">
                             <thead>
@@ -306,37 +344,41 @@
             </div>
 
             <!-- INVENTORY SECTION -->
-            <div id="view-inventory" class="content-section" style="display:none; padding:20px;">
-
-                
-
-                <div style="background:#111; padding:10px; border-radius:12px; border:1px solid #333;">
-                    <table style="width:100%; border-collapse:collapse; color:white;">
-
-                        <thead>
-                            <tr style="border-bottom:2px solid #444; color:#888;">
-                                <th style="padding:15px 12px;">Product Name</th>
-                                <th style="padding:15px 12px;">Category</th>
-                                <th style="padding:15px 12px;">Price</th>
-                                <th style="padding:15px 12px;">Stock</th>
-                                <th style="padding:15px 12px;">Low-stock threshold</th>
-                                <th style="padding:15px 12px;">Status</th>
-                            </tr>
-                        </thead>
-
-                        <tbody id="inventory-list-main"></tbody>
-
-                    </table>
+            <div id="view-inventory" class="content-section table-page-section" style="display:none;">
+                <div class="data-table-panel">
+                    <div class="inventory-toolbar">
+                        <label for="inventorySearch">Search inventory</label>
+                        <input id="inventorySearch" type="search"
+                            placeholder="Search product, category, size, or color..."
+                            autocomplete="off">
+                    </div>
+                    <div class="transaction-table-scroll">
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th>Product Name</th>
+                                    <th>Category</th>
+                                    <th>Size</th>
+                                    <th>Color</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>Low-stock threshold</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-list-main"></tbody>
+                        </table>
+                    </div>
                 </div>
 
             </div>
 
             <!-- FORECASTING SECTION -->
-            <div id="view-forecasting" class="content-section forecasting-section" style="display:none;">
+            <div id="view-forecasting" class="content-section table-page-section forecasting-section" style="display:none;">
                 <div class="card">
                     <h2>Demand-based Stock Forecast</h2>
                     <p>Low-stock thresholds are recalculated from each active product's average daily sales over the last 7 days, with 2 days of demand coverage.</p>
-                    <div class="transaction-table-wrapper">
+                    <div class="data-table-panel">
                         <div class="transaction-table-scroll">
                             <table class="transaction-table">
                                 <thead>
@@ -416,7 +458,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="../javascript/forecasting.js?v=1"></script>
-    <script src="../javascript/dashboard.js?v=13"></script>
+    <script src="../javascript/dashboard.js?v=19"></script>
 
 </body>
 </html>

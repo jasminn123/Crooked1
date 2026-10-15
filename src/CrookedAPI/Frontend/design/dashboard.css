@@ -913,13 +913,6 @@ input:checked + .pill-slider .night-text {
     margin-bottom: 20px;
 }
 
-.transaction-table-wrapper {
-    background: #111;
-    padding: 10px;
-    border-radius: 12px;
-    border: 1px solid #333;
-}
-
 .transaction-table {
     width: 100%;
     border-collapse: collapse;
@@ -950,6 +943,7 @@ input:checked + .pill-slider .night-text {
 }
 
 .transaction-table .status-completed { color: #4caf82; font-weight: 700; }
+.transaction-table .status-exchanged { color: #55a9f5; font-weight: 700; }
 .transaction-table .status-pending   { color: #f0a04b; font-weight: 700; }
 .transaction-table .status-voided    { color: #f05555; font-weight: 700; }
 
@@ -959,17 +953,51 @@ input:checked + .pill-slider .night-text {
     color: #555;
 }
 
-.transaction-table-wrapper {
-    background: #111;
+.table-page-section {
+    box-sizing: border-box;
+    padding: 20px;
+}
+
+.data-table-panel {
+    box-sizing: border-box;
+    width: 100%;
     padding: 10px;
-    border-radius: 12px;
-    border: 1px solid #333;
     overflow: hidden;
+    border: 1px solid #333;
+    border-radius: 12px;
+    background: #111;
+}
+
+.inventory-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 4px 4px 12px;
+    color: #ccc;
+    font-size: 13px;
+}
+
+.inventory-toolbar input {
+    box-sizing: border-box;
+    width: min(100%, 360px);
+    padding: 10px 12px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    outline: none;
+    background: #1a1a1a;
+    color: #fff;
+    font: inherit;
+}
+
+.inventory-toolbar input:focus {
+    border-color: #888;
 }
 
 .transaction-table-scroll {
     max-height: 500px;
-    overflow-y: auto;
+    overflow: auto;
+    border-radius: 8px;
 }
 
 .transaction-table-scroll::-webkit-scrollbar {
@@ -986,6 +1014,221 @@ input:checked + .pill-slider .night-text {
     top: 0;
     background: #111;
     z-index: 1;
+}
+
+.transaction-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.inventory-stock-low {
+    color: #ff4d4d;
+    font-weight: 700;
+}
+
+.inventory-stock-out {
+    color: #ff0000;
+    font-weight: 700;
+}
+
+.inventory-stock-available {
+    color: #2ecc71;
+}
+
+.transaction-edit-button {
+    display: inline-grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #1b1b1b;
+    color: #f5f5f5;
+    cursor: pointer;
+}
+
+.transaction-edit-button:hover,
+.transaction-edit-button:focus-visible {
+    border-color: #fff;
+    background: #292929;
+}
+
+.transaction-edit-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+}
+
+.exchange-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.68);
+}
+
+.exchange-modal-content {
+    width: min(100%, 820px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 24px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: #f7f7f7;
+    color: #171717;
+    box-shadow: 0 18px 55px rgba(0, 0, 0, 0.35);
+}
+
+.exchange-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.exchange-modal-header h2 {
+    margin: 0;
+    color: #111;
+    font-size: 22px;
+}
+
+.exchange-modal-header p {
+    margin: 6px 0 0;
+    color: #666;
+    font-size: 13px;
+}
+
+.exchange-close-button {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #444;
+    font-size: 26px;
+    cursor: pointer;
+}
+
+.exchange-close-button:hover {
+    background: #e9e9e9;
+}
+
+.exchange-table-scroll {
+    overflow-x: auto;
+    border: 1px solid #d8d8d8;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.exchange-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #222;
+}
+
+.exchange-table th,
+.exchange-table td {
+    min-width: 105px;
+    padding: 12px;
+    border-bottom: 1px solid #e5e5e5;
+    text-align: left;
+    font-size: 13px;
+}
+
+.exchange-table th {
+    background: #222;
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+}
+
+.exchange-table td:first-child {
+    min-width: 180px;
+    font-weight: 600;
+}
+
+.exchange-select,
+.exchange-reason-select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 92px;
+    padding: 9px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background: #fff;
+    color: #222;
+    font: inherit;
+}
+
+.exchange-static-quantity {
+    display: inline-block;
+    min-width: 36px;
+    color: #333;
+    font-weight: 700;
+    text-align: center;
+}
+
+.exchange-modal-status {
+    min-height: 20px;
+    margin: 12px 0;
+    color: #555;
+    font-size: 13px;
+}
+
+.exchange-modal-status.error {
+    color: #c62828;
+}
+
+.exchange-total-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 0;
+    border-top: 1px solid #ddd;
+    color: #333;
+}
+
+.exchange-total-row strong {
+    color: #111;
+    font-size: 18px;
+}
+
+.exchange-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.exchange-modal-actions button {
+    min-width: 120px;
+    padding: 11px 16px;
+    border: 0;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.exchange-cancel-button {
+    background: #e6e6e6;
+    color: #222;
+}
+
+.exchange-save-button {
+    background: #13c84a;
+    color: #fff;
+}
+
+.exchange-save-button:hover:not(:disabled) {
+    background: #0eaa3d;
+}
+
+.exchange-modal-actions button:disabled {
+    cursor: wait;
+    opacity: 0.55;
 }
 
 /* Custom Dialog & Toast Animations */
