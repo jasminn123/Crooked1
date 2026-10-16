@@ -5,6 +5,16 @@ body {
   color: #ffffff;
 }
 
+:root {
+  --card-bg: #1a1a1a;
+  --text-color: #ffffff;
+}
+
+html[data-theme="light"] {
+  --card-bg: #ffffff;
+  --text-color: #222222;
+}
+
 /* Header */
 .pos-header {
   display: flex;
@@ -265,9 +275,10 @@ body {
 
 /* Modal card */
 .modal-content {
+  box-sizing: border-box;
   background-color: #1e1e1e;
   border-radius: 10px;
-  width: 100%;
+  width: calc(100% - 28px);
   max-width: 400px;
   padding: 30px 20px;
   color: #fff;
@@ -416,21 +427,36 @@ input[type=number] {
     position: relative;
 }
 
-.modal-close-btn {
+button.modal-close-btn {
     position: absolute;
     top: 12px;
     right: 16px;
     color: #fff;
-    font-size: 20px;
-    cursor: pointer;
+    font: inherit;
+    font-size: 22px;
     line-height: 1;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent !important;
+    cursor: pointer;
     z-index: 100;
-    display: block;
-    width: fit-content;
+    display: grid;
+    place-items: center;
 }
 
-.modal-close-btn:hover {
+button.modal-close-btn:hover {
     color: #ccc;
+    background: transparent !important;
+}
+
+.modal-close-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
 }
 
 .variant-modal-content {
@@ -473,13 +499,67 @@ input[type=number] {
   opacity: 0.5;
 }
 
-@media (max-width: 900px) {
+@media (min-width: 521px) {
+  body {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .pos-header {
+    box-sizing: border-box;
+    height: 64px;
+    padding: 12px 20px;
+  }
+
   .pos-main {
+    flex-direction: row;
+    box-sizing: border-box;
+    height: calc(100vh - 64px);
+    height: calc(100dvh - 64px);
+    min-height: 0;
+    overflow: hidden;
+    align-items: stretch;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .product-catalog {
+    display: flex;
+    flex: 1 1 0;
     flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    align-content: start;
+    padding: 0 6px 6px 0;
+  }
+
+  .checkout-panel {
+    display: flex;
+    flex: 0 0 25%;
+    flex-direction: column;
+    min-width: 220px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .checkout-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 900px) {
+  .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -489,10 +569,96 @@ input[type=number] {
   }
 
   .pos-main {
+    flex-direction: column;
     padding: 14px;
   }
 
   .product-grid {
     grid-template-columns: 1fr;
   }
+}
+
+html[data-theme="light"] body {
+  background: #f4f4f4;
+  color: #222;
+}
+
+html[data-theme="light"] .pos-header {
+  background: #0b0b0b;
+  color: #fff;
+}
+
+html[data-theme="light"] .pos-main {
+  background: #f4f4f4;
+  color: #222;
+}
+
+html[data-theme="light"] .pos-search,
+html[data-theme="light"] .product-card,
+html[data-theme="light"] .checkout-panel {
+  background: #fff;
+  border-color: #ddd;
+  color: #222;
+}
+
+html[data-theme="light"] .pos-search input,
+html[data-theme="light"] .product-card h3,
+html[data-theme="light"] .product-card p,
+html[data-theme="light"] .product-card small,
+html[data-theme="light"] .checkout-panel h2,
+html[data-theme="light"] .checkout-list li,
+html[data-theme="light"] .checkout-total {
+  color: #222;
+}
+
+html[data-theme="light"] .product-variants,
+html[data-theme="light"] .checkout-item-subtotal {
+  color: #666;
+}
+
+html[data-theme="light"] .quantity-button {
+  background: #eee;
+  border-color: #ccc;
+  color: #222;
+}
+
+html[data-theme="light"] .quantity-button:hover:not(:disabled) {
+  background: #ddd;
+}
+
+html[data-theme="light"] .modal-content {
+  background: #fff;
+  color: #222;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+html[data-theme="light"] .modal-content h2,
+html[data-theme="light"] .modal-content h3,
+html[data-theme="light"] .modal-content p,
+html[data-theme="light"] .variant-product-name,
+html[data-theme="light"] .variant-field,
+html[data-theme="light"] .modal-close-btn {
+  color: #222 !important;
+}
+
+html[data-theme="light"] .modal-content input,
+html[data-theme="light"] .variant-field select {
+  background: #fff;
+  border-color: #ccc;
+  color: #222;
+}
+
+html[data-theme="light"] .modal-actions .btn {
+  background: #eee;
+  border-color: #ccc;
+  color: #222;
+}
+
+html[data-theme="light"] .modal-actions .btn:hover {
+  background: #ddd;
+  color: #111;
+}
+
+html[data-theme="light"] button.modal-close-btn:hover {
+  color: #555 !important;
 }

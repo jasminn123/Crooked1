@@ -6,8 +6,8 @@
     <title>CRKD | Management</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../design/dashboard.css?v=8">
-    <link rel="stylesheet" href="../design/forecasting.css?v=3">
+    <link rel="stylesheet" href="../design/dashboard.css?v=18">
+    <link rel="stylesheet" href="../design/forecasting.css?v=5">
 </head>
 
 <body>
@@ -65,9 +65,7 @@
 
                         <div class="profile-card-body">
                             <button onClick="window.location.href='../page/PointofSale.html'">Switch to POS</button>
-                            <button class="owner-only" onclick="profile()">Profile</button>
-                            <button onClick="toggleDarkMode()">Dark Mode</button>
-                            <button onClick="logout()">FAQ</button>
+                            <button class="theme-toggle-button" type="button" onclick="toggleDarkMode()">Light Mode</button>
                             <button onClick="logout()">Logout</button>
                         </div>
                     </div>
@@ -124,8 +122,8 @@
                 <div class="card">
                     <h3>Recent Activity Logs</h3>
 
-                    <div class="table-container">
-                        <table>
+                    <div class="transaction-table-scroll recent-activity-table-scroll">
+                        <table class="transaction-table">
                             <thead>
                                 <tr>
                                     <th>Staff Name</th>
@@ -142,7 +140,7 @@
             </div>
 
             <!-- PRODUCTS SECTION -->
-            <div id="view-products" class="content-section" style="display:none; background-color:#ffffff; min-height:100vh; padding:40px;">
+            <div id="view-products" class="content-section" style="display:none; background-color:#F7F2EB; min-height:100vh; padding:40px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:30px; border-bottom:1px solid #eee; padding:20px;">
                     <div>
                         <h1 style="color:#000; margin:0; font-size:28px; font-weight:700; letter-spacing:-0.5px;">Product Management</h1>
@@ -155,7 +153,7 @@
                         <span style="position:absolute; left:12px; top:10px; color:#aaa;">🔍</span>
 
                         <button id="addNewProductBtn" class="owner-only" onclick="openAddModal()"
-                            style="background:#000; color:#fff; padding:12px 24px; border:none; border-radius:6px; font-weight:600; cursor:pointer; transition:0.25s;">
+                            style="background:#2ecc71; color:#000; padding:12px 24px; border:none; border-radius:6px; font-weight:600; cursor:pointer; transition:0.25s;">
                             + Add Product
                         </button>
                     </div>
@@ -199,10 +197,10 @@
                         <table class="transaction-table">
                             <thead>
                                 <tr>
-                                    <th>TRANSACTION ID</th>
                                     <th>DATE & TIME</th>
                                     <th>TOTAL AMOUNT</th>
                                     <th>REFERENCE ID</th>
+                                    <th>ASSISTED BY</th>
                                     <th>STATUS</th>
                                     <th>EDIT</th>
                                 </tr>
@@ -260,7 +258,6 @@
                                     <th>DATE & TIME</th>
                                     <th>REFERENCE ID</th>
                                     <th>TOTAL AMOUNT</th>
-                                    <th>ASSISTED BY</th>
                                     <th>STATUS</th>
                                 </tr>
                             </thead>
@@ -375,25 +372,25 @@
 
             <!-- FORECASTING SECTION -->
             <div id="view-forecasting" class="content-section table-page-section forecasting-section" style="display:none;">
-                <div class="card">
-                    <h2>Demand-based Stock Forecast</h2>
-                    <p>Low-stock thresholds are recalculated from each active product's average daily sales over the last 7 days, with 2 days of demand coverage.</p>
-                    <div class="data-table-panel">
-                        <div class="transaction-table-scroll">
-                            <table class="transaction-table">
-                                <thead>
-                                    <tr>
-                                        <th>PRODUCT</th>
-                                        <th>AVERAGE SOLD / DAY</th>
-                                        <th>LOW-STOCK THRESHOLD</th>
-                                        <th>SALES VELOCITY</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="forecastTableBody">
-                                    <tr><td colspan="4">Loading forecast data...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                <div class="data-table-panel">
+                    <div class="forecasting-header">
+                        <h2>Demand-based Stock Forecast</h2>
+                        <p>Low-stock thresholds are recalculated from each active product's average daily sales over the last 7 days, with 2 days of demand coverage.</p>
+                    </div>
+                    <div class="transaction-table-scroll">
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th>PRODUCT</th>
+                                    <th>AVERAGE SOLD / DAY</th>
+                                    <th>LOW-STOCK THRESHOLD</th>
+                                    <th>SALES VELOCITY</th>
+                                </tr>
+                            </thead>
+                            <tbody id="forecastTableBody">
+                                <tr><td colspan="4">Loading forecast data...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -457,8 +454,9 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="../javascript/forecasting.js?v=1"></script>
-    <script src="../javascript/dashboard.js?v=19"></script>
+    <script src="../javascript/forecasting.js?v=2"></script>
+    <script src="../javascript/theme.js?v=1"></script>
+    <script src="../javascript/dashboard.js?v=21"></script>
 
 </body>
 </html>

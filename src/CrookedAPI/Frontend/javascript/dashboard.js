@@ -564,7 +564,7 @@ async function loadSalesHistory() {
         if (!transactions.length) {
             const row = document.createElement('tr');
             const cell = document.createElement('td');
-            cell.colSpan = 5;
+            cell.colSpan = 4;
             cell.className = 'transaction-empty';
             cell.textContent = 'No sales recorded yet.';
             row.appendChild(cell);
@@ -578,7 +578,6 @@ async function loadSalesHistory() {
                 transaction.date_time,
                 transaction.reference_id,
                 `₱${Number(transaction.total_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
-                transaction.assisted_by || 'Unknown',
                 transaction.has_exchange ? 'Exchanged' : transaction.status
             ].forEach(value => {
                 const cell = document.createElement('td');
@@ -592,7 +591,7 @@ async function loadSalesHistory() {
         tbody.replaceChildren();
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.colSpan = 5;
+        cell.colSpan = 4;
         cell.className = 'transaction-empty';
         cell.textContent = 'Unable to load sales history.';
         row.appendChild(cell);
@@ -627,15 +626,15 @@ function renderTransactionTable(transactions) {
 
         const row = document.createElement('tr');
         [
-            txn.transaction_id,
             txn.date_time,
             `₱${Number(txn.total_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
             txn.reference_id || '—',
+            txn.assisted_by || 'Unknown',
             displayStatus
         ].forEach((value, index) => {
             const cell = document.createElement('td');
             cell.textContent = value;
-            if (index === 1 || index === 3) cell.className = 'col-muted';
+            if (index === 0 || index === 2 || index === 3) cell.className = 'col-muted';
             if (index === 4) cell.className = statusClass;
             row.appendChild(cell);
         });

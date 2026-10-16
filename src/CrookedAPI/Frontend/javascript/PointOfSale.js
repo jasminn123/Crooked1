@@ -638,6 +638,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("closeReceiptBtn")?.addEventListener("click", () => hideModal("receiptModal"));
   document.getElementById("closePaymentBtn")?.addEventListener("click", () => hideModal("paymentModal"));
   document.getElementById("closeVariantModalBtn")?.addEventListener("click", () => hideModal("variantModal"));
+  document.getElementById("closeCashBtn")?.addEventListener("click", () => hideModal("cashModal"));
+  document.getElementById("closeGCashBtn")?.addEventListener("click", () => hideModal("gcashModal"));
   document.getElementById("cancelVariantBtn")?.addEventListener("click", () => hideModal("variantModal"));
   variantModal.addEventListener("click", event => {
     if (event.target === variantModal) hideModal("variantModal");

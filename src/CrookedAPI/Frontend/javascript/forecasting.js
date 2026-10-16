@@ -4,6 +4,23 @@
         : 'http://127.0.0.1:5055';
     let salesChartInstance;
 
+    function updateSalesChartTheme(theme) {
+        if (!salesChartInstance) return;
+
+        const foreground = theme === 'light' ? '#555' : '#ddd';
+        const grid = theme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+        salesChartInstance.options.scales.x.ticks.color = foreground;
+        salesChartInstance.options.scales.x.grid.color = grid;
+        salesChartInstance.options.scales.y.ticks.color = foreground;
+        salesChartInstance.options.scales.y.grid.color = grid;
+        salesChartInstance.options.plugins.legend.labels.color = foreground;
+        salesChartInstance.update();
+    }
+
+    window.addEventListener('themechange', event => {
+        updateSalesChartTheme(event.detail.theme);
+    });
+
     async function loadSalesAnalytics(updateChart = true) {
         const status = document.getElementById('salesAnalyticsStatus');
         try {
@@ -55,6 +72,10 @@
 
         if (salesChartInstance) salesChartInstance.destroy();
 
+        const chartForeground = document.documentElement.dataset.theme === 'light' ? '#555' : '#ddd';
+        const chartGrid = document.documentElement.dataset.theme === 'light'
+            ? 'rgba(0,0,0,0.08)'
+            : 'rgba(255,255,255,0.08)';
         const labels = analytics.dates.map(date =>
             new Date(`${date}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }));
         salesChartInstance = new Chart(canvas.getContext('2d'), {
@@ -76,18 +97,18 @@
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 scales: {
-                    x: { ticks: { color: '#ddd' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                    x: { ticks: { color: chartForeground }, grid: { color: chartGrid } },
                     y: {
                         beginAtZero: true,
-                        ticks: { color: '#ddd', precision: 0 },
-                        grid: { color: 'rgba(255,255,255,0.08)' }
+                        ticks: { color: chartForeground, precision: 0 },
+                        grid: { color: chartGrid }
                     }
                 },
                 plugins: {
                     legend: {
                         display: true,
                         position: 'bottom',
-                        labels: { color: '#ddd' }
+                        labels: { color: chartForeground }
                     }
                 }
             }

@@ -14,6 +14,10 @@
     font-size: 17px;
 }
 
+.forecast-notification-button i {
+    color: #fff;
+}
+
 .forecast-notification-button:hover,
 .forecast-notification-button[aria-expanded="true"] {
     background: #292929;
@@ -119,20 +123,34 @@
     color: #fff;
 }
 
-.forecasting-section > .card {
-    box-sizing: border-box;
-    width: 100%;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
+[data-theme="light"] .forecast-notification-button i {
+    color: #fff !important;
 }
 
-.forecasting-section .card > h2,
-.forecasting-section .card > p {
-    color: #000;
+.forecasting-section > .data-table-panel {
+    padding: 10px;
 }
 
-.forecasting-section .card > p {
+.forecasting-header {
+    padding: 4px 4px 16px;
+}
+
+.forecasting-header h2 {
+    margin: 0 0 8px;
+    color: #fff;
+    font-size: 20px;
+}
+
+.forecasting-header p {
+    margin: 0;
+    color: #aaa;
     line-height: 1.5;
+}
+
+[data-theme="light"] .forecasting-header h2 {
+    color: #222;
+}
+
+[data-theme="light"] .forecasting-header p {
+    color: #666;
 }

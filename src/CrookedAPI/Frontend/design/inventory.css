@@ -53,3 +53,34 @@ body {
   text-align: center;
   padding: 20px;
 }
+
+.inventory-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #333;
+  border-radius: 8px;
+}
+
+.inventory-table-scroll .styled-table {
+  min-width: 680px;
+  margin-top: 0;
+}
+
+@media (max-width: 768px) {
+  .inventory-container {
+    padding: 16px;
+  }
+
+  .inventory-header {
+    padding: 12px 4px 20px;
+  }
+
+  .login-title {
+    font-size: clamp(36px, 8vw, 52px);
+  }
+
+  .styled-table th,
+  .styled-table td {
+    padding: 12px;
+  }
+}

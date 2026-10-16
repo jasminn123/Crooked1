@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Point of Sale</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="../design/PointofSale.css?v=4">
+  <link rel="stylesheet" href="../design/PointofSale.css?v=17">
 </head>
 <body>
 
@@ -21,9 +21,7 @@
           </div>
           <div class="profile-card-body">
             <button onclick="window.location.href='../page/dashboard.html'">Switch to DASHBOARD</button>
-            <button>Profile</button>
-            <button>Toggle DarkMode</button>
-            <button>FAQ</button>
+            <button class="theme-toggle-button" type="button" onclick="toggleDarkMode()">Light Mode</button>
             <button onclick="window.location.href='../page/index.html'">LOGOUT</button>
           </div>
         </div>
@@ -59,7 +57,7 @@
   <div id="variantModal" class="modal" role="dialog" aria-modal="true"
     aria-labelledby="variantModalTitle" aria-hidden="true">
     <div class="modal-content variant-modal-content">
-      <button id="closeVariantModalBtn" class="modal-close-btn" type="button" aria-label="Close">✕</button>
+      <button id="closeVariantModalBtn" class="modal-close-btn" type="button" aria-label="Close product options">×</button>
       <h2 id="variantModalTitle">Choose product options</h2>
       <p id="variantProductName" class="variant-product-name"></p>
       <label class="variant-field">
@@ -80,7 +78,7 @@
 
   <div id="receiptModal" class="modal">
     <div class="modal-content">
-      <span id="closeReceiptBtn" class="modal-close-btn">✕</span>
+      <button id="closeReceiptBtn" class="modal-close-btn" type="button" aria-label="Close receipt prompt">×</button>
       <h2>Do you want to print a receipt?</h2>
       <div class="modal-actions">
         <button id="receiptYesBtn" class="btn">YES</button>
@@ -91,7 +89,7 @@
 
   <div id="paymentModal" class="modal">
     <div class="modal-content">
-      <span id="closePaymentBtn" class="modal-close-btn">✕</span>
+      <button id="closePaymentBtn" class="modal-close-btn" type="button" aria-label="Close payment method selection">×</button>
       <h3>Total Amount: <span id="modalTotal">&#8369;0.00</span></h3>
       <p>Select Payment Method:</p>
       <div class="modal-actions">
@@ -103,6 +101,7 @@
 
   <div id="cashModal" class="modal">
   <div class="modal-content">
+    <button id="closeCashBtn" class="modal-close-btn" type="button" aria-label="Close cash payment">×</button>
     <h3>Total Amount: <span id="cashTotal">&#8369;0.00</span></h3>
     <input id="amountReceived" type="text" inputmode="decimal" maxlength="8" placeholder="Enter amount received" autocomplete="off">
     <p>Change: <span id="changeDisplay">&#8369;0.00</span></p>
@@ -115,6 +114,7 @@
 
   <div id="gcashModal" class="modal">
     <div class="modal-content">
+      <button id="closeGCashBtn" class="modal-close-btn" type="button" aria-label="Close GCash payment">×</button>
       <h3>Total Amount: <span id="gcashTotal">&#8369;0.00</span></h3>
       <input id="gcashRefId" type="text" placeholder="Enter Reference ID">
       <div class="modal-actions">
@@ -124,7 +124,8 @@
     </div>
   </div>
 
-  <script src="../javascript/PointOfSale.js?v=8"></script>
+  <script src="../javascript/theme.js?v=1"></script>
+  <script src="../javascript/PointOfSale.js?v=9"></script>
 
 </body>
 </html>

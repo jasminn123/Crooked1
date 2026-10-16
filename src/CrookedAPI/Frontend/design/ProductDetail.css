@@ -136,7 +136,20 @@ button.btn-dark:hover {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .product-detail {
+    padding: 2rem 1.25rem;
+  }
+
   .row {
     flex-direction: column;
+  }
+
+  .col-md-6 {
+    min-width: 0;
+    width: 100%;
+  }
+
+  #product-title {
+    font-size: 1.75rem;
   }
 }

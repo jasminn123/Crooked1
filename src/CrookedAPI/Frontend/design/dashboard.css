@@ -97,6 +97,10 @@ body {
     color: #888; 
     transition: 0.3s;
 }
+.nav-item:hover {
+    background: #fff;
+    color: #000;
+}
 .nav-active { 
     background: #fff !important; 
     color: #000 !important; 
@@ -838,9 +842,9 @@ input:checked + .pill-slider .night-text {
 /* Tab Buttons */
 .tab-btn {
     padding: 10px 22px;
-    border: 1px solid #e0e0e0;
-    background: #fff;
-    color: #555;
+    border: 1px solid #333;
+    background: #141414;
+    color: #ccc;
     border-radius: 5px;
     cursor: pointer;
     font-weight: 500;
@@ -848,46 +852,111 @@ input:checked + .pill-slider .night-text {
 }
 
 .tab-btn:hover {
-    border-color: #000;
-    background: #f8f8f8;
-    color: #000;
+    border-color: #777;
+    background: #222;
+    color: #fff;
 }
 
 .tab-btn.active {
-    background: #000 !important;
-    color: #fff !important;
-    border-color: #000;
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #fff;
 }
 
 
 /* Product Card Design */
 .product-card {
-    background: #fff;
-    border: 1px solid #f0f0f0;
+    background: #141414;
+    border: 1px solid #333;
     border-radius: 12px;
     padding: 15px;
     transition: all 0.3s ease;
 }
 
 .product-card:hover {
-   .product-card:hover {
-    box-shadow: 0 15px 30px rgba(0,0,0,0.08);
-}
+    box-shadow: 0 15px 30px rgba(0,0,0,0.35);
+    border-color: #555;
 }
 
 /* Image Placeholder Container */
 .img-placeholder {
     width: 100%;
     height: 180px;
-    background-color: #f6f6f6;
+    background-color: #222;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 15px;
-    color: #ccc;
+    color: #888;
     font-size: 12px;
-    border: 1px dashed #eee;
+    border: 1px dashed #444;
+}
+
+#view-products {
+    box-sizing: border-box;
+    background-color: #0b0b0b !important;
+    color: #fff;
+    border: 1px solid #222;
+    border-radius: 12px;
+}
+
+#view-products > div:first-child {
+    border-bottom-color: #333 !important;
+}
+
+#view-products > div:first-child h1,
+#view-products .product-card h3 {
+    color: #fff !important;
+}
+
+#view-products > div:first-child p {
+    color: #aaa !important;
+}
+
+#view-products #productSearch {
+    background: #141414 !important;
+    border-color: #333 !important;
+    color: #fff;
+}
+
+#view-products .product-card > div:not(.img-placeholder) {
+    color: #ccc !important;
+}
+
+#view-products .product-card > div:not(.img-placeholder) span:last-child,
+#view-products .product-card > div:not(.img-placeholder) span:last-child strong {
+    color: #ccc !important;
+}
+
+#view-products .product-card > div[style*="font-size:12px"] span:last-child strong[style*="#000"] {
+    color: #fff !important;
+}
+
+#view-products .product-card > div[style*="font-size:12px"] span:last-child strong[style*="#ff4d4d"] {
+    color: #ff4d4d !important;
+}
+
+#view-products .product-card > div[style*="border-top"] {
+    border-top-color: #333 !important;
+}
+
+#view-products .action-btn.btn-edit {
+    background: #222;
+    color: #fff;
+}
+
+#view-products .action-btn.btn-edit:hover {
+    background: #333;
+}
+
+#view-products .action-btn.btn-archive {
+    background: #351818;
+    color: #ff7777;
+}
+
+#view-products .archived-products {
+    border-color: #441111;
 }
 
 .action-btn {
@@ -998,6 +1067,10 @@ input:checked + .pill-slider .night-text {
     max-height: 500px;
     overflow: auto;
     border-radius: 8px;
+}
+
+.recent-activity-table-scroll {
+    max-height: 300px;
 }
 
 .transaction-table-scroll::-webkit-scrollbar {
@@ -1249,4 +1322,357 @@ input:checked + .pill-slider .night-text {
 
 #customDialog button:active {
     transform: scale(0.98);
+}
+
+@media (max-width: 1100px) {
+    .content-wrapper {
+        padding: 24px;
+    }
+
+    .stats-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .dashboard-stats-container {
+        flex-direction: column;
+    }
+
+    #view-products {
+        min-height: 0 !important;
+        padding: 24px !important;
+    }
+
+    #view-products > div:first-child {
+        flex-wrap: wrap;
+        align-items: center !important;
+        gap: 18px;
+        padding: 16px !important;
+    }
+
+    #view-products > div:first-child > div:last-child {
+        flex-wrap: wrap;
+        gap: 12px !important;
+    }
+
+    #view-products #productSearch {
+        width: min(280px, 100%) !important;
+    }
+
+    .transaction-table-scroll,
+    .table-container {
+        overflow: auto;
+    }
+
+    .transaction-table {
+        min-width: 620px;
+    }
+}
+
+@media (max-width: 800px) {
+    body {
+        display: block;
+    }
+
+    .sidebar {
+        position: sticky;
+        top: 0;
+        width: 100%;
+        height: auto;
+        min-height: 64px;
+        padding: 8px 12px;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        overflow-x: auto;
+        border-right: 0;
+        border-bottom: 1px solid #222;
+    }
+
+    .logo-container {
+        flex: 0 0 auto;
+    }
+
+    .logo-img {
+        width: 54px;
+        margin: 0 8px 0 0;
+    }
+
+    .nav-item {
+        flex: 0 0 auto;
+        padding: 12px;
+        white-space: nowrap;
+        font-size: 12px;
+    }
+
+    .main {
+        min-width: 0;
+        margin-left: 0;
+    }
+
+    .top-header {
+        position: relative;
+    }
+
+    .content-wrapper {
+        padding: 20px;
+    }
+
+    .card {
+        max-width: 100%;
+        padding: 18px;
+    }
+
+    #view-products {
+        padding: 20px !important;
+    }
+
+    #view-products > div:first-child {
+        margin-bottom: 20px !important;
+    }
+
+    #view-products .category-tabs {
+        flex-wrap: wrap;
+        gap: 8px !important;
+        margin-bottom: 20px !important;
+    }
+
+    #productGrid {
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important;
+        gap: 16px;
+    }
+
+    .data-table-panel {
+        padding: 8px;
+    }
+}
+
+@media (max-width: 520px) {
+    .content-wrapper {
+        padding: 14px;
+    }
+
+    .stats-container {
+        grid-template-columns: 1fr !important;
+    }
+
+    #view-products {
+        padding: 14px !important;
+    }
+
+    #view-products > div:first-child {
+        padding: 12px 0 !important;
+    }
+
+    #view-products > div:first-child > div:last-child,
+    #view-products #productSearch {
+        width: 100% !important;
+    }
+
+    #productGrid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .archived-products {
+        padding: 16px;
+    }
+
+    .archived-products-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .main,
+html[data-theme="light"] .content-wrapper,
+html[data-theme="light"] .content-section {
+    background: #f4f4f4 !important;
+    color: #222 !important;
+}
+
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .top-header {
+    background: #000 !important;
+    color: #fff !important;
+}
+
+html[data-theme="light"] .sidebar .nav-item {
+    color: #aaa;
+}
+
+html[data-theme="light"] .sidebar .nav-item:hover,
+html[data-theme="light"] .sidebar .nav-active {
+    background: #fff !important;
+    color: #000 !important;
+}
+
+html[data-theme="light"] .top-header .Owner,
+html[data-theme="light"] .top-header .profile-icon,
+html[data-theme="light"] .top-header .profile-icon i,
+html[data-theme="light"] .top-header #forecastNotificationButton {
+    color: #fff !important;
+}
+
+html[data-theme="light"] .card,
+html[data-theme="light"] .stat-card,
+html[data-theme="light"] .chart-card,
+html[data-theme="light"] #view-products,
+html[data-theme="light"] #view-products .product-card,
+html[data-theme="light"] #view-products .archived-products,
+html[data-theme="light"] #view-products .archived-product-card,
+html[data-theme="light"] #view-dashboard [style*="background:#1a1a1a"],
+html[data-theme="light"] #view-dashboard [style*="background:#141414"],
+html[data-theme="light"] #view-dashboard [style*="background:#0b0b0b"],
+html[data-theme="light"] #view-users [style*="background:#1a1a1a"],
+html[data-theme="light"] #view-users [style*="background:#141414"] {
+    background: #fff !important;
+    border-color: #ddd !important;
+    color: #222 !important;
+}
+
+html[data-theme="light"] .data-table-panel,
+html[data-theme="light"] .table-container,
+html[data-theme="light"] .transaction-table-scroll {
+    background: #fff !important;
+    border-color: #ddd !important;
+}
+
+html[data-theme="light"] .card h1,
+html[data-theme="light"] .card h2,
+html[data-theme="light"] .card h3,
+html[data-theme="light"] .card p,
+html[data-theme="light"] .stat-card h2,
+html[data-theme="light"] .stat-card h3,
+html[data-theme="light"] .chart-card h3,
+html[data-theme="light"] .chart-card p,
+html[data-theme="light"] #view-products h1,
+html[data-theme="light"] #view-products h2,
+html[data-theme="light"] #view-products h3,
+html[data-theme="light"] #view-products p,
+html[data-theme="light"] #view-products .product-card > div,
+html[data-theme="light"] #view-products .product-card > div span,
+html[data-theme="light"] #view-products .product-card > div strong,
+html[data-theme="light"] #view-products .archived-product-card,
+html[data-theme="light"] #view-products .archived-product-card span,
+html[data-theme="light"] #view-dashboard [style*="color:#888"],
+html[data-theme="light"] #view-dashboard [style*="color:#fff"],
+html[data-theme="light"] #view-dashboard [style*="color:white"],
+html[data-theme="light"] #view-users h2,
+html[data-theme="light"] #view-users h3,
+html[data-theme="light"] #view-users p {
+    color: #222 !important;
+}
+
+html[data-theme="light"] #view-products #productSearch,
+html[data-theme="light"] .inventory-toolbar input,
+html[data-theme="light"] input:not([type="file"]),
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+    background: #fff !important;
+    border-color: #ccc !important;
+    color: #222 !important;
+}
+
+html[data-theme="light"] .transaction-table {
+    color: #222;
+}
+
+html[data-theme="light"] .transaction-table thead tr {
+    border-bottom-color: #ddd;
+}
+
+html[data-theme="light"] .transaction-table th,
+html[data-theme="light"] .transaction-table thead th {
+    background: #eee !important;
+    color: #555 !important;
+}
+
+html[data-theme="light"] th {
+    background: #eee !important;
+    border-bottom-color: #ddd !important;
+    color: #555 !important;
+}
+
+html[data-theme="light"] .transaction-table td,
+html[data-theme="light"] td {
+    border-bottom-color: #e5e5e5;
+    color: #333;
+}
+
+html[data-theme="light"] .transaction-table .col-muted {
+    color: #666;
+}
+
+html[data-theme="light"] .transaction-table .status-completed,
+html[data-theme="light"] .inventory-stock-available {
+    color: #23834a !important;
+}
+
+html[data-theme="light"] .transaction-table .status-exchanged {
+    color: #2675ad !important;
+}
+
+html[data-theme="light"] .transaction-table .status-pending {
+    color: #9a5c0b !important;
+}
+
+html[data-theme="light"] .transaction-table .status-voided,
+html[data-theme="light"] .inventory-stock-low,
+html[data-theme="light"] .inventory-stock-out {
+    color: #c62828 !important;
+}
+
+html[data-theme="light"] .transaction-table-scroll::-webkit-scrollbar-thumb {
+    background: #bbb;
+}
+
+html[data-theme="light"] .transaction-edit-button {
+    background: #f4f4f4;
+    border-color: #ccc;
+    color: #222;
+}
+
+html[data-theme="light"] .transaction-edit-button:hover,
+html[data-theme="light"] .transaction-edit-button:focus-visible {
+    background: #e5e5e5;
+    border-color: #777;
+}
+
+html[data-theme="light"] .exchange-modal-content,
+html[data-theme="light"] .product-modal-content,
+html[data-theme="light"] #addProductModal > div,
+html[data-theme="light"] #editProductModal > div {
+    background: #fff;
+    color: #222;
+}
+
+html[data-theme="light"] .exchange-modal-header h2,
+html[data-theme="light"] .exchange-total-row strong {
+    color: #222;
+}
+
+html[data-theme="light"] .exchange-table-scroll,
+html[data-theme="light"] .exchange-table {
+    background: #fff;
+    color: #222;
+}
+
+html[data-theme="light"] .exchange-table th {
+    background: #eee;
+    color: #333;
+}
+
+html[data-theme="light"] .profile-card {
+    background: #fff;
+    border-color: #ddd;
+    color: #222;
+}
+
+html[data-theme="light"] .profile-card-header,
+html[data-theme="light"] .profile-card-body button {
+    color: #222;
+}
+
+html[data-theme="light"] .profile-card-body button:hover {
+    background: #eee;
 }
