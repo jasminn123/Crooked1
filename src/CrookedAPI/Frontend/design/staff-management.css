@@ -1,0 +1,44 @@
+/* ── STAFF MANAGEMENT ── */
+
+.staff-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    align-items: end;
+    gap: 16px;
+}
+
+.staff-form .btn {
+    min-width: 160px;
+}
+
+.table-container {
+    max-height: 320px;
+}
+
+.archive-card {
+    border-color: var(--color-danger-border);
+}
+
+.archive-card-title {
+    color: var(--color-danger);
+}
+
+@media (max-width: 1100px) {
+    .staff-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .staff-form .btn {
+        justify-self: start;
+    }
+}
+
+@media (max-width: 520px) {
+    .staff-form {
+        grid-template-columns: 1fr;
+    }
+
+    .staff-form .btn {
+        width: 100%;
+    }
+}

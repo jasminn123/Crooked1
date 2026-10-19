@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRKD | Products</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../design/dashboard.css?v=23">
+    <link rel="stylesheet" href="../design/products.css?v=2">
+
+    <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
+    <script src="../javascript/theme.js?v=2"></script>
+</head>
+
+<body data-page="products" data-owner-only>
+
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar" aria-label="Main navigation">
+
+        <div class="logo-container">
+            <img src="../assets/logo.png" alt="CRKD" class="logo-img">
+        </div>
+
+        <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i>DASHBOARD</a>
+        <a id="nav-products" href="products.html" class="nav-item nav-active" aria-current="page"><i class="fa-solid fa-shirt" aria-hidden="true"></i>PRODUCTS</a>
+        <a href="inventory.html" class="nav-item"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>INVENTORY</a>
+        <a href="transaction-logs.html" class="nav-item"><i class="fa-solid fa-receipt" aria-hidden="true"></i>TRANSACTION LOGS</a>
+        <a id="nav-sales-history" href="sales-history.html" class="nav-item"><i class="fa-solid fa-chart-line" aria-hidden="true"></i>SALES HISTORY</a>
+        <a id="nav-staff-management" href="staff-management.html" class="nav-item"><i class="fa-solid fa-users" aria-hidden="true"></i>STAFF MANAGEMENT</a>
+        <a id="nav-forecasting" href="forecasting.html" class="nav-item"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>FORECASTING</a>
+
+    </nav>
+
+    <!--- MAIN CONTENT --->
+    <div class="main">
+
+        <!-- TOP HEADER (sticky) -->
+        <header class="top-header">
+            <div class="header-icons">
+
+                <div id="forecastNotifications" class="forecast-notifications" style="display:none;">
+                    <button id="forecastNotificationButton" class="forecast-notification-button" type="button"
+                        aria-label="Forecast notifications" aria-expanded="false" aria-controls="forecastNotificationPanel">
+                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                        <span id="forecastNotificationCount" class="forecast-notification-count" style="display:none;" aria-hidden="true">0</span>
+                    </button>
+                    <div id="forecastNotificationPanel" class="forecast-notification-panel" style="display:none;">
+                        <h3>Forecast Notifications</h3>
+                        <div id="forecastNotificationList" class="forecast-notification-list">
+                            <p class="forecast-notification-empty">Loading notifications...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <!-- The button is named by the signed-in user's name (layout.js fills .Owner). -->
+                    <button type="button" class="profile-icon" onclick="toggleProfileCard(event)"
+                        aria-haspopup="true" aria-expanded="false" aria-controls="profileCard">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        <span class="Owner">Main Owner</span>
+                        <i class="fa-solid fa-chevron-down profile-chevron" aria-hidden="true"></i>
+                    </button>
+
+                    <div id="profileCard" class="profile-card">
+                        <div class="profile-card-header">
+                            <i class="fa-solid fa-user" aria-hidden="true"></i>
+                            <span>Main Owner</span>
+                        </div>
+
+                        <div class="profile-card-body">
+                            <button type="button" class="profile-menu-item" onclick="window.location.href='../page/PointofSale.html'">
+                                <i class="fa-solid fa-cash-register" aria-hidden="true"></i>
+                                Switch to POS
+                            </button>
+                            <button type="button" class="profile-menu-item theme-toggle-button" onclick="toggleDarkMode()">Light Mode</button>
+                            <hr class="profile-menu-separator">
+                            <button type="button" class="profile-menu-item profile-menu-item-danger" onclick="logout()">
+                                <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENT WRAPPER -->
+        <main id="main-content" class="content-wrapper" tabindex="-1">
+
+            <h1>PRODUCTS</h1>
+
+            <!-- PRODUCTS SECTION -->
+            <div id="view-products" class="content-section">
+
+                <div class="card page-toolbar">
+                    <div>
+                        <h2>Product Management</h2>
+                        <p>Review and manage Crooked Clothing stock levels.</p>
+                    </div>
+
+                    <div class="page-toolbar-actions">
+                        <div class="search-field">
+                            <label for="productSearch" class="visually-hidden">Search products</label>
+                            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                            <input type="search" id="productSearch" placeholder="Search products..." oninput="filterProducts()" autocomplete="off">
+                        </div>
+
+                        <button id="addNewProductBtn" class="btn btn-primary owner-only" type="button" onclick="openAddModal()">
+                            <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                            Add Product
+                        </button>
+                    </div>
+                </div>
+
+                <div class="category-tabs" role="group" aria-label="Filter products by category">
+                    <button type="button" class="tab-btn active" aria-pressed="true" onclick="filterBycategory('All', this)">All</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('Balaclavas', this)">Balaclavas</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('T-Shirts', this)">T-Shirts</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('Long Sleeves', this)">Long Sleeves</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('Shorts', this)">Shorts</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('Pants', this)">Pants</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('Tee Kids', this)">Tee Kids</button>
+                </div>
+
+                <div id="productGrid" class="product-grid">
+                    <!-- Product cards injected here -->
+                </div>
+
+                <section id="archivedProductsSection" class="archived-products" style="display:none;" aria-labelledby="archivedProductsTitle">
+                    <div class="archived-products-header">
+                        <div>
+                            <h2 id="archivedProductsTitle">Archived Products</h2>
+                            <p>Archived items are hidden from inventory and POS until restored.</p>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="fetchArchivedProducts()">Refresh</button>
+                    </div>
+                    <div id="archivedProductGrid" class="archived-product-grid">
+                        <p class="archived-products-empty">Loading archived products...</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ADD PRODUCT MODAL -->
+            <div id="addProductModal" class="modal product-modal" style="display:none;"
+                role="dialog" aria-modal="true" aria-labelledby="addProductTitle">
+                <div class="modal-content product-modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <h2 id="addProductTitle">Add New Product</h2>
+                            <p>Fields marked <span class="required-mark" aria-hidden="true">*</span><span class="visually-hidden">with an asterisk</span> are required.</p>
+                        </div>
+                        <button type="button" class="btn btn-ghost btn-icon" onclick="closeAddModal()" aria-label="Close add product form">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        </button>
+                    </div>
+
+                    <form id="productForm" class="modal-form" onsubmit="saveProduct(event)">
+                        <div class="form-field">
+                            <label for="prodImage">Product image</label>
+                            <input type="file" id="prodImage" accept="image/*">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="prodName">Product name <span class="required-mark" aria-hidden="true">*</span></label>
+                            <input type="text" id="prodName" placeholder="e.g. Core Identity Tee" autocomplete="off" required>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="prodCategory">Category <span class="required-mark" aria-hidden="true">*</span></label>
+                            <select id="prodCategory" required>
+                                <option value="Balaclavas">Balaclavas</option>
+                                <option value="T-Shirts">T-Shirts</option>
+                                <option value="Long Sleeves">Long Sleeves</option>
+                                <option value="Shorts">Shorts</option>
+                                <option value="Pants">Pants</option>
+                                <option value="Tee Kids">Tee Kids</option>
+                            </select>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label for="prodPrice">Price (₱) <span class="required-mark" aria-hidden="true">*</span></label>
+                                <input type="text" id="prodPrice" placeholder="0.00" inputmode="decimal" maxlength="8" required
+                                    oninput="limitAmountInput(this)" aria-describedby="prodPriceHint">
+                                <p id="prodPriceHint" class="field-hint">Up to 5 digits and 2 decimal places.</p>
+                            </div>
+                            <div class="form-field">
+                                <label for="prodStock">Stock quantity <span class="required-mark" aria-hidden="true">*</span></label>
+                                <input type="number" id="prodStock" placeholder="0" min="0" step="1" required>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label for="prodSize">Size</label>
+                                <input type="text" id="prodSize" placeholder="e.g. L, XL" autocomplete="off">
+                            </div>
+                            <div class="form-field">
+                                <label for="prodColor">Color</label>
+                                <input type="text" id="prodColor" placeholder="e.g. Black" autocomplete="off">
+                            </div>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Product</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- EDIT PRODUCT MODAL -->
+            <div id="editProductModal" class="modal product-modal" style="display:none;"
+                role="dialog" aria-modal="true" aria-labelledby="editProductTitle">
+                <div class="modal-content product-modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <h2 id="editProductTitle">Edit Product</h2>
+                            <p>Fields marked <span class="required-mark" aria-hidden="true">*</span><span class="visually-hidden">with an asterisk</span> are required.</p>
+                        </div>
+                        <button type="button" class="btn btn-ghost btn-icon" onclick="closeEditProductModal()" aria-label="Close edit product form">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        </button>
+                    </div>
+
+                    <form id="editProductForm" class="modal-form" onsubmit="saveProductEdit(event)">
+                        <input type="hidden" id="editProdId">
+
+                        <div class="form-field">
+                            <label for="editProdImage">Replace product image</label>
+                            <input type="file" id="editProdImage" accept="image/*">
+                            <img id="editProdImagePreview" class="edit-product-image-preview" alt="Current product image">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="editProdName">Product name <span class="required-mark" aria-hidden="true">*</span></label>
+                            <input type="text" id="editProdName" placeholder="e.g. Core Identity Tee" autocomplete="off" required>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="editProdCategory">Category <span class="required-mark" aria-hidden="true">*</span></label>
+                            <select id="editProdCategory" required>
+                                <option value="Balaclavas">Balaclavas</option>
+                                <option value="T-Shirts">T-Shirts</option>
+                                <option value="Long Sleeves">Long Sleeves</option>
+                                <option value="Shorts">Shorts</option>
+                                <option value="Pants">Pants</option>
+                                <option value="Tee Kids">Tee Kids</option>
+                            </select>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label for="editProdPrice">Price (₱) <span class="required-mark" aria-hidden="true">*</span></label>
+                                <input type="text" id="editProdPrice" placeholder="0.00" inputmode="decimal" maxlength="8" required
+                                    oninput="limitAmountInput(this)" aria-describedby="editProdPriceHint">
+                                <p id="editProdPriceHint" class="field-hint">Up to 5 digits and 2 decimal places.</p>
+                            </div>
+                            <div class="form-field">
+                                <label for="editProdStock">Stock quantity <span class="required-mark" aria-hidden="true">*</span></label>
+                                <input type="number" id="editProdStock" placeholder="0" min="0" step="1" required>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label for="editProdSize">Size</label>
+                                <input type="text" id="editProdSize" placeholder="e.g. L, XL" autocomplete="off">
+                            </div>
+                            <div class="form-field">
+                                <label for="editProdColor">Color</label>
+                                <input type="text" id="editProdColor" placeholder="e.g. Black" autocomplete="off">
+                            </div>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeEditProductModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="../javascript/layout.js?v=2"></script>
+    <script src="../javascript/products.js?v=2"></script>
+
+</body>
+</html>

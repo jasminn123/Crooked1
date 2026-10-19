@@ -3,129 +3,239 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Point of Sale</title>
+  <title>CRKD | Point of Sale</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="../design/PointofSale.css?v=17">
+  <link rel="stylesheet" href="../design/PointofSale.css?v=19">
+
+  <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
+  <script src="../javascript/theme.js?v=2"></script>
 </head>
 <body>
 
+  <a class="skip-link" href="#productSearch">Skip to product search</a>
+
+  <!-- TOP BAR (sticky) -->
   <header class="pos-header">
-    <div class="logo">CRKD</div>
-    <div class="header-actions">
-      <div class="profile-section">
-        <i id="userIcon" class="fa-regular fa-user"></i>
-        <div id="profileCard" class="profile-card">
-          <div class="profile-card-header">
-            <i class="fa-regular fa-user"></i>
-            <span>Main Owner</span>
-          </div>
-          <div class="profile-card-body">
-            <button onclick="window.location.href='../page/dashboard.html'">Switch to DASHBOARD</button>
-            <button class="theme-toggle-button" type="button" onclick="toggleDarkMode()">Light Mode</button>
-            <button onclick="window.location.href='../page/index.html'">LOGOUT</button>
-          </div>
+    <div class="pos-brand">
+      <img src="../assets/logo.png" alt="CRKD" class="pos-logo">
+      <h1 class="pos-title">Point of Sale</h1>
+    </div>
+
+    <div class="profile-section">
+      <!-- The button is named by the signed-in user's name (PointOfSale.js fills .pos-user-name). -->
+      <button type="button" id="userIcon" class="profile-icon"
+        aria-haspopup="true" aria-expanded="false" aria-controls="profileCard">
+        <i class="fa-solid fa-user" aria-hidden="true"></i>
+        <span class="pos-user-name">Main Owner</span>
+        <i class="fa-solid fa-chevron-down profile-chevron" aria-hidden="true"></i>
+      </button>
+
+      <div id="profileCard" class="profile-card">
+        <div class="profile-card-header">
+          <i class="fa-solid fa-user" aria-hidden="true"></i>
+          <span>Main Owner</span>
+        </div>
+
+        <div class="profile-card-body">
+          <button type="button" class="profile-menu-item" onclick="switchToDashboard()">
+            <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
+            Switch to Dashboard
+          </button>
+          <button type="button" class="profile-menu-item theme-toggle-button" onclick="toggleDarkMode()">Light Mode</button>
+          <hr class="profile-menu-separator">
+          <button type="button" class="profile-menu-item profile-menu-item-danger" onclick="logout()">
+            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+            Logout
+          </button>
         </div>
       </div>
     </div>
   </header>
 
-  <main class="pos-main">
-    <div class="product-catalog">
-      <label class="pos-search">
-        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-        <input id="productSearch" type="search" placeholder="Search products..." autocomplete="off"
-          aria-label="Search products">
-      </label>
-      <section class="product-grid" id="productGrid" aria-label="Products"></section>
-    </div>
+  <main id="main-content" class="pos-main">
 
-    <aside class="checkout-panel">
-      <h2>Checkout</h2>
-      <ul id="checkoutList" class="checkout-list"></ul>
-      <div class="checkout-total">
-        <strong>Total:</strong> <span id="checkoutTotal">&#8369;0.00</span>
+    <!-- PRODUCTS -->
+    <section class="product-catalog" aria-labelledby="productsHeading">
+      <h2 id="productsHeading" class="visually-hidden">Products</h2>
+
+      <div class="form-field pos-search">
+        <label for="productSearch">Search products</label>
+        <div class="search-field">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input id="productSearch" type="search" placeholder="Name, category, size or color" autocomplete="off"
+            aria-describedby="productSearchStatus">
+        </div>
+        <p id="productSearchStatus" class="field-hint" role="status" aria-live="polite">Loading products...</p>
       </div>
+
+      <ul class="product-grid" id="productGrid" aria-labelledby="productsHeading"></ul>
+    </section>
+
+    <!-- CHECKOUT -->
+    <aside class="checkout-panel" aria-labelledby="checkoutHeading">
+      <h2 id="checkoutHeading">Checkout</h2>
+      <p id="checkoutEmpty" class="checkout-empty">No items yet. Choose a product to add it.</p>
+      <ul id="checkoutList" class="checkout-list" aria-labelledby="checkoutHeading"></ul>
+      <p class="checkout-total">
+        <span>Total</span>
+        <strong id="checkoutTotal">&#8369;0.00</strong>
+      </p>
       <div class="checkout-actions">
-        <button class="btn checkout">CHECK OUT</button>
-        <button class="btn cancel" onclick="confirmCancelCheckout()">CANCEL</button>
+        <button type="button" id="checkoutBtn" class="btn btn-primary">Check Out</button>
+        <button type="button" id="cancelCheckoutBtn" class="btn btn-danger-outline" onclick="confirmCancelCheckout()">Cancel</button>
       </div>
     </aside>
   </main>
 
-  <!-- Modals outside main -->
+  <!-- Announces cart changes to screen readers. -->
+  <p id="posAnnouncer" class="visually-hidden" role="status" aria-live="polite"></p>
+
+  <!-- MODALS -->
 
   <div id="variantModal" class="modal" role="dialog" aria-modal="true"
-    aria-labelledby="variantModalTitle" aria-hidden="true">
-    <div class="modal-content variant-modal-content">
-      <button id="closeVariantModalBtn" class="modal-close-btn" type="button" aria-label="Close product options">×</button>
-      <h2 id="variantModalTitle">Choose product options</h2>
-      <p id="variantProductName" class="variant-product-name"></p>
-      <label class="variant-field">
-        <span>Size</span>
-        <select id="variantSize"></select>
-      </label>
-      <label class="variant-field">
-        <span>Color</span>
-        <select id="variantColor"></select>
-      </label>
-      <p id="variantAvailability" class="variant-availability" aria-live="polite"></p>
-      <div class="modal-actions">
-        <button id="cancelVariantBtn" class="btn" type="button">Cancel</button>
-        <button id="addVariantBtn" class="btn" type="button">Add to Checkout</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="receiptModal" class="modal">
+    aria-labelledby="variantModalTitle" aria-describedby="variantProductName" hidden>
     <div class="modal-content">
-      <button id="closeReceiptBtn" class="modal-close-btn" type="button" aria-label="Close receipt prompt">×</button>
-      <h2>Do you want to print a receipt?</h2>
-      <div class="modal-actions">
-        <button id="receiptYesBtn" class="btn">YES</button>
-        <button id="receiptNoBtn" class="btn">NO</button>
+      <div class="modal-header">
+        <div>
+          <h2 id="variantModalTitle">Choose product options</h2>
+          <p id="variantProductName"></p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-icon" data-close-modal aria-label="Close product options">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
       </div>
+
+      <form id="variantForm" class="modal-form" novalidate>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="variantSize">Size</label>
+            <select id="variantSize"></select>
+          </div>
+          <div class="form-field">
+            <label for="variantColor">Color</label>
+            <select id="variantColor"></select>
+          </div>
+        </div>
+
+        <p id="variantAvailability" class="variant-availability" aria-live="polite"></p>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button id="addVariantBtn" type="submit" class="btn btn-primary">Add to Checkout</button>
+        </div>
+      </form>
     </div>
   </div>
 
-  <div id="paymentModal" class="modal">
+  <div id="paymentModal" class="modal" role="dialog" aria-modal="true"
+    aria-labelledby="paymentModalTitle" aria-describedby="paymentModalText" hidden>
     <div class="modal-content">
-      <button id="closePaymentBtn" class="modal-close-btn" type="button" aria-label="Close payment method selection">×</button>
-      <h3>Total Amount: <span id="modalTotal">&#8369;0.00</span></h3>
-      <p>Select Payment Method:</p>
+      <div class="modal-header">
+        <div>
+          <h2 id="paymentModalTitle">Payment Method</h2>
+          <p id="paymentModalText">Total amount: <strong id="modalTotal">&#8369;0.00</strong></p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-icon" data-close-modal aria-label="Close payment method selection">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="payment-options" role="group" aria-label="Choose how the customer pays">
+        <button id="cashBtn" type="button" class="btn btn-primary" data-autofocus>
+          <i class="fa-solid fa-money-bill-wave" aria-hidden="true"></i>
+          Cash
+        </button>
+        <button id="gcashBtn" type="button" class="btn btn-primary">
+          <i class="fa-solid fa-mobile-screen-button" aria-hidden="true"></i>
+          GCash
+        </button>
+      </div>
+
       <div class="modal-actions">
-        <button id="cashBtn" class="btn">Cash</button>
-        <button id="gcashBtn" class="btn">GCash</button>
+        <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
       </div>
     </div>
   </div>
 
-  <div id="cashModal" class="modal">
-  <div class="modal-content">
-    <button id="closeCashBtn" class="modal-close-btn" type="button" aria-label="Close cash payment">×</button>
-    <h3>Total Amount: <span id="cashTotal">&#8369;0.00</span></h3>
-    <input id="amountReceived" type="text" inputmode="decimal" maxlength="8" placeholder="Enter amount received" autocomplete="off">
-    <p>Change: <span id="changeDisplay">&#8369;0.00</span></p>
-    <div class="modal-actions">
-      <button id="confirmCashBtn" class="btn">Confirm Payment</button>
-      <button class="btn" onclick="hideModal('cashModal')">Cancel</button>
-    </div>
-  </div>
-</div>
-
-  <div id="gcashModal" class="modal">
+  <div id="cashModal" class="modal" role="dialog" aria-modal="true"
+    aria-labelledby="cashModalTitle" aria-describedby="cashModalText" hidden>
     <div class="modal-content">
-      <button id="closeGCashBtn" class="modal-close-btn" type="button" aria-label="Close GCash payment">×</button>
-      <h3>Total Amount: <span id="gcashTotal">&#8369;0.00</span></h3>
-      <input id="gcashRefId" type="text" placeholder="Enter Reference ID">
+      <div class="modal-header">
+        <div>
+          <h2 id="cashModalTitle">Cash Payment</h2>
+          <p id="cashModalText">Total amount: <strong id="cashTotal">&#8369;0.00</strong></p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-icon" data-close-modal aria-label="Close cash payment">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <form id="cashForm" class="modal-form" novalidate>
+        <div class="form-field">
+          <label for="amountReceived">Amount received (&#8369;)</label>
+          <input id="amountReceived" type="text" inputmode="decimal" maxlength="8" placeholder="0.00" autocomplete="off"
+            required aria-describedby="amountReceivedHint">
+          <p id="amountReceivedHint" class="field-hint">Up to 5 digits and 2 decimal places.</p>
+        </div>
+
+        <p id="changeLine" class="payment-summary" role="status" aria-live="polite">
+          <span id="changeLabel">Change:</span> <strong id="changeDisplay">&#8369;0.00</strong>
+        </p>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button id="confirmCashBtn" type="submit" class="btn btn-primary">Confirm Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="gcashModal" class="modal" role="dialog" aria-modal="true"
+    aria-labelledby="gcashModalTitle" aria-describedby="gcashModalText" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 id="gcashModalTitle">GCash Payment</h2>
+          <p id="gcashModalText">Total amount: <strong id="gcashTotal">&#8369;0.00</strong></p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-icon" data-close-modal aria-label="Close GCash payment">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <form id="gcashForm" class="modal-form" novalidate>
+        <div class="form-field">
+          <label for="gcashRefId">GCash reference ID</label>
+          <input id="gcashRefId" type="text" placeholder="Enter reference ID" autocomplete="off" spellcheck="false" required>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button id="confirmGCashBtn" type="submit" class="btn btn-primary">Confirm Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Shown after the sale is saved; the checkout is already cleared by then. -->
+  <div id="receiptModal" class="modal" role="dialog" aria-modal="true"
+    aria-labelledby="receiptModalTitle" aria-describedby="receiptModalText" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h2 id="receiptModalTitle">Payment Complete</h2>
+          <p id="receiptModalText">The sale has been saved. Do you want to print a receipt?</p>
+        </div>
+      </div>
+
       <div class="modal-actions">
-        <button id="confirmGCashBtn" class="btn">Confirm Payment</button>
-        <button class="btn" onclick="hideModal('gcashModal')">Cancel</button>
+        <button id="receiptNoBtn" type="button" class="btn btn-secondary">No Receipt</button>
+        <button id="receiptYesBtn" type="button" class="btn btn-primary" data-autofocus>Print Receipt</button>
       </div>
     </div>
   </div>
 
-  <script src="../javascript/theme.js?v=1"></script>
-  <script src="../javascript/PointOfSale.js?v=9"></script>
+  <script src="../javascript/PointOfSale.js?v=10"></script>
 
 </body>
 </html>

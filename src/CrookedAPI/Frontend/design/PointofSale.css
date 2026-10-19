@@ -1,664 +1,1099 @@
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background-color: #fcf5ee;
-  color: #ffffff;
-}
+/* =========================================================
+   CRKD POINT OF SALE
+   Uses the same design tokens, buttons, form fields, modals
+   and dialog as the management pages (design/dashboard.css),
+   so both areas match.
 
+   The dark theme is the default; html[data-theme="light"]
+   swaps the colour tokens. Text colours meet WCAG 2.2 AA
+   contrast (4.5:1) on the surfaces they are used on, and
+   control borders and focus rings meet 3:1.
+========================================================= */
+
+/* =========================
+   DESIGN TOKENS (copied from dashboard.css)
+========================= */
 :root {
-  --card-bg: #1a1a1a;
-  --text-color: #ffffff;
+  color-scheme: dark;
+
+  /* Chrome: the top bar. It follows the theme like the management
+     sidebar and top bar; the logo is inverted in the light theme. */
+  --chrome-bg: #000000;
+  --chrome-surface: #1f1f1f;
+  --chrome-hover: #2a2a2a;
+  --chrome-border: #262626;
+  --chrome-control-border: #7a7a7a;
+  --chrome-text: #c9c9c9;
+  --chrome-text-strong: #ffffff;
+  --chrome-active-bg: #ffffff;
+  --chrome-active-text: #000000;
+  --focus-chrome: #8ab4f8;
+
+  /* Dark theme colours */
+  --color-bg: #0d0d0d;
+  --color-surface: #161616;
+  --color-surface-2: #1f1f1f;
+  --color-surface-3: #2a2a2a;
+  --color-border: #2e2e2e;
+  --color-border-strong: #7a7a7a;
+  --color-text: #f5f5f5;
+  --color-text-muted: #c2c2c2;
+  --color-text-subtle: #a3a3a3;
+  --color-input-bg: #1f1f1f;
+  --color-overlay: rgba(0, 0, 0, 0.72);
+
+  --color-primary: #ffffff;
+  --color-primary-hover: #e2e2e2;
+  --color-on-primary: #0d0d0d;
+
+  --color-success: #4ade80;
+  --color-danger: #f87171;
+  --color-danger-solid: #dc2626;
+  --color-danger-solid-hover: #b91c1c;
+  --color-danger-soft: #2a1a1a;
+
+  --focus-theme: #8ab4f8;
+  --color-focus: var(--focus-theme);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.55);
+
+  /* Sizes */
+  --control-height: 40px;
+  --button-min-width: 120px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --card-padding: 20px;
+  --header-height: 64px;
+  --checkout-width: clamp(300px, 28vw, 400px);
+
+  --font-family: Arial, Helvetica, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+
+  --theme-transition-duration: 300ms;
+
+  --z-header: 900;
+  --z-dropdown: 1100;
+  --z-modal: 2000;
+  --z-dialog: 9999;
 }
 
 html[data-theme="light"] {
-  --card-bg: #ffffff;
-  --text-color: #222222;
+  color-scheme: light;
+
+  --chrome-bg: #ffffff;
+  --chrome-surface: #f0f0f0;
+  --chrome-hover: #e4e4e4;
+  --chrome-border: #dcdcdc;
+  --chrome-control-border: #7a7a7a;
+  --chrome-text: #404040;
+  --chrome-text-strong: #171717;
+  --chrome-active-bg: #111111;
+  --chrome-active-text: #ffffff;
+  --focus-chrome: #1a56db;
+
+  --color-bg: #f4f4f5;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0f0f0;
+  --color-surface-3: #e4e4e4;
+  --color-border: #dcdcdc;
+  --color-border-strong: #7a7a7a;
+  --color-text: #171717;
+  --color-text-muted: #404040;
+  --color-text-subtle: #595959;
+  --color-input-bg: #ffffff;
+  --color-overlay: rgba(0, 0, 0, 0.55);
+
+  --color-primary: #111111;
+  --color-primary-hover: #333333;
+  --color-on-primary: #ffffff;
+
+  --color-success: #166534;
+  --color-danger: #b91c1c;
+  --color-danger-solid: #b91c1c;
+  --color-danger-solid-hover: #991b1b;
+  --color-danger-soft: #fbeaea;
+
+  --focus-theme: #1a56db;
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.18);
 }
 
-/* Header */
+/* =========================
+   BASE
+========================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Keep focused and scrolled-to elements clear of the sticky top bar. */
+  scroll-padding-top: calc(var(--header-height) + 16px);
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: var(--font-size-lg);
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+/* Visible keyboard focus on every interactive element (WCAG 2.4.7). */
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 .pos-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 30px;
-  background-color: #0B0B0B;
+  --color-focus: var(--focus-chrome);
 }
 
-.logo {
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.search-bar {
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: none;
-}
-
-/* Main Layout */
-.pos-main {
-  display: flex;
-  padding: 20px;
-  gap: 30px;
-  position: relative;
-}
-
-.product-catalog {
-  flex: 3;
-  min-width: 0;
-}
-
-.pos-search {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-  padding: 0 14px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background: #fff;
-  color: #555;
-}
-
-.pos-search input {
-  width: 100%;
-  min-width: 0;
-  padding: 13px 0;
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
   border: 0;
-  outline: 0;
-  background: transparent;
-  color: #111;
-  font-size: 15px;
 }
 
-/* Product Grid */
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+/* Lets keyboard users jump past the top bar (WCAG 2.4.1). */
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: var(--z-dialog);
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  text-decoration: none;
 }
 
-.product-card {
-  background-color: #ffffff;
-  padding: 10px;
-  border-radius: 8px;
-  text-align: center;
-  cursor: pointer;
-  transition: transform 0.2s ease;
+.skip-link:focus {
+  top: 12px;
 }
 
-.product-card:hover {
-  transform: scale(1.05);
+/* Theme switch: theme.js adds this class for a moment so colours fade
+   between light and dark instead of flashing. It only fades colours
+   (no movement), so it stays on for people who prefer reduced motion. */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition-property: background-color, color, border-color, outline-color, fill, stroke, box-shadow, filter !important;
+  transition-duration: var(--theme-transition-duration) !important;
+  transition-timing-function: ease-in-out !important;
+  transition-delay: 0s !important;
 }
 
-.product-card img {
-  max-width: 100%;
-  border-radius: 4px;
+/* =========================
+   STICKY TOP BAR
+========================= */
+.pos-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: var(--header-height);
+  padding: 0 20px;
+  border-bottom: 1px solid var(--chrome-border);
+  background: var(--chrome-bg);
+  color: var(--chrome-text-strong);
 }
 
-.product-card h3 {
-  text-align: left;
-  color: #000000;
-  margin: 10px 0 5px;
+.pos-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
-.product-card p {
-  text-align: left;
-  color: #000000;
-}
-
-.product-card small {
-  color: #000000;
-}
-
-.product-card img {
-  width: 100%;
-  height: 170px;
+/* The logo is a square image with a black margin; crop to the lettering. */
+.pos-logo {
+  display: block;
+  width: 88px;
+  height: 44px;
   object-fit: cover;
 }
 
-.product-variants {
-  color: #555;
-  font-size: 0.82rem;
+/* The logo is white on black; inverting it gives black on white for the light theme. */
+html[data-theme="light"] .pos-logo {
+  filter: invert(1);
 }
 
-.product-grid-empty {
-  grid-column: 1 / -1;
-  padding: 28px;
-  border: 1px dashed #aaa;
-  border-radius: 8px;
-  color: #555;
-  text-align: center;
-}
-
-/* Checkout Panel */
-.checkout-panel {
-  flex: 1;
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid #333;
-}
-
-.checkout-panel h2 {
-  color: #000;
-}
-
-/* Checkout List */
-.checkout-list {
-  list-style: none;
-  padding: 0;
+.pos-title {
   margin: 0;
+  overflow: hidden;
+  color: var(--chrome-text-strong);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.checkout-list li {
-  padding: 8px 0;
-  border-bottom: 1px solid #333;
-  font-size: 0.95rem;
-  color: #000;
-}
-
-.checkout-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.checkout-item-details {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.checkout-item-name {
-  overflow-wrap: anywhere;
-  font-weight: 600;
-}
-
-.checkout-item-subtotal {
-  color: #555;
-  font-size: 0.85rem;
-}
-
-.quantity-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
-}
-
-.quantity-button {
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 1px solid #222;
-  border-radius: 5px;
-  background: #000;
-  color: #fff;
-  font-size: 1.1rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.quantity-button:hover:not(:disabled) {
-  background: #333;
-}
-
-.quantity-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.quantity-value {
-  min-width: 18px;
-  text-align: center;
-  font-weight: 600;
-}
-
-/* Total and Buttons */
-.checkout-total {
-  margin-top: 15px;
-  font-size: 1rem;
-  color: #000;
-  text-align: right;
-}
-
-.checkout-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.btn {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
-  background-color: #000;
-  border: 1px solid #fff;
-  color: #fff;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-.btn:hover {
-  background-color: #fcf5ee;
-  color: #000;
-}
-
-/* Modal overlay */
-.modal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: 9999;
-  justify-content: center;
-  align-items: center;
-}
-
-.modal.active {
-  display: flex;
-}
-
-/* Modal card */
-.modal-content {
-  box-sizing: border-box;
-  background-color: #1e1e1e;
-  border-radius: 10px;
-  width: calc(100% - 28px);
-  max-width: 400px;
-  padding: 30px 20px;
-  color: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  text-align: center;
-}
-
-.modal-content h2 {
-  margin-top: 0;
-  font-size: 1.2rem;
-  color: #fff;
-}
-
-.modal-content h3 {
-  margin-top: 0;
-  font-size: 1.2rem;
-  color: #fff;
-}
-
-.modal-content p {
-  margin: 10px 0;
-  color: #ccc;
-}
-
-/* Inputs inside modal */
-.modal-content input {
-  width: 90%;
-  padding: 8px;
-  margin: 10px 0;
-  border: 1px solid #444;
-  border-radius: 4px;
-  background-color: #000;
-  color: #fff;
-}
-
-/* Modal actions (buttons) */
-.modal-actions {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.modal-actions .btn {
-  flex: 1;
-  background-color: #000;
-  border: 1px solid #fff;
-  color: #fff;
-}
-
-.modal-actions .btn:hover {
-  background-color: #fff;
-  color: #000;
-}
-
-/* Profile */
+/* =========================
+   TOP BAR BUTTON & PROFILE MENU (same as the management pages)
+   The profile button has the standard control height and the
+   .btn-secondary look, in chrome colours.
+========================= */
 .profile-section {
   position: relative;
   display: flex;
   align-items: center;
+}
+
+.profile-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
+  min-width: var(--control-height);
+  height: var(--control-height);
+  padding: 0 12px;
+  border: 1px solid var(--chrome-control-border);
+  border-radius: var(--radius-md);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-strong);
+  font-size: var(--font-size-md);
+  font-weight: 700;
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.profile-icon:hover,
+.profile-icon[aria-expanded="true"] {
+  background: var(--chrome-hover);
+}
+
+.pos-user-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-chevron {
+  font-size: 11px;
+  transition: transform 0.15s ease;
+}
+
+.profile-icon[aria-expanded="true"] .profile-chevron {
+  transform: rotate(180deg);
 }
 
 .profile-card {
+  --color-focus: var(--focus-theme);
   position: absolute;
-  top: 100%;
+  top: calc(100% + 12px);
   right: 0;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-  width: 200px;
-  display: none;
-  flex-direction: column;
-  z-index: 1000;
+  z-index: var(--z-dropdown);
+  display: none; /* PointOfSale.js shows it */
+  width: 220px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
 }
 
 .profile-card-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
-  border-bottom: 1px solid #333;
-  color: #fff;
-  font-weight: bold;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-md);
+  font-weight: 700;
 }
 
 .profile-card-body {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  padding: 6px;
 }
 
-.profile-card-body button {
-  background: none;
-  border: none;
-  color: #ccc;
-  padding: 10px;
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background-color 0.15s ease;
 }
 
-.profile-card-body button:hover {
-  background: #ffffff;
-  color: #000000;
+.profile-menu-item i,
+.profile-menu-item.theme-toggle-button::before {
+  flex: 0 0 20px;
+  font-size: 15px;
+  text-align: center;
 }
 
-#paymentModal,
-#cashModal,
-#gcashModal,
-#receiptModal,
-#variantModal {
-  display: none;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 99999 !important;
-  background: rgba(0, 0, 0, 0.6) !important;
-  justify-content: center !important;
-  align-items: center !important;
+.profile-menu-item:hover {
+  background: var(--color-surface-2);
 }
 
-#paymentModal.active,
-#cashModal.active,
-#gcashModal.active,
-#receiptModal.active,
-#variantModal.active {
-  display: flex !important;
+.profile-menu-item-danger {
+  color: var(--color-danger);
 }
 
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.profile-menu-item-danger:hover {
+  background: var(--color-danger-soft);
 }
 
-input[type=number] {
-  -moz-appearance: textfield;
-  appearance: textfield
+.profile-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  border: 0;
+  background: var(--color-border);
 }
 
-.modal-content {
-    position: relative;
+/* theme.js rewrites this button's text, so its icon comes from CSS:
+   a sun to switch to light, a moon to switch to dark. */
+.theme-toggle-button::before {
+  content: "\f185";
+  content: "\f185" / "";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
 }
 
-button.modal-close-btn {
-    position: absolute;
-    top: 12px;
-    right: 16px;
-    color: #fff;
-    font: inherit;
-    font-size: 22px;
-    line-height: 1;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    appearance: none;
-    -webkit-appearance: none;
-    background: transparent !important;
-    cursor: pointer;
-    z-index: 100;
-    display: grid;
-    place-items: center;
+html[data-theme="light"] .theme-toggle-button::before {
+  content: "\f186";
+  content: "\f186" / "";
 }
 
-button.modal-close-btn:hover {
-    color: #ccc;
-    background: transparent !important;
+/* =========================
+   BUTTONS (same as dashboard.css)
+   .btn sets the shared size; add one colour variant
+   (.btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline,
+   .btn-ghost) and optionally .btn-icon.
+========================= */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: var(--button-min-width);
+  min-height: var(--control-height);
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.modal-close-btn:focus-visible {
-    outline: 2px solid #fff;
-    outline-offset: 2px;
+.btn-icon {
+  min-width: 0;
+  width: var(--control-height);
+  padding: 0;
 }
 
-.variant-modal-content {
-  text-align: left;
+.btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
-.variant-modal-content h2 {
-  padding-right: 26px;
+.btn-primary:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
-.variant-product-name {
-  font-weight: 600;
-  color: #fff !important;
+.btn-secondary {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
 }
 
-.variant-field {
-  display: grid;
-  gap: 6px;
-  margin: 16px 0;
-  color: #ddd;
-  text-align: left;
+.btn-secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--color-surface-3);
 }
 
-.variant-field select {
-  width: 100%;
-  padding: 11px;
-  border: 1px solid #555;
-  border-radius: 5px;
-  background: #111;
-  color: #fff;
-  font: inherit;
+.btn-danger {
+  background: var(--color-danger-solid);
+  border-color: var(--color-danger-solid);
+  color: #ffffff;
 }
 
-.variant-availability {
-  min-height: 20px;
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-danger-solid-hover);
+  border-color: var(--color-danger-solid-hover);
 }
 
-.variant-modal-content .btn:disabled {
+.btn-danger-outline {
+  background: transparent;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.btn-danger-outline:hover:not(:disabled) {
+  background: var(--color-danger-soft);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-surface-2);
+}
+
+/* aria-disabled buttons stay focusable, so keyboard focus is not lost when they turn off. */
+.btn:disabled,
+.btn[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
-@media (min-width: 521px) {
+/* =========================
+   FORM CONTROLS
+========================= */
+input[type="text"],
+input[type="search"],
+select {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+}
+
+input::placeholder {
+  color: var(--color-text-subtle);
+  opacity: 1;
+}
+
+input:focus-visible,
+select:focus-visible {
+  border-color: var(--color-focus);
+  outline-offset: 1px;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-field label {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.field-hint {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+}
+
+/* Search box with a magnifying-glass icon inside it */
+.search-field {
+  position: relative;
+}
+
+.search-field i {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-md);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.search-field input {
+  padding-left: 36px;
+}
+
+/* =========================
+   LAYOUT
+========================= */
+.pos-main {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+}
+
+.product-catalog {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.pos-search {
+  max-width: 520px;
+}
+
+/* =========================
+   PRODUCT GRID
+   Each product is a real <button> that opens the size/color picker.
+========================= */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  align-content: start;
+  gap: 16px;
+  margin: 0;
+  /* Room for the focus ring, which would otherwise be clipped by the scroll area. */
+  padding: 6px;
+  list-style: none;
+}
+
+.product-grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+.product-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.product-card:hover {
+  background: var(--color-surface-2);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.product-card-image {
+  display: grid;
+  place-items: center;
+  height: 160px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-3);
+  color: var(--color-text-subtle);
+  font-size: 32px;
+}
+
+.product-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-card-name {
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.product-card-price {
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+}
+
+.product-card-stock,
+.product-card-options {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.product-card-stock.is-out {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.product-grid-empty {
+  grid-column: 1 / -1;
+  padding: 28px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* =========================
+   CHECKOUT PANEL
+========================= */
+.checkout-panel {
+  display: flex;
+  flex: 0 0 var(--checkout-width);
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: var(--card-padding);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.checkout-panel h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 20px;
+}
+
+.checkout-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.checkout-list {
+  margin: 0;
+  /* Room for the focus ring, which would otherwise be clipped by the scroll area. */
+  padding: 0 4px;
+  list-style: none;
+}
+
+.checkout-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.checkout-item:first-child {
+  padding-top: 4px;
+}
+
+.checkout-item-details {
+  display: flex;
+  flex: 1 1 120px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.checkout-item-name {
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.checkout-item-variant,
+.checkout-item-subtotal {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.quantity-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.quantity-value {
+  min-width: 24px;
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  text-align: center;
+}
+
+.checkout-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.checkout-total strong {
+  color: var(--color-text);
+  font-size: 24px;
+}
+
+.checkout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.checkout-actions .btn {
+  flex: 1 1 var(--button-min-width);
+}
+
+/* =========================
+   MODALS (variant picker, payment, cash, GCash, receipt)
+   Markup: .modal > .modal-content > .modal-header + body + .modal-actions
+========================= */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  background: var(--color-overlay);
+  animation: fade-in 0.15s ease-out;
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal-content {
+  width: min(100%, 460px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  animation: rise-in 0.2s ease-out;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 20px;
+}
+
+.modal-header p {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.modal-header strong {
+  color: var(--color-text);
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.modal-actions .btn {
+  min-width: 140px;
+}
+
+.variant-availability,
+.payment-summary {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.payment-summary strong {
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+}
+
+.payment-summary.is-short strong {
+  color: var(--color-danger);
+}
+
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.payment-options .btn {
+  min-height: 56px;
+  font-size: var(--font-size-lg);
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+/* =========================
+   CONFIRMATION DIALOG (showDialog in PointOfSale.js)
+========================= */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--color-overlay);
+  animation: fade-in 0.15s ease-out;
+}
+
+.dialog-card {
+  width: min(100%, 440px);
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  animation: rise-in 0.18s ease-out;
+}
+
+.dialog-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dialog-message {
+  margin: 0 0 24px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================
+   REDUCED MOTION
+   Movement is replaced by a plain fade (WCAG 2.3.3).
+========================= */
+@media (prefers-reduced-motion: reduce) {
+  .profile-chevron {
+    transition: none;
+  }
+
+  .modal-content,
+  .dialog-card {
+    animation-name: fade-in;
+  }
+
+  .product-card:hover {
+    transform: none;
+  }
+}
+
+/* =========================
+   RESPONSIVE
+   Wide, tall windows: the page fits the window and the product grid and
+   checkout list scroll on their own. Smaller windows (and zoomed-in
+   pages) scroll normally, with the checkout under the products.
+========================= */
+@media (min-width: 761px) and (min-height: 560px) {
   body {
     height: 100vh;
     height: 100dvh;
     overflow: hidden;
   }
 
-  .pos-header {
-    box-sizing: border-box;
-    height: 64px;
-    padding: 12px 20px;
-  }
-
   .pos-main {
-    flex-direction: row;
-    box-sizing: border-box;
-    height: calc(100vh - 64px);
-    height: calc(100dvh - 64px);
+    height: calc(100vh - var(--header-height));
+    height: calc(100dvh - var(--header-height));
     min-height: 0;
-    overflow: hidden;
-    align-items: stretch;
-    padding: 16px;
-    gap: 16px;
   }
 
   .product-catalog {
-    display: flex;
-    flex: 1 1 0;
-    flex-direction: column;
     min-height: 0;
-    overflow: hidden;
   }
 
   .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
-    align-content: start;
-    padding: 0 6px 6px 0;
+    scrollbar-color: var(--color-border-strong) transparent;
+    scrollbar-width: thin;
   }
 
   .checkout-panel {
-    display: flex;
-    flex: 0 0 25%;
-    flex-direction: column;
-    min-width: 220px;
     min-height: 0;
-    overflow: hidden;
   }
 
   .checkout-list {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    scrollbar-color: var(--color-border-strong) transparent;
+    scrollbar-width: thin;
   }
 }
 
-@media (min-width: 521px) and (max-width: 900px) {
-  .product-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+@media (max-width: 760px) {
+  .pos-main {
+    flex-direction: column;
+  }
+
+  .checkout-panel {
+    flex-basis: auto;
+  }
+
+  .pos-search {
+    max-width: none;
   }
 }
 
 @media (max-width: 520px) {
+  :root {
+    --card-padding: 16px;
+    --header-height: 56px;
+  }
+
   .pos-header {
-    padding: 16px;
+    padding: 0 12px;
+  }
+
+  .pos-logo {
+    width: 64px;
+    height: 32px;
+  }
+
+  /* Hidden visually only: the name is still the profile button's accessible name. */
+  .pos-user-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 
   .pos-main {
-    flex-direction: column;
-    padding: 14px;
+    padding: 12px;
   }
 
   .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    padding: 4px;
+  }
+
+  .product-card-image {
+    height: 120px;
+  }
+
+  .form-grid,
+  .payment-options {
     grid-template-columns: 1fr;
   }
-}
 
-html[data-theme="light"] body {
-  background: #f4f4f4;
-  color: #222;
-}
+  .modal {
+    padding: 16px;
+  }
 
-html[data-theme="light"] .pos-header {
-  background: #0b0b0b;
-  color: #fff;
-}
+  .modal-content {
+    padding: 20px;
+  }
 
-html[data-theme="light"] .pos-main {
-  background: #f4f4f4;
-  color: #222;
-}
+  .modal-actions,
+  .dialog-actions {
+    flex-direction: column-reverse;
+  }
 
-html[data-theme="light"] .pos-search,
-html[data-theme="light"] .product-card,
-html[data-theme="light"] .checkout-panel {
-  background: #fff;
-  border-color: #ddd;
-  color: #222;
-}
-
-html[data-theme="light"] .pos-search input,
-html[data-theme="light"] .product-card h3,
-html[data-theme="light"] .product-card p,
-html[data-theme="light"] .product-card small,
-html[data-theme="light"] .checkout-panel h2,
-html[data-theme="light"] .checkout-list li,
-html[data-theme="light"] .checkout-total {
-  color: #222;
-}
-
-html[data-theme="light"] .product-variants,
-html[data-theme="light"] .checkout-item-subtotal {
-  color: #666;
-}
-
-html[data-theme="light"] .quantity-button {
-  background: #eee;
-  border-color: #ccc;
-  color: #222;
-}
-
-html[data-theme="light"] .quantity-button:hover:not(:disabled) {
-  background: #ddd;
-}
-
-html[data-theme="light"] .modal-content {
-  background: #fff;
-  color: #222;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-html[data-theme="light"] .modal-content h2,
-html[data-theme="light"] .modal-content h3,
-html[data-theme="light"] .modal-content p,
-html[data-theme="light"] .variant-product-name,
-html[data-theme="light"] .variant-field,
-html[data-theme="light"] .modal-close-btn {
-  color: #222 !important;
-}
-
-html[data-theme="light"] .modal-content input,
-html[data-theme="light"] .variant-field select {
-  background: #fff;
-  border-color: #ccc;
-  color: #222;
-}
-
-html[data-theme="light"] .modal-actions .btn {
-  background: #eee;
-  border-color: #ccc;
-  color: #222;
-}
-
-html[data-theme="light"] .modal-actions .btn:hover {
-  background: #ddd;
-  color: #111;
-}
-
-html[data-theme="light"] button.modal-close-btn:hover {
-  color: #555 !important;
+  .modal-actions .btn,
+  .dialog-actions .btn {
+    width: 100%;
+  }
 }

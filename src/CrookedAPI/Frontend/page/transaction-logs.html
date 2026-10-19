@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRKD | Transaction Logs</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../design/dashboard.css?v=23">
+    <link rel="stylesheet" href="../design/transaction-logs.css?v=2">
+
+    <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
+    <script src="../javascript/theme.js?v=2"></script>
+</head>
+
+<body data-page="transaction-logs">
+
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar" aria-label="Main navigation">
+
+        <div class="logo-container">
+            <img src="../assets/logo.png" alt="CRKD" class="logo-img">
+        </div>
+
+        <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i>DASHBOARD</a>
+        <a id="nav-products" href="products.html" class="nav-item"><i class="fa-solid fa-shirt" aria-hidden="true"></i>PRODUCTS</a>
+        <a href="inventory.html" class="nav-item"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>INVENTORY</a>
+        <a href="transaction-logs.html" class="nav-item nav-active" aria-current="page"><i class="fa-solid fa-receipt" aria-hidden="true"></i>TRANSACTION LOGS</a>
+        <a id="nav-sales-history" href="sales-history.html" class="nav-item"><i class="fa-solid fa-chart-line" aria-hidden="true"></i>SALES HISTORY</a>
+        <a id="nav-staff-management" href="staff-management.html" class="nav-item"><i class="fa-solid fa-users" aria-hidden="true"></i>STAFF MANAGEMENT</a>
+        <a id="nav-forecasting" href="forecasting.html" class="nav-item"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>FORECASTING</a>
+
+    </nav>
+
+    <!--- MAIN CONTENT --->
+    <div class="main">
+
+        <!-- TOP HEADER (sticky) -->
+        <header class="top-header">
+            <div class="header-icons">
+
+                <div id="forecastNotifications" class="forecast-notifications" style="display:none;">
+                    <button id="forecastNotificationButton" class="forecast-notification-button" type="button"
+                        aria-label="Forecast notifications" aria-expanded="false" aria-controls="forecastNotificationPanel">
+                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                        <span id="forecastNotificationCount" class="forecast-notification-count" style="display:none;" aria-hidden="true">0</span>
+                    </button>
+                    <div id="forecastNotificationPanel" class="forecast-notification-panel" style="display:none;">
+                        <h3>Forecast Notifications</h3>
+                        <div id="forecastNotificationList" class="forecast-notification-list">
+                            <p class="forecast-notification-empty">Loading notifications...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <!-- The button is named by the signed-in user's name (layout.js fills .Owner). -->
+                    <button type="button" class="profile-icon" onclick="toggleProfileCard(event)"
+                        aria-haspopup="true" aria-expanded="false" aria-controls="profileCard">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        <span class="Owner">Main Owner</span>
+                        <i class="fa-solid fa-chevron-down profile-chevron" aria-hidden="true"></i>
+                    </button>
+
+                    <div id="profileCard" class="profile-card">
+                        <div class="profile-card-header">
+                            <i class="fa-solid fa-user" aria-hidden="true"></i>
+                            <span>Main Owner</span>
+                        </div>
+
+                        <div class="profile-card-body">
+                            <button type="button" class="profile-menu-item" onclick="window.location.href='../page/PointofSale.html'">
+                                <i class="fa-solid fa-cash-register" aria-hidden="true"></i>
+                                Switch to POS
+                            </button>
+                            <button type="button" class="profile-menu-item theme-toggle-button" onclick="toggleDarkMode()">Light Mode</button>
+                            <hr class="profile-menu-separator">
+                            <button type="button" class="profile-menu-item profile-menu-item-danger" onclick="logout()">
+                                <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENT WRAPPER -->
+        <main id="main-content" class="content-wrapper" tabindex="-1">
+
+            <h1>TRANSACTION LOGS</h1>
+
+            <!-- TRANSACTION LOGS SECTION -->
+            <div id="view-transactions" class="content-section">
+
+                <div class="data-table-panel">
+                    <div class="transaction-table-scroll">
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Date &amp; Time</th>
+                                    <th scope="col">Total Amount</th>
+                                    <th scope="col">Reference ID</th>
+                                    <th scope="col">Assisted By</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Edit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="exchangeTransactionModal" class="modal exchange-modal" style="display:none;"
+                    role="dialog" aria-modal="true" aria-labelledby="exchangeModalTitle" aria-describedby="exchangeModalDescription">
+                    <div class="modal-content exchange-modal-content">
+                        <div class="modal-header">
+                            <div>
+                                <h2 id="exchangeModalTitle">Edit purchased items</h2>
+                                <p id="exchangeModalDescription">Each purchased unit is listed separately. Choose its size, color, and exchange reason.</p>
+                            </div>
+                            <button id="closeExchangeModal" class="btn btn-ghost btn-icon" type="button" aria-label="Close exchange editor">
+                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <div class="exchange-table-scroll">
+                            <table class="exchange-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Item</th>
+                                        <th scope="col">Size</th>
+                                        <th scope="col">Color</th>
+                                        <th scope="col">Quantity</th>
+                                        <th scope="col">Status / Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="exchangeItemsBody"></tbody>
+                            </table>
+                        </div>
+                        <p id="exchangeModalStatus" class="exchange-modal-status" role="status"></p>
+                        <div class="exchange-total-row">
+                            <span>Updated transaction total</span>
+                            <strong id="exchangeUpdatedTotal">₱0.00</strong>
+                        </div>
+                        <div class="modal-actions">
+                            <button id="cancelExchangeButton" class="btn btn-secondary" type="button">Cancel</button>
+                            <button id="saveExchangeButton" class="btn btn-primary" type="button">Save changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="../javascript/layout.js?v=2"></script>
+    <script src="../javascript/transaction-logs.js?v=2"></script>
+
+</body>
+</html>

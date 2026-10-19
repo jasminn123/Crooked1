@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRKD | Staff Management</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../design/dashboard.css?v=23">
+    <link rel="stylesheet" href="../design/staff-management.css?v=2">
+
+    <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
+    <script src="../javascript/theme.js?v=2"></script>
+</head>
+
+<body data-page="staff-management" data-owner-only>
+
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar" aria-label="Main navigation">
+
+        <div class="logo-container">
+            <img src="../assets/logo.png" alt="CRKD" class="logo-img">
+        </div>
+
+        <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i>DASHBOARD</a>
+        <a id="nav-products" href="products.html" class="nav-item"><i class="fa-solid fa-shirt" aria-hidden="true"></i>PRODUCTS</a>
+        <a href="inventory.html" class="nav-item"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>INVENTORY</a>
+        <a href="transaction-logs.html" class="nav-item"><i class="fa-solid fa-receipt" aria-hidden="true"></i>TRANSACTION LOGS</a>
+        <a id="nav-sales-history" href="sales-history.html" class="nav-item"><i class="fa-solid fa-chart-line" aria-hidden="true"></i>SALES HISTORY</a>
+        <a id="nav-staff-management" href="staff-management.html" class="nav-item nav-active" aria-current="page"><i class="fa-solid fa-users" aria-hidden="true"></i>STAFF MANAGEMENT</a>
+        <a id="nav-forecasting" href="forecasting.html" class="nav-item"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>FORECASTING</a>
+
+    </nav>
+
+    <!--- MAIN CONTENT --->
+    <div class="main">
+
+        <!-- TOP HEADER (sticky) -->
+        <header class="top-header">
+            <div class="header-icons">
+
+                <div id="forecastNotifications" class="forecast-notifications" style="display:none;">
+                    <button id="forecastNotificationButton" class="forecast-notification-button" type="button"
+                        aria-label="Forecast notifications" aria-expanded="false" aria-controls="forecastNotificationPanel">
+                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                        <span id="forecastNotificationCount" class="forecast-notification-count" style="display:none;" aria-hidden="true">0</span>
+                    </button>
+                    <div id="forecastNotificationPanel" class="forecast-notification-panel" style="display:none;">
+                        <h3>Forecast Notifications</h3>
+                        <div id="forecastNotificationList" class="forecast-notification-list">
+                            <p class="forecast-notification-empty">Loading notifications...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <!-- The button is named by the signed-in user's name (layout.js fills .Owner). -->
+                    <button type="button" class="profile-icon" onclick="toggleProfileCard(event)"
+                        aria-haspopup="true" aria-expanded="false" aria-controls="profileCard">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        <span class="Owner">Main Owner</span>
+                        <i class="fa-solid fa-chevron-down profile-chevron" aria-hidden="true"></i>
+                    </button>
+
+                    <div id="profileCard" class="profile-card">
+                        <div class="profile-card-header">
+                            <i class="fa-solid fa-user" aria-hidden="true"></i>
+                            <span>Main Owner</span>
+                        </div>
+
+                        <div class="profile-card-body">
+                            <button type="button" class="profile-menu-item" onclick="window.location.href='../page/PointofSale.html'">
+                                <i class="fa-solid fa-cash-register" aria-hidden="true"></i>
+                                Switch to POS
+                            </button>
+                            <button type="button" class="profile-menu-item theme-toggle-button" onclick="toggleDarkMode()">Light Mode</button>
+                            <hr class="profile-menu-separator">
+                            <button type="button" class="profile-menu-item profile-menu-item-danger" onclick="logout()">
+                                <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENT WRAPPER -->
+        <main id="main-content" class="content-wrapper" tabindex="-1">
+
+            <h1>STAFF MANAGEMENT</h1>
+
+            <!-- STAFF MANAGEMENT SECTION -->
+            <div id="view-users" class="content-section">
+
+                <!-- CREATE STAFF -->
+                <section class="card" aria-labelledby="createStaffTitle">
+                    <h2 id="createStaffTitle" class="card-title">Create Staff Account</h2>
+
+                    <form class="staff-form" onsubmit="addStaff(event)">
+                        <div class="form-field">
+                            <label for="staffName">Full name</label>
+                            <input type="text" id="staffName" autocomplete="off" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="staffUser">Username</label>
+                            <input type="text" id="staffUser" autocomplete="off" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="staffPass">Password</label>
+                            <input type="password" id="staffPass" autocomplete="new-password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create Account</button>
+                    </form>
+                </section>
+
+                <!-- ACTIVE STAFF -->
+                <section class="card" aria-labelledby="activeStaffTitle">
+                    <h2 id="activeStaffTitle" class="card-title">Active Staff Members</h2>
+
+                    <div class="table-container">
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">User</th>
+                                    <th scope="col">Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="staffTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ARCHIVED STAFF -->
+                <section class="card archive-card" aria-labelledby="archivedStaffTitle">
+                    <h2 id="archivedStaffTitle" class="card-title archive-card-title">Archived Accounts</h2>
+
+                    <div class="table-container">
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">User</th>
+                                    <th scope="col">Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="archiveTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </div>
+
+        </main>
+    </div>
+
+    <script src="../javascript/layout.js?v=2"></script>
+    <script src="../javascript/staff-management.js?v=2"></script>
+
+</body>
+</html>

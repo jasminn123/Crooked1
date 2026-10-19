@@ -1,86 +1,36 @@
-body {
-  background-color: #0b0b0b;
-  color: white;
-  font-family: sans-serif;
+/* ── INVENTORY ── */
+
+.inventory-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 16px;
+    margin-bottom: 16px;
 }
 
-.inventory-container {
-  padding: 20px;
+.inventory-toolbar label {
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+    font-weight: 700;
 }
 
-.inventory-header {
-  text-align: center;
-  padding: 20px;
+.inventory-toolbar input {
+    width: min(100%, 360px);
 }
 
-.login-title {
-  font-family: 'UnifrakturMaguntia', serif;
-  font-size: 60px;
+/* Status text always says OK / LOW STOCK / OUT OF STOCK, so colour is not the only cue. */
+.inventory-stock-available {
+    color: var(--color-success);
+    font-weight: 700;
 }
 
-.btn-refresh {
-  cursor: pointer;
-  padding: 10px 20px;
-  background-color: #222;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  transition: background-color 0.3s ease;
+.inventory-stock-low {
+    color: var(--color-warning);
+    font-weight: 700;
 }
 
-.btn-refresh:hover {
-  background-color: #444;
-}
-
-.styled-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-.styled-table thead tr {
-  background-color: #333;
-}
-
-.styled-table th,
-.styled-table td {
-  padding: 15px;
-  border-bottom: 2px solid #555;
-  text-align: left;
-}
-
-.styled-table tbody tr td {
-  text-align: center;
-  padding: 20px;
-}
-
-.inventory-table-scroll {
-  max-width: 100%;
-  overflow-x: auto;
-  border: 1px solid #333;
-  border-radius: 8px;
-}
-
-.inventory-table-scroll .styled-table {
-  min-width: 680px;
-  margin-top: 0;
-}
-
-@media (max-width: 768px) {
-  .inventory-container {
-    padding: 16px;
-  }
-
-  .inventory-header {
-    padding: 12px 4px 20px;
-  }
-
-  .login-title {
-    font-size: clamp(36px, 8vw, 52px);
-  }
-
-  .styled-table th,
-  .styled-table td {
-    padding: 12px;
-  }
+.inventory-stock-out {
+    color: var(--color-danger);
+    font-weight: 700;
 }

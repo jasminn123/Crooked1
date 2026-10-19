@@ -1,40 +1,133 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inventory | CRKD</title>
-  
-  <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../design/inventory.css?v=2">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRKD | Inventory</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../design/dashboard.css?v=23">
+    <link rel="stylesheet" href="../design/inventory.css?v=4">
+
+    <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
+    <script src="../javascript/theme.js?v=2"></script>
 </head>
-<body>
-  <div class="inventory-container">
-    <div class="inventory-header">
-      <h1 class="login-title">Stock Inventory</h1>
-      <button class="btn-refresh" onclick="loadInventory()">Refresh List</button>
+
+<body data-page="inventory">
+
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar" aria-label="Main navigation">
+
+        <div class="logo-container">
+            <img src="../assets/logo.png" alt="CRKD" class="logo-img">
+        </div>
+
+        <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i>DASHBOARD</a>
+        <a id="nav-products" href="products.html" class="nav-item"><i class="fa-solid fa-shirt" aria-hidden="true"></i>PRODUCTS</a>
+        <a href="inventory.html" class="nav-item nav-active" aria-current="page"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>INVENTORY</a>
+        <a href="transaction-logs.html" class="nav-item"><i class="fa-solid fa-receipt" aria-hidden="true"></i>TRANSACTION LOGS</a>
+        <a id="nav-sales-history" href="sales-history.html" class="nav-item"><i class="fa-solid fa-chart-line" aria-hidden="true"></i>SALES HISTORY</a>
+        <a id="nav-staff-management" href="staff-management.html" class="nav-item"><i class="fa-solid fa-users" aria-hidden="true"></i>STAFF MANAGEMENT</a>
+        <a id="nav-forecasting" href="forecasting.html" class="nav-item"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>FORECASTING</a>
+
+    </nav>
+
+    <!--- MAIN CONTENT --->
+    <div class="main">
+
+        <!-- TOP HEADER (sticky) -->
+        <header class="top-header">
+            <div class="header-icons">
+
+                <div id="forecastNotifications" class="forecast-notifications" style="display:none;">
+                    <button id="forecastNotificationButton" class="forecast-notification-button" type="button"
+                        aria-label="Forecast notifications" aria-expanded="false" aria-controls="forecastNotificationPanel">
+                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                        <span id="forecastNotificationCount" class="forecast-notification-count" style="display:none;" aria-hidden="true">0</span>
+                    </button>
+                    <div id="forecastNotificationPanel" class="forecast-notification-panel" style="display:none;">
+                        <h3>Forecast Notifications</h3>
+                        <div id="forecastNotificationList" class="forecast-notification-list">
+                            <p class="forecast-notification-empty">Loading notifications...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <!-- The button is named by the signed-in user's name (layout.js fills .Owner). -->
+                    <button type="button" class="profile-icon" onclick="toggleProfileCard(event)"
+                        aria-haspopup="true" aria-expanded="false" aria-controls="profileCard">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        <span class="Owner">Main Owner</span>
+                        <i class="fa-solid fa-chevron-down profile-chevron" aria-hidden="true"></i>
+                    </button>
+
+                    <div id="profileCard" class="profile-card">
+                        <div class="profile-card-header">
+                            <i class="fa-solid fa-user" aria-hidden="true"></i>
+                            <span>Main Owner</span>
+                        </div>
+
+                        <div class="profile-card-body">
+                            <button type="button" class="profile-menu-item" onclick="window.location.href='../page/PointofSale.html'">
+                                <i class="fa-solid fa-cash-register" aria-hidden="true"></i>
+                                Switch to POS
+                            </button>
+                            <button type="button" class="profile-menu-item theme-toggle-button" onclick="toggleDarkMode()">Light Mode</button>
+                            <hr class="profile-menu-separator">
+                            <button type="button" class="profile-menu-item profile-menu-item-danger" onclick="logout()">
+                                <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENT WRAPPER -->
+        <main id="main-content" class="content-wrapper" tabindex="-1">
+
+            <h1>INVENTORY</h1>
+
+            <!-- INVENTORY SECTION -->
+            <div id="view-inventory" class="content-section">
+                <div class="data-table-panel">
+                    <div class="inventory-toolbar">
+                        <label for="inventorySearch">Search inventory</label>
+                        <input id="inventorySearch" type="search"
+                            placeholder="Search product, category, size, or color..."
+                            autocomplete="off">
+                    </div>
+                    <div class="transaction-table-scroll">
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Product Name</th>
+                                    <th scope="col">Category</th>
+                                    <th scope="col">Size</th>
+                                    <th scope="col">Color</th>
+                                    <th scope="col">Price</th>
+                                    <th scope="col">Stock</th>
+                                    <th scope="col">Low-stock threshold</th>
+                                    <th scope="col">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-list-main"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
     </div>
 
-    <div class="inventory-table-scroll">
-      <table class="styled-table">
-        <thead>
-          <tr>
-            <th>Product Name</th>
-            <th>Category</th>
-            <th>Price</th>
-            <th>Stock Quantity</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="inventory-list">
-          <tr>
-            <td colspan="5">Loading database products...</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+    <script src="../javascript/layout.js?v=2"></script>
+    <script src="../javascript/inventory.js?v=2"></script>
 
-  <script src="../javascript/inventory.js"></script>
 </body>
 </html>
