@@ -28,7 +28,8 @@ namespace Crooked.Services
                 reader["payment_method"] as string ?? PaymentMethods.Unknown,
                 reader["assisted_by"] as string ?? "Unknown",
                 Convert.ToInt32(reader["item_count"]),
-                storedStatus);
+                storedStatus,
+                dateTime);
         }
 
         public static async Task<TransactionSummary?> FindSummaryAsync(NpgsqlConnection connection, int transactionId)

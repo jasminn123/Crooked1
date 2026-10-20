@@ -7,7 +7,7 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../design/dashboard.css?v=23">
-    <link rel="stylesheet" href="../design/components.css?v=1">
+    <link rel="stylesheet" href="../design/components.css?v=2">
     <link rel="stylesheet" href="../design/products.css?v=2">
 
     <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
@@ -163,7 +163,7 @@
                     <form id="productForm" class="modal-form" onsubmit="saveProduct(event)">
                         <div class="form-field">
                             <label for="prodImage">Product image</label>
-                            <input type="file" id="prodImage" accept="image/*">
+                            <input type="file" id="prodImage" accept="image/*" data-file-picker="Choose image">
                         </div>
 
                         <div class="form-field">
@@ -234,7 +234,7 @@
 
                         <div class="form-field">
                             <label for="editProdImage">Replace product image</label>
-                            <input type="file" id="editProdImage" accept="image/*">
+                            <input type="file" id="editProdImage" accept="image/*" data-file-picker="Choose new image">
                             <img id="editProdImagePreview" class="edit-product-image-preview" alt="Current product image">
                         </div>
 
@@ -290,9 +290,10 @@
         </main>
     </div>
 
-    <script src="../javascript/ui.js?v=1"></script>
-    <script src="../javascript/layout.js?v=3"></script>
-    <script src="../javascript/products.js?v=3"></script>
+    <script src="../javascript/ui.js?v=2"></script>
+    <script src="../javascript/live.js?v=1"></script>
+    <script src="../javascript/layout.js?v=4"></script>
+    <script src="../javascript/products.js?v=4"></script>
 
 </body>
 </html>

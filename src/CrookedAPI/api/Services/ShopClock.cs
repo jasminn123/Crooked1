@@ -22,6 +22,13 @@ namespace Crooked.Services
 
         public static DateTime StartOfDayUtc(DateOnly shopDay) => ToUtc(shopDay.ToDateTime(TimeOnly.MinValue));
 
+        public static DateOnly Today => ShopDate(DateTime.UtcNow);
+
+        public static DateOnly ShopDate(DateTime storedUtc) => DateOnly.FromDateTime(ToShopTime(storedUtc));
+
+        public static string DisplayDate(DateOnly shopDay) =>
+            shopDay.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture);
+
         public static string Display(DateTime storedUtc) =>
             ToShopTime(storedUtc).ToString("MMM dd, yyyy · hh:mm tt", CultureInfo.InvariantCulture);
 

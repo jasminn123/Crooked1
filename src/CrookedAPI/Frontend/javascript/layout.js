@@ -358,6 +358,9 @@ function initializeForecastNotifications() {
             console.error('Forecast Notifications Error:', error);
         });
     }, 60000);
+    Live.on(['notifications', 'forecast'], () => {
+        loadForecastNotifications().catch(error => console.error('Forecast Notifications Error:', error));
+    });
 
     function closePanel() {
         panel.style.display = 'none';

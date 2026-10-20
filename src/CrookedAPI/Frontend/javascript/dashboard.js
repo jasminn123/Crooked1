@@ -36,14 +36,15 @@ function updateSalesChartTheme() {
 
 window.addEventListener('themechange', updateSalesChartTheme);
 
-async function loadSalesAnalytics() {
+// quiet: a live refresh keeps the current numbers and chart on screen until the new ones arrive.
+async function loadSalesAnalytics({ quiet = false } = {}) {
     const status = document.getElementById('salesAnalyticsStatus');
     const totalProductsSold = document.getElementById('totalProductsSold');
     const todayRevenue = document.getElementById('todayRevenue');
-    const chartSkeleton = UI.skeleton('skeleton-block chart-skeleton');
-    document.querySelector('.chart-canvas-wrap')?.appendChild(chartSkeleton);
-    if (totalProductsSold) UI.textSkeleton(totalProductsSold, '3em');
-    if (todayRevenue) UI.textSkeleton(todayRevenue, '70%');
+    const chartSkeleton = quiet ? null : UI.skeleton('skeleton-block chart-skeleton');
+    if (chartSkeleton) document.querySelector('.chart-canvas-wrap')?.appendChild(chartSkeleton);
+    if (!quiet && totalProductsSold) UI.textSkeleton(totalProductsSold, '3em');
+    if (!quiet && todayRevenue) UI.textSkeleton(todayRevenue, '70%');
 
     try {
         const [salesResponse, revenueResponse] = await Promise.all([
@@ -71,21 +72,23 @@ async function loadSalesAnalytics() {
             });
         }
 
-        renderSalesChart(analytics);
-        if (status) status.textContent = analytics.products.length
-            ? 'Units sold per active product, per day, over the last 7 days.'
-            : 'No active products or sales data to display.';
+        // Products with no sales would only add flat lines at zero, so the chart leaves them out.
+        const soldProducts = analytics.products.filter(product => product.dailySales.some(units => units > 0));
+        renderSalesChart(analytics.dates, soldProducts, { animate: !quiet });
+        if (status) status.textContent = soldProducts.length
+            ? `Units sold per day over the last 7 days, for the ${soldProducts.length} product${soldProducts.length === 1 ? '' : 's'} that sold. Click a name below the chart to hide or show its line.`
+            : 'No products were sold in the last 7 days.';
     } catch (error) {
         console.error('Sales Analytics Error:', error);
         if (status) status.textContent = 'Unable to load sales analytics. Please try again later.';
         if (totalProductsSold) totalProductsSold.textContent = '—';
         if (todayRevenue) todayRevenue.textContent = '—';
     } finally {
-        chartSkeleton.remove();
+        chartSkeleton?.remove();
     }
 }
 
-function renderSalesChart(analytics) {
+function renderSalesChart(dates, products, { animate = true } = {}) {
     const canvas = document.getElementById('salesChart');
     if (!canvas) return;
     if (typeof Chart === 'undefined') {
@@ -96,14 +99,14 @@ function renderSalesChart(analytics) {
 
     const { foreground: chartForeground, grid: chartGrid } = chartThemeColors();
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const labels = analytics.dates.map(date =>
+    const labels = dates.map(date =>
         new Date(`${date}T00:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }));
     salesChartInstance = new Chart(canvas.getContext('2d'), {
         type: 'line',
         data: {
             labels,
-            datasets: analytics.products.map((product, index) => ({
-                label: product.productName,
+            datasets: products.map((product, index) => ({
+                label: UI.variantName(product.productName, product.size, product.color),
                 data: product.dailySales,
                 borderColor: salesLineColor(index),
                 backgroundColor: salesLineColor(index, 0.12),
@@ -115,7 +118,7 @@ function renderSalesChart(analytics) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: prefersReducedMotion ? false : undefined,
+            animation: prefersReducedMotion || !animate ? false : undefined,
             interaction: { mode: 'index', intersect: false },
             scales: {
                 x: { ticks: { color: chartForeground }, grid: { color: chartGrid } },
@@ -139,10 +142,10 @@ function renderSalesChart(analytics) {
 /* =========================
    ACTIVITY LOGS
 ========================= */
-async function fetchLogs() {
+async function fetchLogs({ quiet = false } = {}) {
     const logBody = document.getElementById('logTableBody');
     if (!logBody) return;
-    UI.tableSkeleton(logBody, 3, 5);
+    if (!quiet) UI.tableSkeleton(logBody, 3, 5);
 
     try {
         const logs = await UI.fetchJson(`${apiBase}/api/Auth/get-logs`);
@@ -163,7 +166,7 @@ async function fetchLogs() {
                 UI.cell(new Date(log.dateOccurred).toLocaleString(), 'col-muted')
             );
             return row;
-        }));
+        }), { fade: !quiet });
     } catch (error) {
         console.error('Logs Error:', error);
         UI.tableMessage(logBody, 3, {
@@ -171,7 +174,7 @@ async function fetchLogs() {
             title: 'Unable to load activity logs',
             message: error.message,
             actionLabel: 'Try again',
-            onAction: fetchLogs
+            onAction: () => fetchLogs()
         });
     }
 }
@@ -179,10 +182,10 @@ async function fetchLogs() {
 /* =========================
    STAFF DASHBOARD STATS
 ========================= */
-async function fetchStaffStats() {
+async function fetchStaffStats({ quiet = false } = {}) {
     const remainingEl = document.getElementById('statRemainingStock');
     const outEl = document.getElementById('statOutOfStock');
-    [remainingEl, outEl].forEach(element => element && UI.textSkeleton(element, '2.5em'));
+    if (!quiet) [remainingEl, outEl].forEach(element => element && UI.textSkeleton(element, '2.5em'));
 
     try {
         const products = await UI.fetchJson(`${apiBase}/api/products/get-inventory`);
@@ -213,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (staffStats) {
                 staffStats.style.display = 'flex';
                 fetchStaffStats();
+                Live.on(['products', 'exchanges'], () => fetchStaffStats({ quiet: true }));
             }
 
             const statsContainer = document.querySelector('.dashboard-stats-container');
@@ -221,6 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         fetchLogs();
         loadSalesAnalytics();
+        Live.on(['activity'], () => fetchLogs({ quiet: true }));
+        Live.on(['transactions', 'exchanges', 'products'], () => loadSalesAnalytics({ quiet: true }));
     } catch (error) {
         console.error('Dashboard Init Error:', error);
     }

@@ -4,14 +4,14 @@
 const INVENTORY_COLUMNS = 8;
 let inventoryProducts = [];
 
-async function loadInventory() {
+async function loadInventory({ quiet = false } = {}) {
     const tableBody = document.getElementById('inventory-list-main');
     if (!tableBody) return;
-    UI.tableSkeleton(tableBody, INVENTORY_COLUMNS, 8);
+    if (!quiet) UI.tableSkeleton(tableBody, INVENTORY_COLUMNS, 8);
 
     try {
         inventoryProducts = await UI.fetchJson(`${apiBase}/api/products/get-inventory`);
-        renderInventoryTable({ fade: true });
+        renderInventoryTable({ fade: !quiet });
     } catch (error) {
         console.error('Inventory Error:', error);
         UI.tableMessage(tableBody, INVENTORY_COLUMNS, {
@@ -19,7 +19,7 @@ async function loadInventory() {
             title: 'Unable to load inventory',
             message: error.message,
             actionLabel: 'Try again',
-            onAction: loadInventory
+            onAction: () => loadInventory()
         });
     }
 }
@@ -79,4 +79,7 @@ document.getElementById('inventorySearch')?.addEventListener('input', UI.debounc
 /* =========================
    PAGE LOAD
 ========================= */
-document.addEventListener('DOMContentLoaded', loadInventory);
+document.addEventListener('DOMContentLoaded', () => {
+    loadInventory();
+    Live.on(['products', 'exchanges', 'forecast'], () => loadInventory({ quiet: true }));
+});

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Crooked.Models;
+using Crooked.Services;
 using System.Collections.Generic;
 using System;
 
@@ -14,6 +15,7 @@ namespace Crooked.Controllers
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
         [HttpPost("login")]
+        [LiveUpdate(LiveTopics.Activity)]
         public IActionResult Login([FromBody] User loginRequest)
         {
             try 
@@ -80,6 +82,7 @@ namespace Crooked.Controllers
         }
 
         [HttpPost("toggle-archive/{id}")]
+        [LiveUpdate(LiveTopics.Staff, LiveTopics.Activity)]
         public IActionResult ToggleArchive(int id, [FromQuery] bool archive)
         {
             try
@@ -178,6 +181,7 @@ namespace Crooked.Controllers
         }
 
         [HttpPost("register-staff")]
+        [LiveUpdate(LiveTopics.Staff)]
         public IActionResult RegisterStaff([FromBody] User request)
         {
             using (var connection = new NpgsqlConnection(_connectionString))

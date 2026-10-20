@@ -1,16 +1,215 @@
 /* =========================================================
    CRKD SHARED COMPONENTS
-   Skeleton loaders, table states, badges, pagination, toolbars,
-   toasts and loading buttons. ui.js builds the markup.
+   Confirmation dialogs, skeleton loaders, table states, badges,
+   pagination, toolbars, toasts, loading buttons, file pickers,
+   the live-update status and the small-screen blocker.
+   ui.js and live.js build the markup.
 
-   Load it after the page's base stylesheet (dashboard.css, or
-   PointofSale.css on the POS), whose colour tokens it uses.
-   Tokens the POS does not define have fallbacks.
+   Every page loads it after its base stylesheet (dashboard.css,
+   PointofSale.css or index.css), whose colour tokens it uses.
+   Tokens a base stylesheet does not define have fallbacks.
 ========================================================= */
 
 /* Classes such as .btn set display, which would otherwise override the hidden attribute. */
 [hidden] {
     display: none !important;
+}
+
+/* =========================
+   CONFIRMATION DIALOG (showDialog)
+   The page behind every dialog and modal is blurred, and the
+   dialog's text and buttons are centred.
+========================= */
+.modal,
+.dialog-overlay {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+}
+
+.dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-dialog, 9999);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--color-overlay);
+    animation: fade-in 0.15s ease-out;
+}
+
+.dialog-card {
+    width: min(100%, 440px);
+    padding: 28px 24px 24px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    animation: rise-in 0.18s ease-out;
+}
+
+.dialog-title {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.dialog-message {
+    margin: 0 0 24px;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-md);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* =========================
+   SMALL-SCREEN BLOCKER
+   Below 768px wide the app is hidden and ui.js's notice is shown instead.
+========================= */
+.mobile-blocker {
+    display: none;
+}
+
+@media (max-width: 767.98px) {
+    body > :not(.mobile-blocker) {
+        display: none !important;
+    }
+
+    .mobile-blocker {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        /* The chrome colour matches the logo's own background, as in the sidebar. */
+        background: var(--chrome-bg, var(--color-bg, #0d0d0d));
+        color: var(--chrome-text-strong, var(--color-text, #f5f5f5));
+        text-align: center;
+    }
+}
+
+.mobile-blocker-card {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    max-width: 360px;
+}
+
+.mobile-blocker-logo {
+    width: 96px;
+    margin-bottom: 8px;
+}
+
+html[data-theme="light"] .mobile-blocker-logo {
+    filter: invert(1);
+}
+
+.mobile-blocker h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.mobile-blocker p {
+    margin: 0;
+    color: var(--chrome-text, var(--color-text-muted, #c2c2c2));
+    font-size: var(--font-size-md, 14px);
+    line-height: 1.6;
+}
+
+/* =========================
+   FILE PICKER
+   ui.js turns input[type="file"][data-file-picker] into a button and
+   the chosen file's name, so only the button opens the file chooser.
+========================= */
+.file-picker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.file-picker-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.file-picker-button {
+    flex: 0 0 auto;
+}
+
+.file-picker-button[aria-invalid="true"] {
+    border-color: var(--color-danger);
+}
+
+.file-picker-name {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-subtle);
+    font-size: var(--font-size-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-picker-name.has-file {
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+/* =========================
+   LIVE-UPDATE STATUS (live.js adds it to the top bar)
+========================= */
+.live-status {
+    --live-color: #9ca3af;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: var(--control-height, 40px);
+    padding: 0 12px;
+    border: 1px solid var(--chrome-control-border, #7a7a7a);
+    border-radius: var(--radius-md);
+    background: var(--chrome-surface, #1f1f1f);
+    color: var(--chrome-text-strong, #ffffff);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.live-status::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--live-color);
+}
+
+.live-status.is-live { --live-color: #22c55e; }
+.live-status.is-connecting { --live-color: #f59e0b; }
+
+.live-status.is-live::before {
+    animation: live-pulse 2s ease-out infinite;
+}
+
+@keyframes live-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+    70%, 100% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
 }
 
 /* =========================
@@ -305,8 +504,9 @@ input[type="date"]:focus-visible {
     color: var(--color-text-subtle);
 }
 
-/* A button that reads like an inline link, such as "Download the template". */
-.link-button {
+/* A button that reads like an inline link, such as "Download the template".
+   :where() keeps these defaults below a page's own .link-button styles (the login page has one). */
+:where(.link-button) {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -321,11 +521,11 @@ input[type="date"]:focus-visible {
     cursor: pointer;
 }
 
-.link-button:hover {
+:where(.link-button:hover) {
     color: var(--color-text);
 }
 
-.link-button:disabled {
+:where(.link-button:disabled) {
     cursor: progress;
     opacity: 0.7;
 }
@@ -465,6 +665,14 @@ input[type="date"]:focus-visible {
    Shimmer and slides stop; skeletons stay as plain blocks.
 ========================= */
 @media (prefers-reduced-motion: reduce) {
+    .dialog-card {
+        animation-name: fade-in;
+    }
+
+    .live-status.is-live::before {
+        animation: none;
+    }
+
     .skeleton {
         animation: none;
         background: var(--color-surface-3);

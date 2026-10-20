@@ -1,20 +1,24 @@
 /* =========================
    EXCHANGES
-   Shop policy: an item can be exchanged for the same product in a
-   different size and/or color at the same price. The returned unit
-   goes back into stock and the replacement is taken out of stock;
-   the sale is then shown as Exchanged.
+   Shop policy: an item bought as a single piece can be exchanged within
+   3 days of purchase for the same product in a different size and/or
+   color at the same price. The returned item goes back into stock and
+   the replacement is taken out of stock; the sale is then shown as
+   Exchanged. The server enforces all of this; the page only guides.
 ========================= */
 const RECENT_SALES_PAGE_SIZE = 5;
+const RECENT_SALES_COLUMNS = 6;
 const SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL'];
 
-// The sale being exchanged: { transaction, items, exchanges } from /api/Exchange/lookup.
+// The sale being exchanged: { transaction, exchangeUntil, hiddenItemCount, items, exchanges }
+// from /api/Exchange/lookup.
 let sale = null;
-// transactionItemId -> { quantity, productId } for every item with a quantity chosen.
+// transactionItemId -> { productId, size } for every item ticked for exchange.
 const selections = new Map();
 let exchangePending = false;
 let recentSalesPage = 1;
 let focusRecentPager = false;
+let staleNoticeShown = false;
 
 const lookupForm = document.getElementById('lookupForm');
 const lookupQuery = document.getElementById('lookupQuery');
@@ -78,31 +82,29 @@ async function findSale(query) {
     }
 }
 
-async function loadRecentSales(page = recentSalesPage) {
+// Only sales that can still be exchanged: completed, from the last 3 days, with single-piece items.
+async function loadRecentSales(page = recentSalesPage, { quiet = false } = {}) {
     const body = document.getElementById('recentSalesBody');
     const pager = document.getElementById('recentSalesPagination');
     recentSalesPage = page;
-    UI.tableSkeleton(body, 5, RECENT_SALES_PAGE_SIZE);
+    if (!quiet) UI.tableSkeleton(body, RECENT_SALES_COLUMNS, RECENT_SALES_PAGE_SIZE);
 
     try {
         const data = await UI.fetchJson(
-            `${apiBase}/api/POS/Transaction/search?page=${page}&pageSize=${RECENT_SALES_PAGE_SIZE}`);
+            `${apiBase}/api/Exchange/sales?page=${page}&pageSize=${RECENT_SALES_PAGE_SIZE}`);
         if (!data.items.length) {
             pager.replaceChildren();
-            UI.tableMessage(body, 5, {
+            UI.tableMessage(body, RECENT_SALES_COLUMNS, {
                 icon: 'fa-receipt',
-                title: 'No sales yet',
-                message: 'Sales made at the POS will appear here.'
+                title: 'No sales to exchange',
+                message: `Sales from the last ${data.windowDays} days with items bought as a single piece appear here.`
             });
             return;
         }
 
         UI.fillTable(body, data.items.map(transaction => {
-            const canExchange = ['Completed', 'Exchanged'].includes(transaction.status) && transaction.itemCount > 0;
             const select = UI.el('button', 'btn btn-secondary btn-sm', 'Select');
             select.type = 'button';
-            select.disabled = !canExchange;
-            select.title = canExchange ? '' : 'This sale has no items that can be exchanged.';
             select.setAttribute('aria-label', `Select sale ${saleLabel(transaction)}`);
             select.addEventListener('click', () => {
                 lookupQuery.value = transaction.referenceId || String(transaction.transactionId);
@@ -114,11 +116,12 @@ async function loadRecentSales(page = recentSalesPage) {
                 UI.cell(transaction.dateTime, 'col-muted'),
                 UI.cell(transaction.referenceId || '—'),
                 UI.cell(UI.formatPeso(transaction.totalAmount), 'col-amount'),
+                UI.cell(transaction.exchangeUntil, 'col-muted'),
                 UI.cell(UI.statusBadge(transaction.status)),
                 UI.cell(select, 'col-action')
             );
             return row;
-        }));
+        }), { fade: !quiet });
 
         UI.pagination(pager, {
             page: data.page,
@@ -138,9 +141,9 @@ async function loadRecentSales(page = recentSalesPage) {
     } catch (error) {
         console.error('Recent Sales Error:', error);
         pager.replaceChildren();
-        UI.tableMessage(body, 5, {
+        UI.tableMessage(body, RECENT_SALES_COLUMNS, {
             isError: true,
-            title: 'Unable to load recent sales',
+            title: 'Unable to load sales',
             message: error.message,
             actionLabel: 'Try again',
             onAction: () => loadRecentSales(page)
@@ -154,6 +157,7 @@ async function loadRecentSales(page = recentSalesPage) {
 function openWorkspace(data) {
     sale = data;
     selections.clear();
+    staleNoticeShown = false;
     resultSection.hidden = true;
     notesInput.value = '';
     hideError();
@@ -162,12 +166,19 @@ function openWorkspace(data) {
     document.getElementById('saleSummary').replaceChildren(
         UI.detailPair('Reference ID', saleLabel(transaction)),
         UI.detailPair('Date & time', transaction.dateTime),
+        UI.detailPair('Exchange until', data.exchangeUntil),
         UI.detailPair('Payment method', transaction.paymentMethod),
         UI.detailPair('Sold by', transaction.soldBy || 'Unknown'),
         UI.detailPair('Status', UI.statusBadge(transaction.status)),
         UI.detailPair('Total amount', UI.formatPeso(transaction.totalAmount))
     );
     itemsContainer.replaceChildren(...data.items.map(buildItemCard));
+
+    const hiddenNote = document.getElementById('hiddenItemsNote');
+    hiddenNote.hidden = !data.hiddenItemCount;
+    hiddenNote.textContent = data.hiddenItemCount
+        ? `${data.hiddenItemCount} item${data.hiddenItemCount === 1 ? ' was' : 's were'} bought in a quantity of 2 or more and can't be exchanged, so ${data.hiddenItemCount === 1 ? 'it isn\'t' : 'they aren\'t'} listed.`
+        : '';
     updateReview();
 
     workspace.hidden = false;
@@ -198,7 +209,7 @@ function buildItemCard(item) {
     const info = UI.el('div', 'exchange-item-info');
     info.append(
         UI.el('h3', 'exchange-item-name', item.productName),
-        UI.el('p', 'exchange-item-meta', `Bought: ${bought} · ${item.quantity} × ${UI.formatPeso(item.unitPrice)}`)
+        UI.el('p', 'exchange-item-meta', `Bought: ${bought} · ${UI.formatPeso(item.unitPrice)}`)
     );
     if (item.exchangeReason) info.appendChild(UI.badge(`Exchanged before: ${item.exchangeReason}`, 'info'));
     card.appendChild(info);
@@ -210,16 +221,18 @@ function buildItemCard(item) {
     }
 
     const context = `${item.productName}, ${bought}`;
-    const quantity = selectField(`exchange-qty-${id}`, 'Quantity to exchange', context);
+    const toggle = UI.el('label', 'exchange-item-toggle');
+    const checkbox = UI.el('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = `exchange-item-${id}`;
+    toggle.append(checkbox, 'Exchange this item', UI.el('span', 'visually-hidden', `: ${context}`));
+
     const size = selectField(`exchange-size-${id}`, 'New size', context);
     const color = selectField(`exchange-color-${id}`, 'New color', context);
     const availability = UI.el('p', 'exchange-item-availability');
     availability.id = `exchange-availability-${id}`;
     availability.dataset.itemId = id;
     [size.select, color.select].forEach(select => select.setAttribute('aria-describedby', availability.id));
-
-    quantity.select.append(new Option('None', '0'),
-        ...Array.from({ length: item.quantity }, (_, index) => new Option(String(index + 1), String(index + 1))));
 
     const sizes = [...new Set(item.options.map(option => option.size?.trim() || 'One Size'))]
         .sort((a, b) => sizeRank(a) - sizeRank(b) || a.localeCompare(b, undefined, { numeric: true }));
@@ -247,17 +260,17 @@ function buildItemCard(item) {
     }
 
     function sync() {
-        const count = Number(quantity.select.value);
-        size.select.disabled = count === 0;
-        color.select.disabled = count === 0;
-        card.classList.toggle('is-selected', count > 0);
-        if (count > 0) selections.set(id, { quantity: count, productId: Number(color.select.value) || 0, size: size.select.value });
+        const chosen = checkbox.checked;
+        size.select.disabled = !chosen;
+        color.select.disabled = !chosen;
+        card.classList.toggle('is-selected', chosen);
+        if (chosen) selections.set(id, { productId: Number(color.select.value) || 0, size: size.select.value });
         else selections.delete(id);
         updateReview();
     }
 
     renderColors();
-    quantity.select.addEventListener('change', sync);
+    checkbox.addEventListener('change', sync);
     size.select.addEventListener('change', () => {
         renderColors();
         sync();
@@ -266,12 +279,12 @@ function buildItemCard(item) {
     sync();
 
     const controls = UI.el('div', 'exchange-item-controls');
-    controls.append(quantity.field, size.field, color.field);
-    card.append(controls, availability);
+    controls.append(size.field, color.field);
+    card.append(toggle, controls, availability);
     return card;
 }
 
-// Shows the stock moves and blocks the exchange when a replacement doesn't have enough stock.
+// Shows the stock moves and blocks the exchange when a replacement is out of stock.
 function updateReview() {
     if (!sale) return;
 
@@ -283,8 +296,8 @@ function updateReview() {
     const stockChange = new Map();
     selections.forEach((selection, itemId) => {
         const item = itemsById.get(itemId);
-        stockChange.set(item.productId, (stockChange.get(item.productId) || 0) + selection.quantity);
-        stockChange.set(selection.productId, (stockChange.get(selection.productId) || 0) - selection.quantity);
+        stockChange.set(item.productId, (stockChange.get(item.productId) || 0) + 1);
+        stockChange.set(selection.productId, (stockChange.get(selection.productId) || 0) - 1);
     });
 
     let hasProblem = false;
@@ -310,7 +323,7 @@ function updateReview() {
             element.classList.add('is-error');
             element.textContent = `Only ${option.stock} of ${UI.variantLabel(option.size, option.color)} in stock.`;
         } else {
-            element.textContent = `${selection.quantity} will be swapped for ${UI.variantLabel(option.size, option.color)}. ${left} left after the exchange.`;
+            element.textContent = `Will be swapped for ${UI.variantLabel(option.size, option.color)}. ${left} left after the exchange.`;
         }
     });
 
@@ -321,11 +334,9 @@ function updateReview() {
     selections.forEach((selection, itemId) => {
         const item = itemsById.get(itemId);
         const option = optionsById.get(selection.productId);
-        returnList.appendChild(UI.el('li', null,
-            `${item.productName} — ${UI.variantLabel(item.size, item.color)} × ${selection.quantity}`));
+        returnList.appendChild(UI.el('li', null, `${item.productName} — ${UI.variantLabel(item.size, item.color)}`));
         if (option) {
-            issueList.appendChild(UI.el('li', null,
-                `${item.productName} — ${UI.variantLabel(option.size, option.color)} × ${selection.quantity}`));
+            issueList.appendChild(UI.el('li', null, `${item.productName} — ${UI.variantLabel(option.size, option.color)}`));
         }
     });
 
@@ -339,7 +350,7 @@ function showError(message, withReload = false) {
     if (withReload) {
         const reload = UI.el('button', 'link-button', 'Reload the sale');
         reload.type = 'button';
-        reload.addEventListener('click', () => findSale(String(sale?.transaction.referenceId || sale?.transaction.transactionId || '')));
+        reload.addEventListener('click', reloadSale);
         errorBox.append(' ', reload);
     }
     errorBox.hidden = false;
@@ -350,13 +361,17 @@ function hideError() {
     errorBox.replaceChildren();
 }
 
+function reloadSale() {
+    if (sale) findSale(String(sale.transaction.referenceId || sale.transaction.transactionId));
+}
+
 function confirmExchange() {
     if (!sale || !selections.size) return;
 
-    const units = [...selections.values()].reduce((total, selection) => total + selection.quantity, 0);
+    const count = selections.size;
     showDialog(
         'Process Exchange',
-        `Exchange ${units} item${units === 1 ? '' : 's'} on sale ${saleLabel(sale.transaction)}? ` +
+        `Exchange ${count} item${count === 1 ? '' : 's'} on sale ${saleLabel(sale.transaction)}? ` +
         'The returned items go back into stock, the replacements are taken out of stock, and the sale will be marked Exchanged.',
         submitExchange,
         null,
@@ -380,7 +395,7 @@ async function submitExchange() {
                 notes: notesInput.value.trim(),
                 items: [...selections].map(([transactionItemId, selection]) => ({
                     transactionItemId,
-                    quantity: selection.quantity,
+                    quantity: 1,
                     newProductId: selection.productId
                 }))
             })
@@ -403,7 +418,7 @@ async function submitExchange() {
 
 function showResult(result) {
     const describe = (entry, suffix) =>
-        UI.el('li', null, `${entry.productName} — ${UI.variantLabel(entry.size, entry.color)} × ${entry.quantity} · ${suffix(entry.stockAfter)}`);
+        UI.el('li', null, `${entry.productName} — ${UI.variantLabel(entry.size, entry.color)} · ${suffix(entry.stockAfter)}`);
     document.getElementById('resultText').textContent =
         `Sale ${result.referenceId} is now marked Exchanged, and the stock levels below were updated.`;
     document.getElementById('resultReturned').replaceChildren(
@@ -449,12 +464,20 @@ function leaveWorkspace() {
     );
 }
 
+// Someone else changed stock while this sale is open. Rebuilding the cards would throw away
+// the cashier's choices, so they are told once and can reload when ready.
+function warnStaleStock() {
+    if (!sale || exchangePending || staleNoticeShown) return;
+    staleNoticeShown = true;
+    showError('Stock levels just changed on another device.', true);
+}
+
 /* =========================
    RECENT EXCHANGES
 ========================= */
-async function loadRecentExchanges() {
+async function loadRecentExchanges({ quiet = false } = {}) {
     const body = document.getElementById('recentExchangesBody');
-    UI.tableSkeleton(body, 4, 4);
+    if (!quiet) UI.tableSkeleton(body, 4, 4);
 
     try {
         const exchanges = await UI.fetchJson(`${apiBase}/api/Exchange/recent?limit=10`);
@@ -471,7 +494,7 @@ async function loadRecentExchanges() {
             const changes = UI.el('ul', 'exchange-change-list');
             exchange.items.forEach(item => changes.appendChild(UI.el('li', null,
                 `${item.productName}: ${UI.variantLabel(item.returnedSize, item.returnedColor)} → ` +
-                `${UI.variantLabel(item.newSize, item.newColor)} × ${item.quantity}`)));
+                `${UI.variantLabel(item.newSize, item.newColor)}`)));
 
             const row = document.createElement('tr');
             row.append(
@@ -481,7 +504,7 @@ async function loadRecentExchanges() {
                 UI.cell(exchange.processedBy, 'col-muted')
             );
             return row;
-        }));
+        }), { fade: !quiet });
     } catch (error) {
         console.error('Recent Exchanges Error:', error);
         UI.tableMessage(body, 4, {
@@ -489,7 +512,7 @@ async function loadRecentExchanges() {
             title: 'Unable to load recent exchanges',
             message: error.message,
             actionLabel: 'Try again',
-            onAction: loadRecentExchanges
+            onAction: () => loadRecentExchanges()
         });
     }
 }
@@ -517,6 +540,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadRecentSales(1);
     loadRecentExchanges();
+    Live.on(['transactions', 'exchanges'], () => {
+        loadRecentSales(recentSalesPage, { quiet: true });
+        loadRecentExchanges({ quiet: true });
+    });
+    Live.on(['products'], warnStaleStock);
 
     const presetSale = new URLSearchParams(window.location.search).get('sale');
     if (presetSale) {

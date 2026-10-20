@@ -1,4 +1,5 @@
 using Crooked.Models;
+using Crooked.Services;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using System.Globalization;
@@ -23,7 +24,7 @@ namespace Crooked.Controllers
 
             const string query = @"
                 SELECT p.id, p.product_name, p.low_stock_threshold, p.sales_velocity_rating,
-                       d.sale_date, COALESCE(s.quantity_sold, 0)
+                       d.sale_date, COALESCE(s.quantity_sold, 0), COALESCE(p.size, ''), COALESCE(p.color, '')
                 FROM products p
                 CROSS JOIN generate_series(
                     ((NOW() AT TIME ZONE 'Asia/Manila')::date - 6)::timestamp,
@@ -50,6 +51,8 @@ namespace Crooked.Controllers
                     {
                         Id = id,
                         ProductName = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                        Size = reader.GetString(6),
+                        Color = reader.GetString(7),
                         LowStockThreshold = reader.GetInt32(2),
                         SalesVelocityRating = reader.IsDBNull(3) ? "slow" : reader.GetString(3)
                     };
@@ -72,6 +75,8 @@ namespace Crooked.Controllers
                     {
                         id = product.Id,
                         productName = product.ProductName,
+                        size = product.Size,
+                        color = product.Color,
                         lowStockThreshold = product.LowStockThreshold,
                         averageDailySales = Math.Round(product.DailySales.Average(), 2),
                         salesVelocityRating = product.SalesVelocityRating,
@@ -121,6 +126,7 @@ namespace Crooked.Controllers
         }
 
         [HttpPost("notifications/read")]
+        [LiveUpdate(LiveTopics.Notifications)]
         [HttpPost("/api/POS/forecast-notifications/read")]
         public async Task<IActionResult> MarkNotificationsRead(CancellationToken cancellationToken)
         {

@@ -989,51 +989,7 @@ body.modal-open {
     overflow: hidden;
 }
 
-/* =========================
-   CONFIRMATION DIALOG (showDialog in layout.js)
-========================= */
-.dialog-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-dialog);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    background: var(--color-overlay);
-    animation: fade-in 0.15s ease-out;
-}
-
-.dialog-card {
-    width: min(100%, 440px);
-    padding: 24px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
-    color: var(--color-text);
-    box-shadow: var(--shadow-lg);
-    animation: rise-in 0.18s ease-out;
-}
-
-.dialog-title {
-    margin: 0 0 8px;
-    font-size: 18px;
-    font-weight: 700;
-}
-
-.dialog-message {
-    margin: 0 0 24px;
-    color: var(--color-text-muted);
-    font-size: var(--font-size-md);
-    line-height: 1.6;
-    overflow-wrap: anywhere;
-}
-
-.dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-}
+/* The confirmation dialog (showDialog in layout.js) is styled in components.css. */
 
 @keyframes fade-in {
     from { opacity: 0; }
@@ -1123,8 +1079,7 @@ body.modal-open {
         transition: none;
     }
 
-    .modal-content,
-    .dialog-card {
+    .modal-content {
         animation-name: fade-in;
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Crooked.Models;
+using Crooked.Services;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -49,6 +50,7 @@ namespace Crooked.Controllers
         }
 
         [HttpPost("checkout")]
+        [LiveUpdate(LiveTopics.Products)]
         public async Task<IActionResult> Checkout([FromBody] List<CartItem> cart)
         {
             if (cart == null || cart.Count == 0 || cart.Any(item => item.Quantity <= 0))

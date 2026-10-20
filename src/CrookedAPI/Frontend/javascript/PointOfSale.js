@@ -969,3 +969,5 @@ if (userName) {
 renderCheckout();
 UI.cardSkeletons(grid, { count: 8, tag: "li", cardClass: "product-card", mediaHeight: "160px", lines: 3 });
 loadProducts();
+// Stock changes from other tills, exchanges and product edits show up without a reload.
+Live.on(["products", "exchanges"], loadProducts);

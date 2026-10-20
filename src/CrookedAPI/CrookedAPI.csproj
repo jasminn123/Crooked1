@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <None Update="Frontend\**" CopyToPublishDirectory="PreserveNewest" />
+    <None Remove="Database\schema.sql" />
+    <EmbeddedResource Include="Database\schema.sql" LogicalName="schema.sql" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,10 +1,10 @@
 /* =========================
    SALES HISTORY
 ========================= */
-async function loadSalesHistory() {
+async function loadSalesHistory({ quiet = false } = {}) {
     const tbody = document.getElementById('salesHistoryTableBody');
     if (!tbody) return;
-    UI.tableSkeleton(tbody, 4, 8);
+    if (!quiet) UI.tableSkeleton(tbody, 4, 8);
 
     try {
         const transactions = await UI.fetchJson(`${apiBase}/api/POS/Transaction`);
@@ -26,7 +26,7 @@ async function loadSalesHistory() {
                 UI.cell(UI.statusBadge(transaction.has_exchange ? 'Exchanged' : transaction.status))
             );
             return row;
-        }));
+        }), { fade: !quiet });
     } catch (error) {
         console.error('Sales History Error:', error);
         UI.tableMessage(tbody, 4, {
@@ -34,7 +34,7 @@ async function loadSalesHistory() {
             title: 'Unable to load sales history',
             message: error.message,
             actionLabel: 'Try again',
-            onAction: loadSalesHistory
+            onAction: () => loadSalesHistory()
         });
     }
 }
@@ -42,4 +42,7 @@ async function loadSalesHistory() {
 /* =========================
    PAGE LOAD
 ========================= */
-document.addEventListener('DOMContentLoaded', loadSalesHistory);
+document.addEventListener('DOMContentLoaded', () => {
+    loadSalesHistory();
+    Live.on(['transactions', 'exchanges'], () => loadSalesHistory({ quiet: true }));
+});

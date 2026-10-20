@@ -12,7 +12,8 @@ namespace Crooked.Models
         string PaymentMethod,
         string SoldBy,
         int ItemCount,
-        [property: JsonIgnore] string StoredStatus);
+        [property: JsonIgnore] string StoredStatus,
+        [property: JsonIgnore] DateTime StoredDateTime);
 
     public sealed record TransactionItemView(
         long TransactionItemId,

@@ -1,6 +1,7 @@
 // Shared UI building blocks: skeleton loaders, table states, badges, pagination,
-// toasts, loading buttons and small helpers. Pages load it (with components.css)
-// before layout.js and their own script, and use it through the UI namespace.
+// toasts, loading buttons, file pickers, the small-screen blocker and small helpers.
+// Every page loads it (with components.css) before its own scripts and uses it
+// through the UI namespace.
 const UI = (() => {
     const pesoNumber = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -12,6 +13,11 @@ const UI = (() => {
 
     function variantLabel(size, color) {
         return `${size?.trim() || 'One Size'} / ${color?.trim() || 'Default'}`;
+    }
+
+    // A product variant's full name, such as "CRKD Tee · M / Black".
+    function variantName(name, size, color) {
+        return size?.trim() || color?.trim() ? `${name} · ${variantLabel(size, color)}` : name;
     }
 
     function debounce(callback, wait = 300) {
@@ -244,9 +250,6 @@ const UI = (() => {
         document.body.appendChild(toastStack);
     }
 
-    if (document.body) ensureToastStack();
-    else document.addEventListener('DOMContentLoaded', ensureToastStack);
-
     // Short, non-blocking notice. Hovering or focusing it keeps it open; errors stay longer.
     // tone: 'success' | 'error' | 'info'
     function toast(message, { tone = 'info', duration = 4500 } = {}) {
@@ -305,6 +308,77 @@ const UI = (() => {
         };
     }
 
+    /* =========================
+       FILE PICKERS
+    ========================= */
+    // Replaces the look of <input type="file" data-file-picker="Button label"> with a button and
+    // the chosen file's name, so only the button opens the file chooser. The input stays in the
+    // form (visually hidden), so form code keeps reading input.files as before.
+    function enhanceFilePicker(input) {
+        if (input.closest('.file-picker')) return;
+
+        const picker = el('div', 'file-picker');
+        const button = el('button', 'btn btn-secondary btn-sm file-picker-button');
+        button.type = 'button';
+        button.id = `${input.id}-file-button`;
+        button.append(icon('fa-arrow-up-from-bracket'), input.dataset.filePicker || 'Choose file');
+        const name = el('span', 'file-picker-name', 'No file chosen');
+        name.id = `${input.id}-file-name`;
+        button.setAttribute('aria-describedby', name.id);
+
+        input.before(picker);
+        input.classList.add('file-picker-input');
+        input.tabIndex = -1;
+        input.setAttribute('aria-hidden', 'true');
+        picker.append(input, button, name);
+        // The field's label now names (and clicks) the button instead of the hidden input.
+        const label = document.querySelector(`label[for="${input.id}"]`);
+        if (label) label.htmlFor = button.id;
+
+        const showName = () => {
+            const file = input.files?.[0];
+            name.textContent = file ? file.name : 'No file chosen';
+            name.classList.toggle('has-file', Boolean(file));
+        };
+        button.addEventListener('click', () => input.click());
+        input.addEventListener('change', showName);
+        input.form?.addEventListener('reset', () => setTimeout(showName));
+    }
+
+    function filePickerButton(input) {
+        return document.getElementById(`${input.id}-file-button`) || input;
+    }
+
+    /* =========================
+       SMALL-SCREEN BLOCKER
+    ========================= */
+    // components.css shows this notice, and hides everything else, on screens under 768px wide.
+    function addMobileBlocker() {
+        if (document.querySelector('.mobile-blocker')) return;
+
+        const blocker = el('div', 'mobile-blocker');
+        const card = el('div', 'mobile-blocker-card');
+        const logo = el('img', 'mobile-blocker-logo');
+        logo.src = '../assets/logo.png';
+        logo.alt = 'CRKD';
+        card.append(
+            logo,
+            el('h2', null, 'Please use a larger screen'),
+            el('p', null, 'CRKD is made for computers and tablets. Open it on a bigger screen, or make this window wider.')
+        );
+        blocker.appendChild(card);
+        document.body.appendChild(blocker);
+    }
+
+    function onPageReady() {
+        ensureToastStack();
+        addMobileBlocker();
+        document.querySelectorAll('input[type="file"][data-file-picker]').forEach(enhanceFilePicker);
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', onPageReady);
+    else onPageReady();
+
     // Downloads a file from the API under the name the server gives it.
     async function download(url, fallbackName) {
         const response = await fetch(url);
@@ -331,6 +405,7 @@ const UI = (() => {
     return {
         formatPeso,
         variantLabel,
+        variantName,
         debounce,
         el,
         icon,
@@ -349,6 +424,7 @@ const UI = (() => {
         pagination,
         toast,
         setLoading,
+        filePickerButton,
         download
     };
 })();

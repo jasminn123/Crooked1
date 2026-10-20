@@ -7,8 +7,8 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../design/dashboard.css?v=23">
-    <link rel="stylesheet" href="../design/components.css?v=1">
-    <link rel="stylesheet" href="../design/exchange.css?v=1">
+    <link rel="stylesheet" href="../design/components.css?v=2">
+    <link rel="stylesheet" href="../design/exchange.css?v=2">
 
     <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
     <script src="../javascript/theme.js?v=2"></script>
@@ -103,7 +103,7 @@
                         <span class="exchange-step-number" aria-hidden="true">1</span>
                         <div>
                             <h2 id="findSaleTitle" class="card-title">Find the sale</h2>
-                            <p class="card-subtitle">Items can be exchanged for the same product in a different size or color, at the same price.</p>
+                            <p class="card-subtitle">Items bought as a single piece can be exchanged within 3 days of purchase, for the same product in a different size or color at the same price.</p>
                         </div>
                     </div>
 
@@ -124,7 +124,7 @@
                     <p id="lookupStatus" class="lookup-status" role="status" aria-live="polite"></p>
 
                     <div class="recent-sales">
-                        <h3 id="recentSalesTitle">Or pick a recent sale</h3>
+                        <h3 id="recentSalesTitle">Or pick a sale from the last 3 days</h3>
                         <div class="transaction-table-scroll">
                             <table class="transaction-table" aria-labelledby="recentSalesTitle">
                                 <thead>
@@ -132,6 +132,7 @@
                                         <th scope="col">Date &amp; Time</th>
                                         <th scope="col">Reference ID</th>
                                         <th scope="col">Total Amount</th>
+                                        <th scope="col">Exchange Until</th>
                                         <th scope="col">Status</th>
                                         <th scope="col"><span class="visually-hidden">Select</span></th>
                                     </tr>
@@ -149,7 +150,7 @@
                         <span class="exchange-step-number" aria-hidden="true">2</span>
                         <div class="exchange-step-copy">
                             <h2 id="workspaceTitle" class="card-title" tabindex="-1">Choose what to exchange</h2>
-                            <p class="card-subtitle">Pick how many of each item the customer is returning, and the size or color they want instead.</p>
+                            <p class="card-subtitle">Tick each item the customer is returning, then choose the size or color they want instead.</p>
                         </div>
                         <button id="changeSale" class="btn btn-ghost btn-sm" type="button">
                             <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
@@ -160,10 +161,11 @@
                     <dl id="saleSummary" class="detail-grid exchange-sale-summary"></dl>
 
                     <div id="exchangeItems" class="exchange-items"></div>
+                    <p id="hiddenItemsNote" class="form-hint exchange-hidden-note" hidden></p>
 
                     <section class="exchange-review" aria-labelledby="reviewTitle">
                         <h3 id="reviewTitle">Inventory changes</h3>
-                        <p id="reviewEmpty" class="exchange-review-empty">Choose a quantity on at least one item to see the changes.</p>
+                        <p id="reviewEmpty" class="exchange-review-empty">Tick at least one item to see the changes.</p>
                         <div id="reviewColumns" class="exchange-review-columns" hidden>
                             <div>
                                 <h4><i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i>Back into stock</h4>
@@ -244,9 +246,10 @@
         </main>
     </div>
 
-    <script src="../javascript/ui.js?v=1"></script>
-    <script src="../javascript/layout.js?v=3"></script>
-    <script src="../javascript/exchange.js?v=1"></script>
+    <script src="../javascript/ui.js?v=2"></script>
+    <script src="../javascript/live.js?v=1"></script>
+    <script src="../javascript/layout.js?v=4"></script>
+    <script src="../javascript/exchange.js?v=2"></script>
 
 </body>
 </html>

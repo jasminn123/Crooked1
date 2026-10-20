@@ -14,26 +14,28 @@ function staffRow(member) {
     return row;
 }
 
-async function fetchStaff() {
+async function fetchStaff({ quiet = false } = {}) {
     const staffBody = document.getElementById('staffTableBody');
     const archiveBody = document.getElementById('archiveTableBody');
     if (!staffBody || !archiveBody) return;
-    UI.tableSkeleton(staffBody, 3, 4);
-    UI.tableSkeleton(archiveBody, 3, 2);
+    if (!quiet) {
+        UI.tableSkeleton(staffBody, 3, 4);
+        UI.tableSkeleton(archiveBody, 3, 2);
+    }
 
     try {
         const staff = await UI.fetchJson(`${apiBase}/api/Auth/get-staff`);
         const active = staff.filter(member => member.isActive);
         const archived = staff.filter(member => !member.isActive);
 
-        if (active.length) UI.fillTable(staffBody, active.map(staffRow));
+        if (active.length) UI.fillTable(staffBody, active.map(staffRow), { fade: !quiet });
         else UI.tableMessage(staffBody, 3, {
             icon: 'fa-user-plus',
             title: 'No active staff accounts',
             message: 'Create an account above to give a staff member access.'
         });
 
-        if (archived.length) UI.fillTable(archiveBody, archived.map(staffRow));
+        if (archived.length) UI.fillTable(archiveBody, archived.map(staffRow), { fade: !quiet });
         else UI.tableMessage(archiveBody, 3, { icon: 'fa-box-archive', title: 'No archived accounts' });
     } catch (error) {
         console.error('Staff Error:', error);
@@ -42,7 +44,7 @@ async function fetchStaff() {
             title: 'Unable to load staff accounts',
             message: error.message,
             actionLabel: 'Try again',
-            onAction: fetchStaff
+            onAction: () => fetchStaff()
         });
         UI.tableMessage(archiveBody, 3, { isError: true, title: 'Unable to load archived accounts' });
     }
@@ -155,4 +157,7 @@ async function submitStaffAccount(fullName, username, password) {
 /* =========================
    PAGE LOAD
 ========================= */
-document.addEventListener('DOMContentLoaded', fetchStaff);
+document.addEventListener('DOMContentLoaded', () => {
+    fetchStaff();
+    Live.on(['staff'], () => fetchStaff({ quiet: true }));
+});

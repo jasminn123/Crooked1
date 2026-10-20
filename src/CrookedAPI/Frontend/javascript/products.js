@@ -282,7 +282,9 @@ function openEditProductModal(id) {
     const preview = document.getElementById('editProdImagePreview');
     preview.src = product.image_url || '';
     preview.style.display = product.image_url ? 'block' : 'none';
-    document.getElementById('editProdImage').value = '';
+    const imageInput = document.getElementById('editProdImage');
+    imageInput.value = '';
+    imageInput.dispatchEvent(new Event('change'));
     markFormClean(document.getElementById('editProductForm'));
     openModalElement(document.getElementById('editProductModal'), () => closeEditProductModal());
 }
@@ -463,4 +465,5 @@ document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('productGrid');
     if (grid) UI.cardSkeletons(grid, { count: 8, cardClass: 'product-card', mediaHeight: '200px', lines: 4 });
     fetchProducts();
+    Live.on(['products', 'exchanges'], fetchProducts);
 });

@@ -5,14 +5,69 @@ using Crooked.Services;
 
 namespace Crooked.Controllers
 {
-    // Shop policy: an item can be exchanged for the same product in a different size
-    // and/or color at the same price. The returned unit goes back into stock and the
-    // replacement is taken out of stock.
+    // Shop policy (ExchangePolicy): an item bought as a single piece can be exchanged within 3 days
+    // for the same product in a different size and/or color at the same price. The returned item
+    // goes back into stock and the replacement is taken out of stock.
     [ApiController]
     [Route("api/[controller]")]
     public class ExchangeController : ControllerBase
     {
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
+
+        // Completed sales still inside the exchange window that have at least one single-piece item.
+        [HttpGet("sales")]
+        public async Task<IActionResult> EligibleSales([FromQuery] int page = 1, [FromQuery] int pageSize = 5)
+        {
+            pageSize = Math.Clamp(pageSize, 1, 50);
+            const string filter = @"
+                FROM transactions t
+                WHERE t.status = 'Completed'
+                  AND t.date_time >= @oldest
+                  AND EXISTS (SELECT 1 FROM transaction_items ti
+                              WHERE ti.transaction_id = t.transaction_id AND ti.quantity = @item_quantity)";
+
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            int totalItems;
+            await using (var command = new NpgsqlCommand($"SELECT COUNT(*) {filter}", connection))
+            {
+                command.Parameters.AddWithValue("@oldest", ExchangePolicy.OldestSaleUtc);
+                command.Parameters.AddWithValue("@item_quantity", ExchangePolicy.ItemQuantity);
+                totalItems = Convert.ToInt32(await command.ExecuteScalarAsync());
+            }
+
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)pageSize));
+            page = Math.Clamp(page, 1, totalPages);
+            var sales = new List<object>();
+            await using (var command = new NpgsqlCommand($@"
+                SELECT {TransactionStore.SummaryColumns}
+                {filter}
+                ORDER BY t.date_time DESC, t.transaction_id DESC
+                LIMIT @limit OFFSET @offset", connection))
+            {
+                command.Parameters.AddWithValue("@oldest", ExchangePolicy.OldestSaleUtc);
+                command.Parameters.AddWithValue("@item_quantity", ExchangePolicy.ItemQuantity);
+                command.Parameters.AddWithValue("@limit", pageSize);
+                command.Parameters.AddWithValue("@offset", (page - 1) * pageSize);
+                await using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    var sale = TransactionStore.ReadSummary(reader);
+                    sales.Add(new
+                    {
+                        sale.TransactionId,
+                        sale.ReferenceId,
+                        sale.DateTime,
+                        sale.TotalAmount,
+                        sale.Status,
+                        exchangeUntil = ShopClock.DisplayDate(ExchangePolicy.LastDay(sale.StoredDateTime))
+                    });
+                }
+            }
+
+            return Ok(new { items = sales, page, pageSize, totalItems, totalPages, windowDays = ExchangePolicy.WindowDays });
+        }
 
         [HttpGet("lookup")]
         public async Task<IActionResult> Lookup([FromQuery] string? query)
@@ -39,10 +94,20 @@ namespace Crooked.Controllers
             if (transaction == null) return NotFound(new { message = $"No sale was found for \"{text}\"." });
             if (transaction.StoredStatus != TransactionStatuses.Completed)
                 return Conflict(new { message = $"Only completed sales can be exchanged. This sale is {transaction.StoredStatus}." });
+            if (!ExchangePolicy.IsOpen(transaction.StoredDateTime))
+                return Conflict(new { message = WindowClosedMessage(transaction.StoredDateTime) });
 
-            var items = await TransactionStore.ReadItemsAsync(connection, transaction.TransactionId);
+            var allItems = await TransactionStore.ReadItemsAsync(connection, transaction.TransactionId);
+            var items = allItems.Where(item => item.Quantity == ExchangePolicy.ItemQuantity).ToList();
             if (items.Count == 0)
-                return Conflict(new { message = "This sale has no saved item details, so its items can't be exchanged." });
+            {
+                return Conflict(new
+                {
+                    message = allItems.Count == 0
+                        ? "This sale has no saved item details, so its items can't be exchanged."
+                        : "None of the items in this sale can be exchanged. Only items bought as a single piece can be exchanged."
+                });
+            }
 
             var variants = new List<(int Id, string Name, string Category, string Size, string Color, decimal Price, int Stock)>();
             await using (var command = new NpgsqlCommand(@"
@@ -82,7 +147,14 @@ namespace Crooked.Controllers
             });
 
             var exchanges = await TransactionStore.ReadExchangesAsync(connection, transaction.TransactionId, 50);
-            return Ok(new { transaction, items = exchangeItems, exchanges });
+            return Ok(new
+            {
+                transaction,
+                exchangeUntil = ShopClock.DisplayDate(ExchangePolicy.LastDay(transaction.StoredDateTime)),
+                hiddenItemCount = allItems.Count - items.Count,
+                items = exchangeItems,
+                exchanges
+            });
         }
 
         [HttpGet("recent")]
@@ -94,13 +166,16 @@ namespace Crooked.Controllers
         }
 
         [HttpPost]
+        [LiveUpdate(LiveTopics.Transactions, LiveTopics.Exchanges, LiveTopics.Products, LiveTopics.Activity)]
         public async Task<IActionResult> CreateExchange([FromBody] ExchangeRequest request)
         {
             if (request == null || request.TransactionId <= 0 || request.Items == null || request.Items.Count == 0)
                 return BadRequest(new { message = "Choose at least one item to exchange." });
-            if (request.Items.Count > 100
-                || request.Items.Any(line => line.TransactionItemId <= 0 || line.NewProductId <= 0 || line.Quantity <= 0))
-                return BadRequest(new { message = "Every exchanged item needs a quantity and a new size or color." });
+            if (request.Items.Count > 100 || request.Items.Any(line => line.TransactionItemId <= 0 || line.NewProductId <= 0))
+                return BadRequest(new { message = "Every exchanged item needs a new size or color." });
+            if (request.Items.Any(line => line.Quantity != ExchangePolicy.ItemQuantity)
+                || request.Items.GroupBy(line => line.TransactionItemId).Any(group => group.Count() > 1))
+                return BadRequest(new { message = "Each item is exchanged one piece at a time." });
 
             var processedBy = string.IsNullOrWhiteSpace(request.ProcessedBy) ? "Unknown" : request.ProcessedBy.Trim();
             if (processedBy.Length > 100) processedBy = processedBy[..100];
@@ -114,7 +189,7 @@ namespace Crooked.Controllers
             {
                 var referenceId = $"#{request.TransactionId}";
                 var status = "";
-                var saleDate = default(DateOnly);
+                var saleTime = default(DateTime);
                 var found = false;
                 await using (var command = new NpgsqlCommand(
                     "SELECT reference_id, status, date_time FROM transactions WHERE transaction_id = @id FOR UPDATE",
@@ -127,7 +202,7 @@ namespace Crooked.Controllers
                         found = true;
                         if (!reader.IsDBNull(0)) referenceId = reader.GetString(0);
                         status = reader.IsDBNull(1) ? "" : reader.GetString(1);
-                        saleDate = DateOnly.FromDateTime(ShopClock.ToShopTime(reader.GetDateTime(2)));
+                        saleTime = reader.GetDateTime(2);
                     }
                 }
 
@@ -135,6 +210,8 @@ namespace Crooked.Controllers
                     return await Fail(transaction, NotFound(new { message = "The sale was not found." }));
                 if (status != TransactionStatuses.Completed)
                     return await Fail(transaction, Conflict(new { message = $"Only completed sales can be exchanged. This sale is {status}." }));
+                if (!ExchangePolicy.IsOpen(saleTime))
+                    return await Fail(transaction, Conflict(new { message = WindowClosedMessage(saleTime) }));
 
                 var items = new Dictionary<long, (int ProductId, string Name, string Category, string Size, string Color, int Quantity, decimal UnitPrice)>();
                 await using (var command = new NpgsqlCommand(@"
@@ -153,12 +230,12 @@ namespace Crooked.Controllers
                     }
                 }
 
-                foreach (var group in request.Items.GroupBy(line => line.TransactionItemId))
+                foreach (var line in request.Items)
                 {
-                    if (!items.TryGetValue(group.Key, out var item))
+                    if (!items.TryGetValue(line.TransactionItemId, out var item))
                         return await Fail(transaction, BadRequest(new { message = "An item you chose is not part of this sale. Reload the sale and try again." }));
-                    if (group.Sum(line => line.Quantity) > item.Quantity)
-                        return await Fail(transaction, BadRequest(new { message = $"Only {item.Quantity} of {item.Name} ({Label(item.Size, item.Color)}) were bought." }));
+                    if (item.Quantity != ExchangePolicy.ItemQuantity)
+                        return await Fail(transaction, BadRequest(new { message = $"{item.Name} was bought {item.Quantity} at a time. Only items bought as a single piece can be exchanged." }));
                 }
 
                 // Lock every product involved in a fixed order so concurrent exchanges can't deadlock.
@@ -197,8 +274,8 @@ namespace Crooked.Controllers
                     if (Normalize(product.Size) == Normalize(item.Size) && Normalize(product.Color) == Normalize(item.Color))
                         return await Fail(transaction, BadRequest(new { message = $"Choose a different size or color for {item.Name}." }));
 
-                    stockChanges[item.ProductId] = stockChanges.GetValueOrDefault(item.ProductId) + line.Quantity;
-                    stockChanges[line.NewProductId] = stockChanges.GetValueOrDefault(line.NewProductId) - line.Quantity;
+                    stockChanges[item.ProductId] = stockChanges.GetValueOrDefault(item.ProductId) + 1;
+                    stockChanges[line.NewProductId] = stockChanges.GetValueOrDefault(line.NewProductId) - 1;
                 }
 
                 foreach (var (productId, change) in stockChanges)
@@ -221,6 +298,7 @@ namespace Crooked.Controllers
                 }
 
                 // Forecasting counts sales per product and day, so the sale moves to the new variant.
+                var saleDate = ShopClock.ShopDate(saleTime);
                 foreach (var (productId, change) in stockChanges.Where(entry => entry.Value != 0))
                 {
                     await using var command = new NpgsqlCommand(change > 0
@@ -250,7 +328,6 @@ namespace Crooked.Controllers
                     exchangeId = Convert.ToInt64(await command.ExecuteScalarAsync());
                 }
 
-                var remaining = items.ToDictionary(entry => entry.Key, entry => entry.Value.Quantity);
                 var returned = new List<object>();
                 var issued = new List<object>();
                 foreach (var line in request.Items)
@@ -259,14 +336,12 @@ namespace Crooked.Controllers
                     var product = products[line.NewProductId];
                     var reason = ExchangeReason(item.Size, item.Color, product.Size, product.Color);
 
-                    // The sale's item list shows what the customer has now: a fully exchanged row
-                    // becomes the new variant, a partly exchanged row is split in two.
-                    if (remaining[line.TransactionItemId] == line.Quantity)
+                    // The sale's item list shows what the customer has now.
+                    await using (var command = new NpgsqlCommand(@"
+                        UPDATE transaction_items
+                        SET product_id = @product_id, size = @size, color = @color, exchange_reason = @reason
+                        WHERE transaction_item_id = @item_id", connection, transaction))
                     {
-                        await using var command = new NpgsqlCommand(@"
-                            UPDATE transaction_items
-                            SET product_id = @product_id, size = @size, color = @color, exchange_reason = @reason
-                            WHERE transaction_item_id = @item_id", connection, transaction);
                         command.Parameters.AddWithValue("@product_id", line.NewProductId);
                         command.Parameters.AddWithValue("@size", product.Size);
                         command.Parameters.AddWithValue("@color", product.Color);
@@ -274,36 +349,6 @@ namespace Crooked.Controllers
                         command.Parameters.AddWithValue("@item_id", line.TransactionItemId);
                         await command.ExecuteNonQueryAsync();
                     }
-                    else
-                    {
-                        await using (var command = new NpgsqlCommand(
-                            "UPDATE transaction_items SET quantity = quantity - @quantity WHERE transaction_item_id = @item_id",
-                            connection, transaction))
-                        {
-                            command.Parameters.AddWithValue("@quantity", line.Quantity);
-                            command.Parameters.AddWithValue("@item_id", line.TransactionItemId);
-                            await command.ExecuteNonQueryAsync();
-                        }
-
-                        await using (var command = new NpgsqlCommand(@"
-                            INSERT INTO transaction_items
-                                (transaction_id, product_id, product_name, category, size, color, quantity, unit_price, exchange_reason)
-                            VALUES (@transaction_id, @product_id, @product_name, @category, @size, @color, @quantity, @unit_price, @reason)",
-                            connection, transaction))
-                        {
-                            command.Parameters.AddWithValue("@transaction_id", request.TransactionId);
-                            command.Parameters.AddWithValue("@product_id", line.NewProductId);
-                            command.Parameters.AddWithValue("@product_name", item.Name);
-                            command.Parameters.AddWithValue("@category", item.Category);
-                            command.Parameters.AddWithValue("@size", product.Size);
-                            command.Parameters.AddWithValue("@color", product.Color);
-                            command.Parameters.AddWithValue("@quantity", line.Quantity);
-                            command.Parameters.AddWithValue("@unit_price", item.UnitPrice);
-                            command.Parameters.AddWithValue("@reason", reason);
-                            await command.ExecuteNonQueryAsync();
-                        }
-                    }
-                    remaining[line.TransactionItemId] -= line.Quantity;
 
                     await using (var command = new NpgsqlCommand(@"
                         INSERT INTO exchange_items
@@ -311,7 +356,7 @@ namespace Crooked.Controllers
                              new_product_id, new_size, new_color, quantity, unit_price, reason)
                         VALUES
                             (@exchange_id, @returned_product_id, @returned_product_name, @returned_size, @returned_color,
-                             @new_product_id, @new_size, @new_color, @quantity, @unit_price, @reason)", connection, transaction))
+                             @new_product_id, @new_size, @new_color, 1, @unit_price, @reason)", connection, transaction))
                     {
                         command.Parameters.AddWithValue("@exchange_id", exchangeId);
                         command.Parameters.AddWithValue("@returned_product_id", item.ProductId);
@@ -321,27 +366,25 @@ namespace Crooked.Controllers
                         command.Parameters.AddWithValue("@new_product_id", line.NewProductId);
                         command.Parameters.AddWithValue("@new_size", product.Size);
                         command.Parameters.AddWithValue("@new_color", product.Color);
-                        command.Parameters.AddWithValue("@quantity", line.Quantity);
                         command.Parameters.AddWithValue("@unit_price", item.UnitPrice);
                         command.Parameters.AddWithValue("@reason", reason);
                         await command.ExecuteNonQueryAsync();
                     }
 
-                    var returnedProduct = products[item.ProductId];
                     returned.Add(new
                     {
                         productName = item.Name,
                         size = item.Size,
                         color = item.Color,
-                        quantity = line.Quantity,
-                        stockAfter = returnedProduct.Stock + stockChanges[item.ProductId]
+                        quantity = 1,
+                        stockAfter = products[item.ProductId].Stock + stockChanges[item.ProductId]
                     });
                     issued.Add(new
                     {
                         productName = item.Name,
                         size = product.Size,
                         color = product.Color,
-                        quantity = line.Quantity,
+                        quantity = 1,
                         stockAfter = product.Stock + stockChanges[line.NewProductId]
                     });
                 }
@@ -353,7 +396,7 @@ namespace Crooked.Controllers
                     await command.ExecuteNonQueryAsync();
                 }
 
-                var units = request.Items.Sum(line => line.Quantity);
+                var units = request.Items.Count;
                 await TransactionStore.LogActivityAsync(connection, transaction, processedBy,
                     $"Exchanged {units} item{(units == 1 ? "" : "s")} on sale {referenceId}");
 
@@ -380,6 +423,10 @@ namespace Crooked.Controllers
             await transaction.RollbackAsync();
             return result;
         }
+
+        private static string WindowClosedMessage(DateTime saleUtc) =>
+            $"The exchange period for this sale ended on {ShopClock.DisplayDate(ExchangePolicy.LastDay(saleUtc))}. " +
+            $"Items can only be exchanged within {ExchangePolicy.WindowDays} days of purchase.";
 
         private static string Normalize(string value) => value.Trim().ToLowerInvariant();
 

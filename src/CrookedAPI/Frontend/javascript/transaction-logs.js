@@ -39,10 +39,13 @@ function hasActiveFilters() {
 /* =========================
    LIST
 ========================= */
-async function loadTransactions(page = currentPage) {
+// quiet: a live refresh keeps the current rows on screen until the new ones arrive.
+async function loadTransactions(page = currentPage, { quiet = false } = {}) {
     const request = ++latestRequest;
-    UI.tableSkeleton(transactionBody, COLUMN_COUNT, PAGE_SIZE);
-    transactionSummary.textContent = 'Loading transactions...';
+    if (!quiet) {
+        UI.tableSkeleton(transactionBody, COLUMN_COUNT, PAGE_SIZE);
+        transactionSummary.textContent = 'Loading transactions...';
+    }
 
     try {
         const data = await UI.fetchJson(`${apiBase}/api/POS/Transaction/search?${filterParams({ page, pageSize: PAGE_SIZE })}`);
@@ -51,7 +54,7 @@ async function loadTransactions(page = currentPage) {
 
         currentPage = data.page;
         totalTransactions = data.totalItems;
-        renderTransactions(data.items);
+        renderTransactions(data.items, { fade: !quiet });
         transactionSummary.textContent = hasActiveFilters()
             ? `${data.totalItems.toLocaleString('en-PH')} transaction${data.totalItems === 1 ? '' : 's'} match your search and filters.`
             : `${data.totalItems.toLocaleString('en-PH')} transaction${data.totalItems === 1 ? '' : 's'} in total.`;
@@ -98,7 +101,7 @@ function paymentLabel(method) {
     return label;
 }
 
-function renderTransactions(transactions) {
+function renderTransactions(transactions, { fade = true } = {}) {
     if (!transactions.length) {
         UI.tableMessage(transactionBody, COLUMN_COUNT, hasActiveFilters()
             ? {
@@ -136,7 +139,7 @@ function renderTransactions(transactions) {
             UI.cell(viewButton, 'col-action')
         );
         return row;
-    }));
+    }), { fade });
 }
 
 /* =========================
@@ -193,7 +196,7 @@ let importPending = false;
 
 function openImport() {
     importForm.reset();
-    importFile.removeAttribute('aria-invalid');
+    UI.filePickerButton(importFile).removeAttribute('aria-invalid');
     importResult.hidden = true;
     importResult.replaceChildren();
     openModalElement(importModal, closeImport);
@@ -220,24 +223,27 @@ function importFileProblem(file) {
 
 function checkImportFile() {
     const problem = importFileProblem(importFile.files[0]);
+    const picker = UI.filePickerButton(importFile);
     if (problem) {
-        importFile.setAttribute('aria-invalid', 'true');
+        picker.setAttribute('aria-invalid', 'true');
         showImportMessage(problem, 'error');
     } else {
-        importFile.removeAttribute('aria-invalid');
+        picker.removeAttribute('aria-invalid');
         importResult.hidden = true;
     }
     return !problem;
 }
 
 function renderImportResult(result) {
-    const tone = result.imported > 0 && !result.rejected ? 'success' : result.imported > 0 || result.skipped > 0 ? 'warning' : 'error';
+    const saved = result.imported + result.updated;
+    const tone = !result.rejected && saved + result.skipped > 0 ? 'success' : saved + result.skipped > 0 ? 'warning' : 'error';
     importResult.className = `import-result is-${tone}`;
 
     const stats = UI.el('ul', 'import-stats');
     [
-        [result.imported, 'imported'],
-        [result.skipped, 'skipped (already in the logs)'],
+        [result.imported, 'new'],
+        [result.updated, 'updated'],
+        [result.skipped, 'unchanged'],
         [result.rejected, 'not imported']
     ].forEach(([count, label]) => {
         const item = UI.el('li');
@@ -259,7 +265,7 @@ function renderImportResult(result) {
         if (result.totalIssues > result.issues.length) {
             content.push(UI.el('p', 'form-hint', `…and ${result.totalIssues - result.issues.length} more.`));
         }
-    } else if (!result.imported && !result.skipped) {
+    } else if (!saved && !result.skipped) {
         content.push(UI.el('p', 'import-result-message', 'The file has no sales to import.'));
     }
 
@@ -270,7 +276,7 @@ function renderImportResult(result) {
 async function submitImport(event) {
     event.preventDefault();
     if (importPending || !checkImportFile()) {
-        importFile.focus();
+        UI.filePickerButton(importFile).focus();
         return;
     }
 
@@ -283,8 +289,11 @@ async function submitImport(event) {
     try {
         const result = await UI.fetchJson(`${apiBase}/api/POS/Transaction/import`, { method: 'POST', body: form });
         renderImportResult(result);
-        if (result.imported > 0) {
-            UI.toast(`Imported ${result.imported} transaction${result.imported === 1 ? '' : 's'}.`, { tone: 'success' });
+        if (result.imported + result.updated > 0) {
+            const parts = [];
+            if (result.imported) parts.push(`added ${result.imported} new`);
+            if (result.updated) parts.push(`updated ${result.updated}`);
+            UI.toast(`Import complete: ${parts.join(' and ')} transaction${result.imported + result.updated === 1 ? '' : 's'}.`, { tone: 'success' });
             loadTransactions(1);
         }
     } catch (error) {
@@ -326,7 +335,7 @@ function detailsSkeleton() {
     detailsBody.replaceChildren(grid, items);
 }
 
-function renderDetails({ transaction, items, exchanges }) {
+function renderDetails({ transaction, items, exchanges, canExchange, exchangeUntil }) {
     const summary = UI.el('dl', 'detail-grid');
     summary.append(
         UI.detailPair('Reference ID', transaction.referenceId || '—'),
@@ -397,8 +406,8 @@ function renderDetails({ transaction, items, exchanges }) {
     detailsBody.replaceChildren(...sections);
     detailsBody.classList.add('fade-in');
 
-    const canExchange = items.length > 0 && ['Completed', 'Exchanged'].includes(transaction.status);
     detailsExchangeLink.hidden = !canExchange;
+    detailsExchangeLink.title = canExchange ? `Items can be exchanged until ${exchangeUntil}.` : '';
     detailsExchangeLink.href = `exchange.html?sale=${encodeURIComponent(transaction.referenceId || transaction.transactionId)}`;
 }
 
@@ -462,4 +471,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadTransactions(1);
+    Live.on(['transactions', 'exchanges'], () => loadTransactions(currentPage, { quiet: true }));
 });
