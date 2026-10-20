@@ -345,6 +345,8 @@ async function loadProducts() {
     grid.replaceChildren();
     showGridMessage("Unable to load products. Please try again.");
     productSearchStatus.textContent = "Products could not be loaded.";
+  } finally {
+    UI.doneLoading(grid);
   }
 }
 
@@ -965,4 +967,5 @@ if (userName) {
 }
 
 renderCheckout();
+UI.cardSkeletons(grid, { count: 8, tag: "li", cardClass: "product-card", mediaHeight: "160px", lines: 3 });
 loadProducts();

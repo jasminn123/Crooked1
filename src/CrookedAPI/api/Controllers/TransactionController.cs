@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Crooked.Models;
-using System;
+using Crooked.Services;
 
 namespace Crooked.Controllers
 {
@@ -9,6 +9,8 @@ namespace Crooked.Controllers
     [ApiController]
     public class TransactionController : ControllerBase
     {
+        private const long MaxImportBytes = 5 * 1024 * 1024;
+        private const int MaxExportRows = 50000;
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
         [HttpGet("today-revenue")]
@@ -56,7 +58,8 @@ namespace Crooked.Controllers
                     return BadRequest(new { error = "Transaction items must have a valid product and quantity." });
                 }
 
-                Console.WriteLine($"Received: RefId={tx.ReferenceId}, Date={tx.Date_Time}, Total={tx.Total_Amount}, Status={tx.Status}");
+                var paymentMethod = PaymentMethods.Normalize(tx.PaymentMethod) ?? PaymentMethods.Unknown;
+                Console.WriteLine($"Received: RefId={tx.ReferenceId}, Date={tx.Date_Time}, Total={tx.Total_Amount}, Status={tx.Status}, Payment={paymentMethod}");
 
                 await using (var conn = new NpgsqlConnection(_connectionString))
                 {
@@ -65,8 +68,8 @@ namespace Crooked.Controllers
                     try
                     {
                         const string sql = @"INSERT INTO Transactions
-                                           (reference_id, date_time, total_amount, status, assisted_by)
-                                           VALUES (@referenceId, @dateTime, @total, @status, @assistedBy)
+                                           (reference_id, date_time, total_amount, status, assisted_by, payment_method)
+                                           VALUES (@referenceId, @dateTime, @total, @status, @assistedBy, @paymentMethod)
                                            RETURNING transaction_id";
 
                         int transactionId;
@@ -78,6 +81,7 @@ namespace Crooked.Controllers
                             cmd.Parameters.AddWithValue("@status", tx.Status ?? "Completed");
                             cmd.Parameters.AddWithValue("@assistedBy",
                                 string.IsNullOrWhiteSpace(tx.AssistedBy) ? "Unknown" : tx.AssistedBy.Trim());
+                            cmd.Parameters.AddWithValue("@paymentMethod", paymentMethod);
                             transactionId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                         }
 
@@ -119,328 +123,7 @@ namespace Crooked.Controllers
             }
         }
 
-        [HttpGet("{transactionId:int}/items")]
-        public async Task<IActionResult> GetTransactionItems(int transactionId)
-        {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
-
-            const string itemsSql = @"
-                SELECT ti.transaction_item_id, ti.product_id, ti.product_name, ti.category,
-                       ti.size, ti.color, ti.quantity, ti.unit_price, ti.exchange_reason
-                FROM transaction_items ti
-                JOIN transactions t ON t.transaction_id = ti.transaction_id
-                WHERE t.transaction_id = @transaction_id AND t.status = 'Completed'
-                ORDER BY ti.transaction_item_id";
-
-            var items = new List<object>();
-            await using (var command = new NpgsqlCommand(itemsSql, connection))
-            {
-                command.Parameters.AddWithValue("@transaction_id", transactionId);
-                await using var reader = await command.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    items.Add(new
-                    {
-                        transactionItemId = reader.GetInt64(0),
-                        productId = reader.GetInt32(1),
-                        productName = reader.GetString(2),
-                        category = reader.GetString(3),
-                        size = reader.GetString(4),
-                        color = reader.GetString(5),
-                        quantity = reader.GetInt32(6),
-                        unitPrice = reader.GetDecimal(7),
-                        exchangeReason = reader.GetString(8)
-                    });
-                }
-            }
-
-            if (items.Count == 0)
-            {
-                const string existsSql = "SELECT EXISTS (SELECT 1 FROM transactions WHERE transaction_id = @transaction_id AND status = 'Completed')";
-                await using var existsCommand = new NpgsqlCommand(existsSql, connection);
-                existsCommand.Parameters.AddWithValue("@transaction_id", transactionId);
-                if (!Convert.ToBoolean(await existsCommand.ExecuteScalarAsync()))
-                {
-                    return NotFound(new { message = "Completed transaction was not found." });
-                }
-
-                return Conflict(new { message = "This transaction has no saved item details and cannot be edited." });
-            }
-
-            const string productsSql = @"
-                SELECT id, product_name, category, size, color, price, stock_quantity
-                FROM products
-                WHERE is_active = TRUE
-                ORDER BY product_name, size, color";
-            var variants = new List<object>();
-            await using (var command = new NpgsqlCommand(productsSql, connection))
-            await using (var reader = await command.ExecuteReaderAsync())
-            {
-                while (await reader.ReadAsync())
-                {
-                    variants.Add(new
-                    {
-                        id = reader.GetInt32(0),
-                        productName = reader.IsDBNull(1) ? "" : reader.GetString(1),
-                        category = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                        size = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                        color = reader.IsDBNull(4) ? "" : reader.GetString(4),
-                        price = reader.GetDecimal(5),
-                        stockQuantity = reader.GetInt32(6)
-                    });
-                }
-            }
-
-            return Ok(new { items, variants });
-        }
-
-        [HttpPut("{transactionId:int}/items")]
-        public async Task<IActionResult> ExchangeTransactionItems(
-            int transactionId,
-            [FromBody] ExchangeTransactionRequest request)
-        {
-            var allowedReasons = new HashSet<string>(StringComparer.Ordinal)
-            {
-                "Change Color",
-                "Change Size",
-                "Damaged"
-            };
-            if (request?.Items == null || request.Items.Count == 0
-                || request.Items.Any(item => item.TransactionItemId <= 0
-                    || item.ProductId <= 0
-                    || (!string.IsNullOrWhiteSpace(item.Reason)
-                        && !allowedReasons.Contains(item.Reason))))
-            {
-                return BadRequest(new { message = "Provide each purchased unit with a valid product and exchange reason." });
-            }
-
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
-            await using var transaction = await connection.BeginTransactionAsync();
-            try
-            {
-                const string transactionSql = @"
-                    SELECT (date_time AT TIME ZONE 'Asia/Manila')::date
-                    FROM transactions
-                    WHERE transaction_id = @transaction_id AND status = 'Completed'
-                    FOR UPDATE";
-                DateTime saleDate;
-                await using (var command = new NpgsqlCommand(transactionSql, connection, transaction))
-                {
-                    command.Parameters.AddWithValue("@transaction_id", transactionId);
-                    var result = await command.ExecuteScalarAsync();
-                    if (result == null)
-                    {
-                        await transaction.RollbackAsync();
-                        return NotFound(new { message = "Completed transaction was not found." });
-                    }
-                    saleDate = Convert.ToDateTime(result).Date;
-                }
-
-                var originals = new Dictionary<long, (int ProductId, string ProductName, string Category, string Size, string Color, int Quantity, decimal UnitPrice)>();
-                const string originalSql = @"
-                    SELECT transaction_item_id, product_id, product_name, category, size, color, quantity, unit_price
-                    FROM transaction_items
-                    WHERE transaction_id = @transaction_id
-                    FOR UPDATE";
-                await using (var command = new NpgsqlCommand(originalSql, connection, transaction))
-                {
-                    command.Parameters.AddWithValue("@transaction_id", transactionId);
-                    await using var reader = await command.ExecuteReaderAsync();
-                    while (await reader.ReadAsync())
-                    {
-                        originals.Add(reader.GetInt64(0),
-                            (reader.GetInt32(1), reader.GetString(2), reader.GetString(3),
-                             reader.GetString(4), reader.GetString(5), reader.GetInt32(6), reader.GetDecimal(7)));
-                    }
-                }
-
-                if (originals.Count == 0)
-                {
-                    await transaction.RollbackAsync();
-                    return Conflict(new { message = "This transaction has no saved item details and cannot be edited." });
-                }
-
-                var requestedCounts = request.Items
-                    .GroupBy(item => item.TransactionItemId)
-                    .ToDictionary(group => group.Key, group => group.Count());
-                if (originals.Count != requestedCounts.Count
-                    || originals.Any(original => !requestedCounts.TryGetValue(original.Key, out var count)
-                        || count != original.Value.Quantity))
-                {
-                    await transaction.RollbackAsync();
-                    return BadRequest(new { message = "Submit exactly one row for every purchased unit." });
-                }
-
-                var selectedVariants = new Dictionary<int, (string ProductName, string Category, string Size, string Color, decimal Price)>();
-                foreach (var item in request.Items)
-                {
-                    var original = originals[item.TransactionItemId];
-                    if (!selectedVariants.TryGetValue(item.ProductId, out var selectedVariant))
-                    {
-                        const string variantSql = @"
-                            SELECT product_name, category, size, color, price
-                            FROM products
-                            WHERE id = @product_id AND is_active = TRUE
-                            FOR UPDATE";
-                        await using (var command = new NpgsqlCommand(variantSql, connection, transaction))
-                        {
-                            command.Parameters.AddWithValue("@product_id", item.ProductId);
-                            await using var reader = await command.ExecuteReaderAsync();
-                            if (!await reader.ReadAsync())
-                            {
-                                await transaction.RollbackAsync();
-                                return Conflict(new { message = "A selected product variant is no longer available." });
-                            }
-                            selectedVariant = (
-                                reader.IsDBNull(0) ? "" : reader.GetString(0),
-                                reader.IsDBNull(1) ? "" : reader.GetString(1),
-                                reader.IsDBNull(2) ? "" : reader.GetString(2),
-                                reader.IsDBNull(3) ? "" : reader.GetString(3),
-                                reader.GetDecimal(4));
-                        }
-
-                        selectedVariants.Add(item.ProductId, selectedVariant);
-                    }
-
-                    if (!string.Equals(selectedVariant.ProductName, original.ProductName, StringComparison.OrdinalIgnoreCase)
-                        || !string.Equals(selectedVariant.Category, original.Category, StringComparison.OrdinalIgnoreCase)
-                        || selectedVariant.Price != original.UnitPrice)
-                    {
-                        await transaction.RollbackAsync();
-                        return BadRequest(new { message = "Exchanges are limited to variants of the same product at the original price." });
-                    }
-                }
-
-                var hasExchange = request.Items.Any(item =>
-                {
-                    var original = originals[item.TransactionItemId];
-                    var replacement = selectedVariants[item.ProductId];
-                    return item.ProductId != original.ProductId
-                        || !string.Equals(replacement.Size, original.Size, StringComparison.OrdinalIgnoreCase)
-                        || !string.Equals(replacement.Color, original.Color, StringComparison.OrdinalIgnoreCase);
-                });
-
-                foreach (var original in originals)
-                {
-                    var returnedQuantity = request.Items.Count(item =>
-                        item.TransactionItemId == original.Key
-                        && item.ProductId != original.Value.ProductId
-                        && item.Reason != "Damaged");
-                    if (returnedQuantity > 0)
-                    {
-                        await using (var returnStock = new NpgsqlCommand(
-                            "UPDATE products SET stock_quantity = stock_quantity + @quantity WHERE id = @product_id",
-                            connection, transaction))
-                        {
-                            returnStock.Parameters.AddWithValue("@quantity", returnedQuantity);
-                            returnStock.Parameters.AddWithValue("@product_id", original.Value.ProductId);
-                            await returnStock.ExecuteNonQueryAsync();
-                        }
-                    }
-                }
-
-                foreach (var replacement in request.Items
-                    .Where(item => item.ProductId != originals[item.TransactionItemId].ProductId || item.Reason == "Damaged")
-                    .GroupBy(item => item.ProductId))
-                {
-                    await using var takeStock = new NpgsqlCommand(
-                        @"UPDATE products
-                          SET stock_quantity = stock_quantity - @quantity
-                          WHERE id = @product_id AND is_active = TRUE AND stock_quantity >= @quantity",
-                        connection, transaction);
-                    takeStock.Parameters.AddWithValue("@quantity", replacement.Count());
-                    takeStock.Parameters.AddWithValue("@product_id", replacement.Key);
-                    if (await takeStock.ExecuteNonQueryAsync() == 0)
-                    {
-                        await transaction.RollbackAsync();
-                        return Conflict(new { message = "The selected variant does not have enough stock." });
-                    }
-                }
-
-                foreach (var original in originals.GroupBy(item => item.Value.ProductId))
-                {
-                    var quantity = original.Sum(item => item.Value.Quantity);
-                    await using var subtractSales = new NpgsqlCommand(
-                        @"UPDATE product_daily_sales
-                          SET quantity_sold = GREATEST(quantity_sold - @quantity, 0)
-                          WHERE product_id = @product_id AND sale_date = @sale_date",
-                        connection, transaction);
-                    subtractSales.Parameters.AddWithValue("@quantity", quantity);
-                    subtractSales.Parameters.AddWithValue("@product_id", original.Key);
-                    subtractSales.Parameters.AddWithValue("@sale_date", saleDate);
-                    await subtractSales.ExecuteNonQueryAsync();
-                }
-
-                foreach (var replacement in request.Items.GroupBy(item => item.ProductId))
-                {
-                    await using var addSales = new NpgsqlCommand(
-                        @"INSERT INTO product_daily_sales (product_id, sale_date, quantity_sold)
-                          VALUES (@product_id, @sale_date, @quantity)
-                          ON CONFLICT (product_id, sale_date)
-                          DO UPDATE SET quantity_sold = product_daily_sales.quantity_sold + EXCLUDED.quantity_sold",
-                        connection, transaction);
-                    addSales.Parameters.AddWithValue("@product_id", replacement.Key);
-                    addSales.Parameters.AddWithValue("@sale_date", saleDate);
-                    addSales.Parameters.AddWithValue("@quantity", replacement.Count());
-                    await addSales.ExecuteNonQueryAsync();
-                }
-
-                await using (var deleteItems = new NpgsqlCommand(
-                    "DELETE FROM transaction_items WHERE transaction_id = @transaction_id",
-                    connection, transaction))
-                {
-                    deleteItems.Parameters.AddWithValue("@transaction_id", transactionId);
-                    await deleteItems.ExecuteNonQueryAsync();
-                }
-
-                foreach (var item in request.Items)
-                {
-                    var variant = selectedVariants[item.ProductId];
-                    await using var insertItem = new NpgsqlCommand(
-                        @"INSERT INTO transaction_items
-                              (transaction_id, product_id, product_name, category, size, color, quantity, unit_price, exchange_reason)
-                          VALUES
-                              (@transaction_id, @product_id, @product_name, @category, @size, @color, 1, @unit_price, @exchange_reason)",
-                        connection, transaction);
-                    insertItem.Parameters.AddWithValue("@transaction_id", transactionId);
-                    insertItem.Parameters.AddWithValue("@product_id", item.ProductId);
-                    insertItem.Parameters.AddWithValue("@product_name", variant.ProductName);
-                    insertItem.Parameters.AddWithValue("@category", variant.Category);
-                    insertItem.Parameters.AddWithValue("@size", variant.Size);
-                    insertItem.Parameters.AddWithValue("@color", variant.Color);
-                    insertItem.Parameters.AddWithValue("@unit_price", variant.Price);
-                    insertItem.Parameters.AddWithValue("@exchange_reason", item.Reason ?? "");
-                    await insertItem.ExecuteNonQueryAsync();
-                }
-
-                await using (var updateTotal = new NpgsqlCommand(
-                    @"UPDATE transactions
-                      SET total_amount = (
-                          SELECT COALESCE(SUM(quantity * unit_price), 0)
-                          FROM transaction_items
-                          WHERE transaction_id = @transaction_id
-                      )
-                      , has_exchange = has_exchange OR @has_exchange
-                      WHERE transaction_id = @transaction_id
-                      RETURNING total_amount",
-                    connection, transaction))
-                {
-                    updateTotal.Parameters.AddWithValue("@transaction_id", transactionId);
-                    updateTotal.Parameters.AddWithValue("@has_exchange", hasExchange);
-                    var total = Convert.ToDecimal(await updateTotal.ExecuteScalarAsync());
-                    await transaction.CommitAsync();
-                    return Ok(new { totalAmount = total });
-                }
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
-
+        // Every sale, newest first (used by Sales History).
         [HttpGet]
         public IActionResult GetTransactions()
         {
@@ -452,8 +135,8 @@ namespace Crooked.Controllers
                 {
                     conn.Open();
 
-                    string sql = @"SELECT transaction_id, reference_id, date_time, total_amount, status, assisted_by, has_exchange
-                                   FROM Transactions 
+                    string sql = @"SELECT transaction_id, reference_id, date_time, total_amount, status, assisted_by, has_exchange, payment_method
+                                   FROM Transactions
                                    ORDER BY date_time DESC";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
@@ -465,11 +148,12 @@ namespace Crooked.Controllers
                             {
                                 transaction_id = reader["transaction_id"].ToString(),
                                 reference_id = reader["reference_id"].ToString(),
-                                date_time = DateTime.SpecifyKind(Convert.ToDateTime(reader["date_time"]), DateTimeKind.Utc).ToLocalTime().ToString("MMM dd, yyyy · hh:mm tt"),
+                                date_time = ShopClock.Display(Convert.ToDateTime(reader["date_time"])),
                                 total_amount = Convert.ToDecimal(reader["total_amount"]),
                                 status = reader["status"].ToString(),
                                 has_exchange = Convert.ToBoolean(reader["has_exchange"]),
-                                assisted_by = reader["assisted_by"].ToString()
+                                assisted_by = reader["assisted_by"].ToString(),
+                                payment_method = reader["payment_method"] as string ?? PaymentMethods.Unknown
                             });
                         }
                     }
@@ -482,6 +166,336 @@ namespace Crooked.Controllers
                 Console.WriteLine($"ERROR: {ex.Message}");
                 return StatusCode(500, new { error = ex.Message });
             }
+        }
+
+        // One page of the transaction logs, with search and filters applied.
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchTransactions([FromQuery] TransactionQuery query)
+        {
+            var pageSize = Math.Clamp(query.PageSize, 1, 50);
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            int totalItems;
+            await using (var countCommand = new NpgsqlCommand { Connection = connection })
+            {
+                countCommand.CommandText = $"SELECT COUNT(*) FROM transactions t {BuildFilter(query, countCommand)}";
+                totalItems = Convert.ToInt32(await countCommand.ExecuteScalarAsync());
+            }
+
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalItems / (double)pageSize));
+            var page = Math.Clamp(query.Page, 1, totalPages);
+            var items = new List<TransactionSummary>();
+            await using (var command = new NpgsqlCommand { Connection = connection })
+            {
+                command.CommandText = $@"
+                    SELECT {TransactionStore.SummaryColumns}
+                    FROM transactions t
+                    {BuildFilter(query, command)}
+                    ORDER BY t.date_time DESC, t.transaction_id DESC
+                    LIMIT @limit OFFSET @offset";
+                command.Parameters.AddWithValue("@limit", pageSize);
+                command.Parameters.AddWithValue("@offset", (page - 1) * pageSize);
+                await using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync()) items.Add(TransactionStore.ReadSummary(reader));
+            }
+
+            return Ok(new { items, page, pageSize, totalItems, totalPages });
+        }
+
+        // Read-only view of one sale: what was bought and any exchanges made on it.
+        [HttpGet("{transactionId:int}/details")]
+        public async Task<IActionResult> GetTransactionDetails(int transactionId)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            var transaction = await TransactionStore.FindSummaryAsync(connection, transactionId);
+            if (transaction == null) return NotFound(new { message = "Transaction was not found." });
+
+            var items = await TransactionStore.ReadItemsAsync(connection, transactionId);
+            var exchanges = await TransactionStore.ReadExchangesAsync(connection, transactionId, 50);
+            return Ok(new { transaction, items, exchanges });
+        }
+
+        // Excel workbook of every sale that matches the current search and filters.
+        [HttpGet("export")]
+        public async Task<IActionResult> ExportTransactions([FromQuery] TransactionQuery query)
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            var transactions = new List<TransactionSheetRow>();
+            await using (var command = new NpgsqlCommand { Connection = connection })
+            {
+                command.CommandText = $@"
+                    SELECT t.transaction_id, t.reference_id, t.date_time, t.total_amount, t.status, t.has_exchange,
+                           t.assisted_by, t.payment_method
+                    FROM transactions t
+                    {BuildFilter(query, command)}
+                    ORDER BY t.date_time DESC, t.transaction_id DESC
+                    LIMIT {MaxExportRows}";
+                await using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    transactions.Add(new TransactionSheetRow(
+                        reader.GetInt32(0),
+                        reader.IsDBNull(1) ? "" : reader.GetString(1),
+                        reader.GetDateTime(2),
+                        reader.IsDBNull(7) ? PaymentMethods.Unknown : reader.GetString(7),
+                        reader.IsDBNull(6) ? "Unknown" : reader.GetString(6),
+                        TransactionStatuses.Display(reader.IsDBNull(4) ? TransactionStatuses.Completed : reader.GetString(4), reader.GetBoolean(5)),
+                        reader.GetDecimal(3)));
+                }
+            }
+
+            var items = new List<TransactionItemSheetRow>();
+            await using (var command = new NpgsqlCommand { Connection = connection })
+            {
+                command.CommandText = $@"
+                    SELECT t.reference_id, ti.product_name, ti.category, ti.size, ti.color, ti.quantity, ti.unit_price, ti.exchange_reason
+                    FROM transaction_items ti
+                    JOIN (
+                        SELECT t.transaction_id, t.reference_id, t.date_time
+                        FROM transactions t
+                        {BuildFilter(query, command)}
+                        ORDER BY t.date_time DESC, t.transaction_id DESC
+                        LIMIT {MaxExportRows}
+                    ) t ON t.transaction_id = ti.transaction_id
+                    ORDER BY t.date_time DESC, t.transaction_id DESC, ti.transaction_item_id";
+                await using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    items.Add(new TransactionItemSheetRow(
+                        reader.IsDBNull(0) ? "" : reader.GetString(0),
+                        reader.GetString(1),
+                        reader.GetString(2),
+                        reader.GetString(3),
+                        reader.GetString(4),
+                        reader.GetInt32(5),
+                        reader.GetDecimal(6),
+                        reader.GetString(7)));
+                }
+            }
+
+            var fileName = $"crkd-transactions-{ShopClock.ToShopTime(DateTime.UtcNow):yyyyMMdd-HHmm}.xlsx";
+            return File(TransactionExcel.Build(transactions, items), TransactionExcel.ContentType, fileName);
+        }
+
+        [HttpGet("import-template")]
+        public IActionResult DownloadImportTemplate() =>
+            File(TransactionExcel.BuildTemplate(), TransactionExcel.ContentType, "crkd-transactions-template.xlsx");
+
+        // Adds sales from an Excel workbook to the logs. Sales whose reference ID already
+        // exists are skipped; stock levels are not changed.
+        [HttpPost("import")]
+        public async Task<IActionResult> ImportTransactions(IFormFile? file, [FromForm] string? importedBy)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Choose an Excel file (.xlsx) to import." });
+            if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { message = "Only Excel workbooks (.xlsx) can be imported." });
+            if (file.Length > MaxImportBytes)
+                return BadRequest(new { message = "The file is larger than 5 MB." });
+
+            await using var buffer = new MemoryStream();
+            await file.CopyToAsync(buffer);
+            buffer.Position = 0;
+            // .xlsx files are zip archives, which start with "PK\x03\x04".
+            var signature = new byte[4];
+            if (await buffer.ReadAsync(signature) < 4 || signature[0] != 0x50 || signature[1] != 0x4B || signature[2] != 0x03 || signature[3] != 0x04)
+                return BadRequest(new { message = "This file is not a valid Excel workbook (.xlsx)." });
+            buffer.Position = 0;
+
+            ParsedWorkbook workbook;
+            try
+            {
+                workbook = TransactionExcel.Parse(buffer);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Import Read Error: {ex.Message}");
+                return BadRequest(new { message = "The file could not be read as an Excel workbook (.xlsx)." });
+            }
+
+            var issues = workbook.Issues;
+            var rejected = workbook.Rejected;
+            var imported = 0;
+            var skipped = 0;
+
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+            await using var dbTransaction = await connection.BeginTransactionAsync();
+            try
+            {
+                var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                await using (var command = new NpgsqlCommand(
+                    "SELECT reference_id FROM transactions WHERE lower(reference_id) = ANY(@references)", connection, dbTransaction))
+                {
+                    command.Parameters.AddWithValue("@references",
+                        workbook.Transactions.Select(transaction => transaction.ReferenceId.ToLowerInvariant()).ToArray());
+                    await using var reader = await command.ExecuteReaderAsync();
+                    while (await reader.ReadAsync()) existing.Add(reader.GetString(0));
+                }
+
+                // Items are matched to products ignoring case, then saved with the product's own spelling.
+                var products = new Dictionary<string, (int Id, bool IsActive, string Name, string Category, string Size, string Color)>();
+                await using (var command = new NpgsqlCommand(@"
+                    SELECT id, COALESCE(product_name, ''), COALESCE(category, ''), COALESCE(size, ''), COALESCE(color, ''), is_active
+                    FROM products", connection, dbTransaction))
+                await using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        (int Id, bool IsActive, string Name, string Category, string Size, string Color) product =
+                            (reader.GetInt32(0), reader.GetBoolean(5), reader.GetString(1), reader.GetString(2),
+                             reader.GetString(3), reader.GetString(4));
+                        var key = ProductKey(product.Name, product.Size, product.Color);
+                        if (!products.TryGetValue(key, out var current) || (product.IsActive && !current.IsActive))
+                            products[key] = product;
+                    }
+                }
+
+                foreach (var transaction in workbook.Transactions)
+                {
+                    if (!existing.Add(transaction.ReferenceId))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    var unknownItems = transaction.Items
+                        .Where(item => !products.ContainsKey(ProductKey(item.ProductName, item.Size, item.Color)))
+                        .ToList();
+                    if (unknownItems.Count > 0)
+                    {
+                        issues.AddRange(unknownItems.Select(item => new ImportIssue("Items", item.Row,
+                            $"No product named \"{item.ProductName}\" with size \"{item.Size}\" and color \"{item.Color}\" exists.")));
+                        rejected++;
+                        continue;
+                    }
+
+                    int transactionId;
+                    await using (var command = new NpgsqlCommand(@"
+                        INSERT INTO transactions (reference_id, date_time, total_amount, status, assisted_by, payment_method, has_exchange)
+                        VALUES (@reference_id, @date_time, @total_amount, @status, @assisted_by, @payment_method, @has_exchange)
+                        RETURNING transaction_id", connection, dbTransaction))
+                    {
+                        command.Parameters.AddWithValue("@reference_id", transaction.ReferenceId);
+                        command.Parameters.AddWithValue("@date_time", transaction.DateTimeUtc);
+                        command.Parameters.AddWithValue("@total_amount", transaction.TotalAmount);
+                        command.Parameters.AddWithValue("@status", transaction.Status);
+                        command.Parameters.AddWithValue("@assisted_by", transaction.SoldBy);
+                        command.Parameters.AddWithValue("@payment_method", transaction.PaymentMethod);
+                        command.Parameters.AddWithValue("@has_exchange", transaction.HasExchange);
+                        transactionId = Convert.ToInt32(await command.ExecuteScalarAsync());
+                    }
+
+                    foreach (var item in transaction.Items)
+                    {
+                        var product = products[ProductKey(item.ProductName, item.Size, item.Color)];
+                        await using var command = new NpgsqlCommand(@"
+                            INSERT INTO transaction_items
+                                (transaction_id, product_id, product_name, category, size, color, quantity, unit_price, exchange_reason)
+                            VALUES (@transaction_id, @product_id, @product_name, @category, @size, @color, @quantity, @unit_price, @exchange_reason)",
+                            connection, dbTransaction);
+                        command.Parameters.AddWithValue("@transaction_id", transactionId);
+                        command.Parameters.AddWithValue("@product_id", product.Id);
+                        command.Parameters.AddWithValue("@product_name", product.Name);
+                        command.Parameters.AddWithValue("@category", item.Category.Length > 0 ? item.Category : product.Category);
+                        command.Parameters.AddWithValue("@size", product.Size);
+                        command.Parameters.AddWithValue("@color", product.Color);
+                        command.Parameters.AddWithValue("@quantity", item.Quantity);
+                        command.Parameters.AddWithValue("@unit_price", item.UnitPrice);
+                        command.Parameters.AddWithValue("@exchange_reason", item.ExchangeReason);
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    imported++;
+                }
+
+                if (imported > 0)
+                {
+                    var staffName = string.IsNullOrWhiteSpace(importedBy) ? "Unknown" : importedBy.Trim();
+                    await TransactionStore.LogActivityAsync(connection, dbTransaction, staffName,
+                        $"Imported {imported} transaction{(imported == 1 ? "" : "s")} from Excel");
+                }
+
+                await dbTransaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await dbTransaction.RollbackAsync();
+                Console.WriteLine($"Import Error: {ex.Message}");
+                return StatusCode(500, new { message = "The import could not be saved. No transactions were added." });
+            }
+
+            return Ok(new
+            {
+                imported,
+                skipped,
+                rejected,
+                totalIssues = issues.Count,
+                issues = issues.OrderBy(issue => issue.Sheet).ThenBy(issue => issue.Row).Take(50)
+            });
+        }
+
+        private static string ProductKey(string name, string size, string color) =>
+            string.Join("|", name.Trim().ToLowerInvariant(), size.Trim().ToLowerInvariant(), color.Trim().ToLowerInvariant());
+
+        // WHERE clause for the search, status, payment and date filters; adds its parameters to command.
+        private static string BuildFilter(TransactionQuery query, NpgsqlCommand command)
+        {
+            var conditions = new List<string>();
+
+            var search = query.Search?.Trim();
+            if (!string.IsNullOrEmpty(search))
+            {
+                var pattern = "%" + search.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+                command.Parameters.AddWithValue("@search", pattern);
+                command.Parameters.AddWithValue("@search_exact", search.TrimStart('#'));
+                conditions.Add(@"(t.reference_id ILIKE @search
+                    OR t.assisted_by ILIKE @search
+                    OR CAST(t.transaction_id AS TEXT) = @search_exact
+                    OR EXISTS (SELECT 1 FROM transaction_items ti
+                               WHERE ti.transaction_id = t.transaction_id AND ti.product_name ILIKE @search))");
+            }
+
+            switch (TransactionStatuses.Normalize(query.Status))
+            {
+                case TransactionStatuses.Exchanged:
+                    conditions.Add("t.has_exchange");
+                    break;
+                case string status:
+                    command.Parameters.AddWithValue("@status", status);
+                    conditions.Add("t.status = @status AND NOT t.has_exchange");
+                    break;
+            }
+
+            switch (PaymentMethods.Normalize(query.Payment))
+            {
+                case PaymentMethods.Unknown:
+                    conditions.Add("(t.payment_method IS NULL OR t.payment_method = 'Unknown')");
+                    break;
+                case string method:
+                    command.Parameters.AddWithValue("@payment", method);
+                    conditions.Add("t.payment_method = @payment");
+                    break;
+            }
+
+            if (query.From is DateOnly from)
+            {
+                command.Parameters.AddWithValue("@from", ShopClock.StartOfDayUtc(from));
+                conditions.Add("t.date_time >= @from");
+            }
+
+            if (query.To is DateOnly to)
+            {
+                command.Parameters.AddWithValue("@to", ShopClock.StartOfDayUtc(to.AddDays(1)));
+                conditions.Add("t.date_time < @to");
+            }
+
+            return conditions.Count == 0 ? "" : "WHERE " + string.Join(" AND ", conditions);
         }
     }
 }

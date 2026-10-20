@@ -4,48 +4,38 @@
 async function loadSalesHistory() {
     const tbody = document.getElementById('salesHistoryTableBody');
     if (!tbody) return;
+    UI.tableSkeleton(tbody, 4, 8);
 
     try {
-        const response = await fetch(`${apiBase}/api/POS/Transaction`);
-        if (!response.ok) throw new Error(`Sales history request failed (${response.status})`);
-        const transactions = await response.json();
-
-        tbody.replaceChildren();
+        const transactions = await UI.fetchJson(`${apiBase}/api/POS/Transaction`);
         if (!transactions.length) {
-            const row = document.createElement('tr');
-            const cell = document.createElement('td');
-            cell.colSpan = 4;
-            cell.className = 'transaction-empty';
-            cell.textContent = 'No sales recorded yet.';
-            row.appendChild(cell);
-            tbody.appendChild(row);
+            UI.tableMessage(tbody, 4, {
+                icon: 'fa-chart-line',
+                title: 'No sales recorded yet',
+                message: 'Sales made at the POS will appear here.'
+            });
             return;
         }
 
-        transactions.forEach(transaction => {
+        UI.fillTable(tbody, transactions.map(transaction => {
             const row = document.createElement('tr');
-            [
-                transaction.date_time,
-                transaction.reference_id,
-                `₱${Number(transaction.total_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
-                transaction.has_exchange ? 'Exchanged' : transaction.status
-            ].forEach(value => {
-                const cell = document.createElement('td');
-                cell.textContent = value;
-                row.appendChild(cell);
-            });
-            tbody.appendChild(row);
-        });
+            row.append(
+                UI.cell(transaction.date_time, 'col-muted'),
+                UI.cell(transaction.reference_id || '—'),
+                UI.cell(UI.formatPeso(transaction.total_amount)),
+                UI.cell(UI.statusBadge(transaction.has_exchange ? 'Exchanged' : transaction.status))
+            );
+            return row;
+        }));
     } catch (error) {
         console.error('Sales History Error:', error);
-        tbody.replaceChildren();
-        const row = document.createElement('tr');
-        const cell = document.createElement('td');
-        cell.colSpan = 4;
-        cell.className = 'transaction-empty';
-        cell.textContent = 'Unable to load sales history.';
-        row.appendChild(cell);
-        tbody.appendChild(row);
+        UI.tableMessage(tbody, 4, {
+            isError: true,
+            title: 'Unable to load sales history',
+            message: error.message,
+            actionLabel: 'Try again',
+            onAction: loadSalesHistory
+        });
     }
 }
 

@@ -1,338 +1,465 @@
 /* =========================
    TRANSACTION LOGS
+   A read-only record of sales: search, filters, pages of 10,
+   Excel export/import and a details view. Exchanges are made
+   on the Exchanges page.
 ========================= */
-async function loadTransactions() {
-    try {
-        const response = await fetch(`${apiBase}/api/POS/Transaction`);
-        if (!response.ok) throw new Error('Transaction fetch failed');
+const PAGE_SIZE = 10;
+const COLUMN_COUNT = 7;
+const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 
-        const transactions = await response.json();
-        renderTransactionTable(transactions);
+const filters = { search: '', status: '', payment: '', from: '', to: '' };
+let currentPage = 1;
+let totalTransactions = 0;
+let latestRequest = 0;
+let focusPagerAfterLoad = false;
+
+const transactionBody = document.getElementById('transactionTableBody');
+const transactionSummary = document.getElementById('transactionSummary');
+const transactionPager = document.getElementById('transactionPagination');
+const searchInput = document.getElementById('transactionSearch');
+const statusFilter = document.getElementById('statusFilter');
+const paymentFilter = document.getElementById('paymentFilter');
+const fromDate = document.getElementById('fromDate');
+const toDate = document.getElementById('toDate');
+const clearFiltersButton = document.getElementById('clearFilters');
+
+function filterParams(extra = {}) {
+    const params = new URLSearchParams();
+    Object.entries({ ...filters, ...extra }).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) params.set(key, value);
+    });
+    return params;
+}
+
+function hasActiveFilters() {
+    return Object.values(filters).some(Boolean);
+}
+
+/* =========================
+   LIST
+========================= */
+async function loadTransactions(page = currentPage) {
+    const request = ++latestRequest;
+    UI.tableSkeleton(transactionBody, COLUMN_COUNT, PAGE_SIZE);
+    transactionSummary.textContent = 'Loading transactions...';
+
+    try {
+        const data = await UI.fetchJson(`${apiBase}/api/POS/Transaction/search?${filterParams({ page, pageSize: PAGE_SIZE })}`);
+        // A newer search or page request replaced this one while it was loading.
+        if (request !== latestRequest) return;
+
+        currentPage = data.page;
+        totalTransactions = data.totalItems;
+        renderTransactions(data.items);
+        transactionSummary.textContent = hasActiveFilters()
+            ? `${data.totalItems.toLocaleString('en-PH')} transaction${data.totalItems === 1 ? '' : 's'} match your search and filters.`
+            : `${data.totalItems.toLocaleString('en-PH')} transaction${data.totalItems === 1 ? '' : 's'} in total.`;
+        UI.pagination(transactionPager, {
+            page: data.page,
+            totalPages: data.totalPages,
+            totalItems: data.totalItems,
+            pageSize: data.pageSize,
+            itemLabel: 'transactions',
+            onChange: goToPage
+        });
+
+        if (focusPagerAfterLoad) {
+            transactionPager.querySelector('[aria-current="page"]')?.focus();
+            focusPagerAfterLoad = false;
+        }
     } catch (error) {
+        if (request !== latestRequest) return;
         console.error('Transaction Error:', error);
-    }
-}
-
-function renderTransactionTable(transactions) {
-    const tbody = document.getElementById('transactionTableBody');
-    if (!tbody) return;
-
-    tbody.replaceChildren();
-    if (!transactions || !transactions.length) {
-        const row = document.createElement('tr');
-        const cell = document.createElement('td');
-        cell.colSpan = 6;
-        cell.className = 'transaction-empty';
-        cell.textContent = 'No transactions found.';
-        row.appendChild(cell);
-        tbody.appendChild(row);
-        return;
-    }
-
-    transactions.forEach(txn => {
-        const displayStatus = txn.has_exchange ? 'Exchanged' : txn.status;
-        const statusClass = {
-            'Completed': 'status-completed',
-            'Exchanged': 'status-exchanged',
-            'Pending': 'status-pending',
-            'Voided': 'status-voided'
-        }[displayStatus] || '';
-
-        const row = document.createElement('tr');
-        [
-            txn.date_time,
-            `₱${Number(txn.total_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
-            txn.reference_id || '—',
-            txn.assisted_by || 'Unknown',
-            displayStatus
-        ].forEach((value, index) => {
-            const cell = document.createElement('td');
-            cell.textContent = value;
-            if (index === 0 || index === 2 || index === 3) cell.className = 'col-muted';
-            if (index === 4) cell.className = statusClass;
-            row.appendChild(cell);
+        totalTransactions = 0;
+        transactionPager.replaceChildren();
+        transactionSummary.textContent = 'Transactions could not be loaded.';
+        UI.tableMessage(transactionBody, COLUMN_COUNT, {
+            isError: true,
+            title: 'Unable to load transactions',
+            message: error.message,
+            actionLabel: 'Try again',
+            onAction: () => loadTransactions(currentPage)
         });
-
-        const editCell = document.createElement('td');
-        const editButton = document.createElement('button');
-        editButton.type = 'button';
-        editButton.className = 'transaction-edit-button';
-        editButton.setAttribute('aria-label', `Edit items in transaction ${txn.transaction_id}`);
-        editButton.title = 'Edit or exchange purchased items';
-        editButton.innerHTML = '<i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>';
-        editButton.disabled = txn.status !== 'Completed';
-        editButton.addEventListener('click', () => openTransactionExchange(txn));
-        editCell.appendChild(editButton);
-        row.appendChild(editCell);
-        tbody.appendChild(row);
-    });
-}
-
-let exchangeEditorItems = [];
-let exchangeEditorVariants = [];
-let exchangeTransaction = null;
-// Set when the user changes a size, color or reason, so closing the editor can ask first.
-let exchangeHasChanges = false;
-
-function formatTransactionAmount(amount) {
-    return `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-async function openTransactionExchange(transaction) {
-    const modal = document.getElementById('exchangeTransactionModal');
-    const body = document.getElementById('exchangeItemsBody');
-    const status = document.getElementById('exchangeModalStatus');
-    const saveButton = document.getElementById('saveExchangeButton');
-    exchangeTransaction = transaction;
-    exchangeEditorItems = [];
-    exchangeEditorVariants = [];
-    body.replaceChildren();
-    status.textContent = 'Loading purchased items...';
-    status.className = 'exchange-modal-status';
-    saveButton.disabled = true;
-    document.getElementById('exchangeModalTitle').textContent = `Edit purchased items · #${transaction.transaction_id}`;
-    document.getElementById('exchangeUpdatedTotal').textContent = formatTransactionAmount(transaction.total_amount);
-    exchangeHasChanges = false;
-    openModalElement(modal, () => closeTransactionExchange());
-
-    try {
-        const response = await fetch(`${apiBase}/api/POS/Transaction/${encodeURIComponent(transaction.transaction_id)}/items`);
-        const responseText = await response.text();
-        let data = {};
-        if (responseText) {
-            try {
-                data = JSON.parse(responseText);
-            } catch {
-                data = {};
-            }
-        }
-        if (!response.ok) throw new Error(data.message || `Could not load transaction items (${response.status})`);
-
-        exchangeEditorItems = data.items.flatMap(item =>
-            Array.from({ length: item.quantity }, () => ({
-                ...item,
-                originalTransactionItemId: item.transactionItemId,
-                originalProductId: item.productId,
-                originalQuantity: item.quantity,
-                productId: item.productId,
-                quantity: 1,
-                reason: item.exchangeReason || ''
-            }))
-        );
-        exchangeEditorVariants = data.variants;
-        renderExchangeItems();
-        updateExchangeTotal();
-        status.textContent = 'Each row represents one unit. Exchange reasons are optional.';
-        saveButton.disabled = false;
-    } catch (error) {
-        console.error('Transaction Items Error:', error);
-        status.textContent = error.message || 'Unable to load purchased items.';
-        status.classList.add('error');
     }
 }
 
-function matchingExchangeVariants(item) {
-    return exchangeEditorVariants.filter(variant =>
-        variant.productName.toLowerCase() === item.productName.toLowerCase()
-        && variant.category.toLowerCase() === item.category.toLowerCase()
-        && Number(variant.price) === Number(item.unitPrice)
-    );
+function goToPage(page) {
+    focusPagerAfterLoad = true;
+    loadTransactions(page);
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('view-transactions').scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
-function renderExchangeItems() {
-    const body = document.getElementById('exchangeItemsBody');
-    body.replaceChildren();
+function paymentLabel(method) {
+    const label = UI.el('span', 'payment-method');
+    const iconName = { Cash: 'fa-money-bill-wave', GCash: 'fa-mobile-screen-button' }[method] || 'fa-circle-question';
+    label.append(UI.icon(iconName), method || 'Unknown');
+    return label;
+}
 
-    exchangeEditorItems.forEach(item => {
-        const row = document.createElement('tr');
-        const productCell = document.createElement('td');
-        productCell.textContent = item.productName;
-
-        const variants = matchingExchangeVariants(item);
-        const selectedVariant = variants.find(variant => variant.id === item.productId);
-        if (!selectedVariant && item.productId) {
-            variants.unshift({
-                id: item.productId,
-                productName: item.productName,
-                category: item.category,
-                size: item.size,
-                color: item.color,
-                price: item.unitPrice,
-                stockQuantity: 0
+function renderTransactions(transactions) {
+    if (!transactions.length) {
+        UI.tableMessage(transactionBody, COLUMN_COUNT, hasActiveFilters()
+            ? {
+                icon: 'fa-magnifying-glass',
+                title: 'No matching transactions',
+                message: 'Try a different search, or clear the filters to see every sale.',
+                actionLabel: 'Clear filters',
+                actionIcon: 'fa-xmark',
+                onAction: clearFilters
+            }
+            : {
+                icon: 'fa-receipt',
+                title: 'No transactions yet',
+                message: 'Sales made at the POS will appear here.'
             });
-        }
+        return;
+    }
 
-        const sizeCell = document.createElement('td');
-        const sizeSelect = document.createElement('select');
-        sizeSelect.className = 'exchange-select';
-        sizeSelect.setAttribute('aria-label', `Size for ${item.productName}`);
-        sizeSelect.replaceChildren(...[...new Set(variants.map(variant => variant.size || 'One Size'))]
-            .map(size => new Option(size, size)));
+    UI.fillTable(transactionBody, transactions.map(transaction => {
+        const viewButton = UI.el('button', 'btn btn-ghost btn-sm transaction-view-button');
+        viewButton.type = 'button';
+        viewButton.append(UI.icon('fa-eye'), 'View');
+        viewButton.setAttribute('aria-label',
+            `View details of transaction ${transaction.referenceId || `#${transaction.transactionId}`}`);
+        viewButton.addEventListener('click', () => openDetails(transaction));
 
-        const colorCell = document.createElement('td');
-        const colorSelect = document.createElement('select');
-        colorSelect.className = 'exchange-select';
-        colorSelect.setAttribute('aria-label', `Color for ${item.productName}`);
-
-        const quantityCell = document.createElement('td');
-        const quantityLabel = document.createElement('span');
-        quantityLabel.className = 'exchange-static-quantity';
-        quantityLabel.textContent = '1×';
-
-        const reasonCell = document.createElement('td');
-        const reasonSelect = document.createElement('select');
-        reasonSelect.className = 'exchange-select exchange-reason-select';
-        reasonSelect.setAttribute('aria-label', `Exchange reason for ${item.productName}`);
-        reasonSelect.replaceChildren(
-            new Option('Select reason', ''),
-            new Option('Change Color', 'Change Color'),
-            new Option('Change Size', 'Change Size'),
-            new Option('Damaged', 'Damaged')
+        const row = document.createElement('tr');
+        row.append(
+            UI.cell(transaction.dateTime, 'col-muted'),
+            UI.cell(UI.formatPeso(transaction.totalAmount), 'col-amount'),
+            UI.cell(transaction.referenceId || '—', 'col-muted'),
+            UI.cell(paymentLabel(transaction.paymentMethod)),
+            UI.cell(transaction.soldBy || 'Unknown', 'col-muted'),
+            UI.cell(UI.statusBadge(transaction.status)),
+            UI.cell(viewButton, 'col-action')
         );
-        reasonSelect.value = item.reason;
-        reasonSelect.addEventListener('change', () => {
-            item.reason = reasonSelect.value;
-            exchangeHasChanges = true;
-        });
-
-        function renderColors(preferredColor) {
-            const matchingSizeVariants = variants.filter(variant =>
-                (variant.size || 'One Size') === sizeSelect.value);
-            const colors = [...new Set(matchingSizeVariants.map(variant => variant.color || 'Default'))];
-            colorSelect.replaceChildren(...colors.map(color => new Option(color, color)));
-            colorSelect.value = colors.includes(preferredColor) ? preferredColor : colors[0];
-            updateSelectedVariant();
-        }
-
-        function updateSelectedVariant() {
-            const variant = variants.find(candidate =>
-                (candidate.size || 'One Size') === sizeSelect.value
-                && (candidate.color || 'Default') === colorSelect.value);
-            item.productId = variant?.id || 0;
-            updateExchangeTotal();
-        }
-
-        sizeSelect.value = item.size || 'One Size';
-        renderColors(item.color || 'Default');
-        sizeSelect.addEventListener('change', () => {
-            exchangeHasChanges = true;
-            renderColors();
-        });
-        colorSelect.addEventListener('change', () => {
-            exchangeHasChanges = true;
-            updateSelectedVariant();
-        });
-        sizeCell.appendChild(sizeSelect);
-        colorCell.appendChild(colorSelect);
-        quantityCell.appendChild(quantityLabel);
-        reasonCell.appendChild(reasonSelect);
-        row.append(productCell, sizeCell, colorCell, quantityCell, reasonCell);
-        body.appendChild(row);
-    });
-}
-
-function updateExchangeTotal() {
-    const total = exchangeEditorItems.reduce((sum, item) =>
-        sum + Number(item.unitPrice) * Math.max(1, Number(item.quantity) || 1), 0);
-    document.getElementById('exchangeUpdatedTotal').textContent = formatTransactionAmount(total);
-}
-
-async function saveTransactionExchange() {
-    if (!exchangeTransaction || !exchangeEditorItems.length) return;
-
-    const status = document.getElementById('exchangeModalStatus');
-    const items = exchangeEditorItems.map(item => ({
-        transactionItemId: item.originalTransactionItemId,
-        productId: item.productId,
-        reason: item.reason
+        return row;
     }));
-    if (items.some(item => item.productId <= 0)) {
-        status.textContent = 'Select a valid size and color for every item.';
-        status.className = 'exchange-modal-status error';
+}
+
+/* =========================
+   SEARCH & FILTERS
+========================= */
+function applyFilters() {
+    filters.search = searchInput.value.trim();
+    filters.status = statusFilter.value;
+    filters.payment = paymentFilter.value;
+    filters.from = fromDate.value;
+    filters.to = toDate.value;
+    // Each date field can't go past the other, so the range is never backwards.
+    toDate.min = fromDate.value;
+    fromDate.max = toDate.value;
+    clearFiltersButton.hidden = !hasActiveFilters();
+    loadTransactions(1);
+}
+
+function clearFilters() {
+    document.getElementById('transactionFilters').reset();
+    applyFilters();
+    searchInput.focus();
+}
+
+/* =========================
+   EXPORT
+========================= */
+async function exportTransactions(event) {
+    if (!totalTransactions) {
+        UI.toast(hasActiveFilters() ? 'No transactions match your filters, so there is nothing to export.' : 'There are no transactions to export yet.');
         return;
     }
 
-    showDialog(
-        'Save Exchange',
-        `Save the changes to transaction #${exchangeTransaction.transaction_id}? Inventory will be updated for every item you exchanged.`,
-        () => submitTransactionExchange(items),
-        null,
-        { confirmText: 'Save Exchange' }
-    );
-}
-
-async function submitTransactionExchange(items) {
-    if (!exchangeTransaction) return;
-
-    const saveButton = document.getElementById('saveExchangeButton');
-    const status = document.getElementById('exchangeModalStatus');
-    saveButton.disabled = true;
-    status.textContent = 'Saving exchange...';
-    status.className = 'exchange-modal-status';
+    const restore = UI.setLoading(event.currentTarget, 'Exporting...');
     try {
-        const response = await fetch(
-            `${apiBase}/api/POS/Transaction/${encodeURIComponent(exchangeTransaction.transaction_id)}/items`,
-            {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items })
-            }
-        );
-        const responseText = await response.text();
-        let result = {};
-        if (responseText) {
-            try {
-                result = JSON.parse(responseText);
-            } catch {
-                result = {};
-            }
-        }
-        if (!response.ok) throw new Error(result.message || `Could not save exchange (${response.status})`);
-
-        closeTransactionExchange(true);
-        await loadTransactions();
-        showDialog('Exchange Saved', 'Purchased items and inventory have been updated.');
+        const fileName = await UI.download(`${apiBase}/api/POS/Transaction/export?${filterParams()}`, 'crkd-transactions.xlsx');
+        UI.toast(`Exported ${totalTransactions.toLocaleString('en-PH')} transaction${totalTransactions === 1 ? '' : 's'} to ${fileName}.`, { tone: 'success' });
     } catch (error) {
-        console.error('Transaction Exchange Error:', error);
-        status.textContent = error.message || 'Unable to save exchange.';
-        status.className = 'exchange-modal-status error';
-        saveButton.disabled = false;
+        console.error('Export Error:', error);
+        UI.toast(error.message || 'The export failed. Please try again.', { tone: 'error' });
+    } finally {
+        restore();
     }
 }
 
-function closeTransactionExchange(force = false) {
-    const close = () => {
-        closeModalElement(document.getElementById('exchangeTransactionModal'));
-        exchangeEditorItems = [];
-        exchangeEditorVariants = [];
-        exchangeTransaction = null;
-        exchangeHasChanges = false;
-    };
+/* =========================
+   IMPORT
+========================= */
+const importModal = document.getElementById('importModal');
+const importForm = document.getElementById('importForm');
+const importFile = document.getElementById('importFile');
+const importResult = document.getElementById('importResult');
+let importPending = false;
 
-    if (force || !exchangeHasChanges) {
-        close();
+function openImport() {
+    importForm.reset();
+    importFile.removeAttribute('aria-invalid');
+    importResult.hidden = true;
+    importResult.replaceChildren();
+    openModalElement(importModal, closeImport);
+}
+
+function closeImport() {
+    if (importPending) return;
+    closeModalElement(importModal);
+}
+
+function showImportMessage(text, tone) {
+    importResult.className = `import-result is-${tone}`;
+    importResult.replaceChildren(UI.el('p', 'import-result-message', text));
+    importResult.hidden = false;
+}
+
+// Returns an error message for a file that can't be imported, or '' when it looks fine.
+function importFileProblem(file) {
+    if (!file) return 'Choose an Excel file (.xlsx) to import.';
+    if (!/\.xlsx$/i.test(file.name)) return `"${file.name}" is not an Excel workbook. Only .xlsx files can be imported.`;
+    if (file.size > MAX_IMPORT_BYTES) return `"${file.name}" is larger than 5 MB.`;
+    return '';
+}
+
+function checkImportFile() {
+    const problem = importFileProblem(importFile.files[0]);
+    if (problem) {
+        importFile.setAttribute('aria-invalid', 'true');
+        showImportMessage(problem, 'error');
+    } else {
+        importFile.removeAttribute('aria-invalid');
+        importResult.hidden = true;
+    }
+    return !problem;
+}
+
+function renderImportResult(result) {
+    const tone = result.imported > 0 && !result.rejected ? 'success' : result.imported > 0 || result.skipped > 0 ? 'warning' : 'error';
+    importResult.className = `import-result is-${tone}`;
+
+    const stats = UI.el('ul', 'import-stats');
+    [
+        [result.imported, 'imported'],
+        [result.skipped, 'skipped (already in the logs)'],
+        [result.rejected, 'not imported']
+    ].forEach(([count, label]) => {
+        const item = UI.el('li');
+        item.append(UI.el('strong', null, String(count)), ` ${label}`);
+        stats.appendChild(item);
+    });
+
+    const content = [stats];
+    if (result.issues.length) {
+        content.push(UI.el('p', 'import-result-message', 'Fix these rows in the file, then import it again:'));
+        const list = UI.el('ul', 'import-issues');
+        result.issues.forEach(issue => {
+            const where = issue.row > 0 ? `${issue.sheet} sheet, row ${issue.row}` : `${issue.sheet} sheet`;
+            const item = UI.el('li');
+            item.append(UI.el('strong', null, `${where}: `), issue.message);
+            list.appendChild(item);
+        });
+        content.push(list);
+        if (result.totalIssues > result.issues.length) {
+            content.push(UI.el('p', 'form-hint', `…and ${result.totalIssues - result.issues.length} more.`));
+        }
+    } else if (!result.imported && !result.skipped) {
+        content.push(UI.el('p', 'import-result-message', 'The file has no sales to import.'));
+    }
+
+    importResult.replaceChildren(...content);
+    importResult.hidden = false;
+}
+
+async function submitImport(event) {
+    event.preventDefault();
+    if (importPending || !checkImportFile()) {
+        importFile.focus();
         return;
     }
 
-    showDialog(
-        'Discard Changes?',
-        'You changed items in this transaction. Close the editor and discard those changes?',
-        close,
-        null,
-        { confirmText: 'Discard', danger: true }
+    const form = new FormData();
+    form.append('file', importFile.files[0]);
+    form.append('importedBy', localStorage.getItem('userName')?.trim() || 'Unknown');
+
+    importPending = true;
+    const restore = UI.setLoading(document.getElementById('importSubmit'), 'Importing...');
+    try {
+        const result = await UI.fetchJson(`${apiBase}/api/POS/Transaction/import`, { method: 'POST', body: form });
+        renderImportResult(result);
+        if (result.imported > 0) {
+            UI.toast(`Imported ${result.imported} transaction${result.imported === 1 ? '' : 's'}.`, { tone: 'success' });
+            loadTransactions(1);
+        }
+    } catch (error) {
+        console.error('Import Error:', error);
+        showImportMessage(error.message || 'The import failed. Please try again.', 'error');
+    } finally {
+        importPending = false;
+        restore();
+    }
+}
+
+async function downloadTemplate(event) {
+    const restore = UI.setLoading(event.currentTarget, 'Downloading...');
+    try {
+        await UI.download(`${apiBase}/api/POS/Transaction/import-template`, 'crkd-transactions-template.xlsx');
+    } catch (error) {
+        UI.toast(error.message || 'The template could not be downloaded.', { tone: 'error' });
+    } finally {
+        restore();
+    }
+}
+
+/* =========================
+   DETAILS (read-only)
+========================= */
+const detailsModal = document.getElementById('transactionDetailsModal');
+const detailsBody = document.getElementById('detailsBody');
+const detailsExchangeLink = document.getElementById('detailsExchangeLink');
+
+function detailsSkeleton() {
+    const grid = UI.el('div', 'detail-grid');
+    for (let index = 0; index < 6; index++) {
+        const pair = UI.el('div');
+        pair.append(UI.skeleton('skeleton-text', '50%'), UI.skeleton('skeleton-text', '80%'));
+        grid.appendChild(pair);
+    }
+    const items = UI.el('div');
+    for (let index = 0; index < 3; index++) items.appendChild(UI.skeleton('skeleton-text', `${90 - index * 15}%`));
+    detailsBody.replaceChildren(grid, items);
+}
+
+function renderDetails({ transaction, items, exchanges }) {
+    const summary = UI.el('dl', 'detail-grid');
+    summary.append(
+        UI.detailPair('Reference ID', transaction.referenceId || '—'),
+        UI.detailPair('Date & time', transaction.dateTime),
+        UI.detailPair('Payment method', paymentLabel(transaction.paymentMethod)),
+        UI.detailPair('Sold by', transaction.soldBy || 'Unknown'),
+        UI.detailPair('Status', UI.statusBadge(transaction.status)),
+        UI.detailPair('Total amount', UI.formatPeso(transaction.totalAmount))
     );
+
+    const itemsSection = UI.el('section', 'details-section');
+    itemsSection.appendChild(UI.el('h3', null, 'Items'));
+    if (items.length) {
+        const table = UI.el('table', 'transaction-table details-table');
+        const head = UI.el('thead');
+        const headRow = UI.el('tr');
+        ['Product', 'Size / Color', 'Qty', 'Unit price', 'Subtotal'].forEach(label => {
+            const th = UI.el('th', null, label);
+            th.scope = 'col';
+            headRow.appendChild(th);
+        });
+        head.appendChild(headRow);
+        const body = UI.el('tbody');
+        items.forEach(item => {
+            const product = UI.el('div', 'details-product');
+            product.appendChild(UI.el('span', null, item.productName));
+            if (item.exchangeReason) product.appendChild(UI.badge(item.exchangeReason, 'info'));
+            const row = UI.el('tr');
+            row.append(
+                UI.cell(product),
+                UI.cell(UI.variantLabel(item.size, item.color), 'col-muted'),
+                UI.cell(String(item.quantity)),
+                UI.cell(UI.formatPeso(item.unitPrice), 'col-muted'),
+                UI.cell(UI.formatPeso(item.unitPrice * item.quantity), 'col-amount')
+            );
+            body.appendChild(row);
+        });
+        table.append(head, body);
+        const scroll = UI.el('div', 'details-table-scroll');
+        scroll.appendChild(table);
+        itemsSection.appendChild(scroll);
+    } else {
+        itemsSection.appendChild(UI.el('p', 'details-empty', 'Item details were not recorded for this sale.'));
+    }
+
+    const sections = [summary, itemsSection];
+    if (exchanges.length) {
+        const history = UI.el('section', 'details-section');
+        history.appendChild(UI.el('h3', null, 'Exchange history'));
+        const list = UI.el('ol', 'exchange-history');
+        exchanges.forEach(exchange => {
+            const entry = UI.el('li');
+            entry.appendChild(UI.el('p', 'exchange-history-meta', `${exchange.createdAt} · processed by ${exchange.processedBy}`));
+            const changes = UI.el('ul');
+            exchange.items.forEach(item => {
+                changes.appendChild(UI.el('li', null,
+                    `${item.productName}: ${UI.variantLabel(item.returnedSize, item.returnedColor)} → ` +
+                    `${UI.variantLabel(item.newSize, item.newColor)} × ${item.quantity} (${item.reason})`));
+            });
+            entry.appendChild(changes);
+            if (exchange.notes) entry.appendChild(UI.el('p', 'exchange-history-notes', `Note: ${exchange.notes}`));
+            list.appendChild(entry);
+        });
+        history.appendChild(list);
+        sections.push(history);
+    }
+
+    detailsBody.replaceChildren(...sections);
+    detailsBody.classList.add('fade-in');
+
+    const canExchange = items.length > 0 && ['Completed', 'Exchanged'].includes(transaction.status);
+    detailsExchangeLink.hidden = !canExchange;
+    detailsExchangeLink.href = `exchange.html?sale=${encodeURIComponent(transaction.referenceId || transaction.transactionId)}`;
+}
+
+async function openDetails(transaction) {
+    document.getElementById('detailsTitle').textContent =
+        `Transaction ${transaction.referenceId || `#${transaction.transactionId}`}`;
+    detailsExchangeLink.hidden = true;
+    detailsBody.classList.remove('fade-in');
+    detailsSkeleton();
+    openModalElement(detailsModal, closeDetails);
+
+    try {
+        renderDetails(await UI.fetchJson(`${apiBase}/api/POS/Transaction/${encodeURIComponent(transaction.transactionId)}/details`));
+    } catch (error) {
+        console.error('Transaction Details Error:', error);
+        const retry = UI.el('button', 'btn btn-secondary btn-sm');
+        retry.type = 'button';
+        retry.append(UI.icon('fa-rotate-right'), 'Try again');
+        retry.addEventListener('click', () => openDetails(transaction));
+        const message = UI.el('div', 'details-error');
+        message.append(UI.el('p', null, error.message || 'The transaction details could not be loaded.'), retry);
+        detailsBody.replaceChildren(message);
+    }
+}
+
+function closeDetails() {
+    closeModalElement(detailsModal);
 }
 
 /* =========================
    PAGE LOAD
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('closeExchangeModal')?.addEventListener('click', () => closeTransactionExchange());
-    document.getElementById('cancelExchangeButton')?.addEventListener('click', () => closeTransactionExchange());
-    document.getElementById('saveExchangeButton')?.addEventListener('click', saveTransactionExchange);
-    document.getElementById('exchangeTransactionModal')?.addEventListener('click', event => {
-        if (event.target.id === 'exchangeTransactionModal') closeTransactionExchange();
+    const role = localStorage.getItem('userRole');
+    if (role && role.toLowerCase() !== 'owner') {
+        document.getElementById('importButton')?.remove();
+    }
+
+    const debouncedFilter = UI.debounce(applyFilters, 350);
+    searchInput.addEventListener('input', debouncedFilter);
+    [statusFilter, paymentFilter, fromDate, toDate].forEach(control => control.addEventListener('change', applyFilters));
+    document.getElementById('transactionFilters').addEventListener('submit', event => {
+        event.preventDefault();
+        applyFilters();
+    });
+    clearFiltersButton.addEventListener('click', clearFilters);
+
+    document.getElementById('exportButton').addEventListener('click', exportTransactions);
+    document.getElementById('importButton')?.addEventListener('click', openImport);
+    document.getElementById('templateButton').addEventListener('click', downloadTemplate);
+    importFile.addEventListener('change', checkImportFile);
+    importForm.addEventListener('submit', submitImport);
+    importModal.querySelectorAll('[data-close-import]').forEach(button => button.addEventListener('click', closeImport));
+    importModal.addEventListener('click', event => {
+        if (event.target === importModal) closeImport();
     });
 
-    loadTransactions();
+    detailsModal.querySelectorAll('[data-close-details]').forEach(button => button.addEventListener('click', closeDetails));
+    detailsModal.addEventListener('click', event => {
+        if (event.target === detailsModal) closeDetails();
+    });
+
+    loadTransactions(1);
 });

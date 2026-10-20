@@ -1,0 +1,507 @@
+/* =========================================================
+   CRKD SHARED COMPONENTS
+   Skeleton loaders, table states, badges, pagination, toolbars,
+   toasts and loading buttons. ui.js builds the markup.
+
+   Load it after the page's base stylesheet (dashboard.css, or
+   PointofSale.css on the POS), whose colour tokens it uses.
+   Tokens the POS does not define have fallbacks.
+========================================================= */
+
+/* Classes such as .btn set display, which would otherwise override the hidden attribute. */
+[hidden] {
+    display: none !important;
+}
+
+/* =========================
+   SKELETON LOADING
+========================= */
+.skeleton {
+    display: block;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg,
+        var(--color-surface-2) 25%,
+        var(--color-surface-3) 50%,
+        var(--color-surface-2) 75%);
+    background-size: 300% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-text {
+    width: 100%;
+    height: 12px;
+}
+
+.skeleton-text + .skeleton-text {
+    margin-top: 10px;
+}
+
+/* A placeholder inside a line of text, such as a stat value. */
+.skeleton-inline {
+    display: inline-block;
+    height: 0.8em;
+    vertical-align: middle;
+}
+
+.skeleton-block {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-md);
+}
+
+.skeleton-row td {
+    pointer-events: none;
+}
+
+.skeleton-card {
+    pointer-events: none;
+}
+
+.skeleton-card:hover {
+    box-shadow: none;
+    transform: none;
+}
+
+.skeleton-media {
+    height: var(--skeleton-media-height, 180px);
+    margin-bottom: 14px;
+    border-radius: var(--radius-md);
+}
+
+/* Covers a chart canvas while its data loads. */
+.chart-skeleton {
+    position: absolute;
+    inset: 0;
+}
+
+@keyframes skeleton-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: 0 0; }
+}
+
+/* =========================
+   TABLE STATES (empty, no results, error)
+========================= */
+.table-state td {
+    padding: 40px 16px;
+    text-align: center;
+    white-space: normal;
+}
+
+.table-state-content {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    color: var(--color-text-muted);
+}
+
+.table-state-icon {
+    margin-bottom: 4px;
+    color: var(--color-text-subtle);
+    font-size: 28px;
+}
+
+.table-state.is-error .table-state-icon {
+    color: var(--color-danger);
+}
+
+.table-state-title {
+    margin: 0;
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+    font-weight: 700;
+}
+
+.table-state-message {
+    max-width: 440px;
+    margin: 0;
+    font-size: var(--font-size-sm);
+}
+
+.table-state .btn {
+    margin-top: 10px;
+}
+
+/* =========================
+   BADGES
+   The label is always spelled out, so colour is not the only cue.
+========================= */
+.badge {
+    --badge-color: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border: 1px solid color-mix(in srgb, var(--badge-color) 45%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--badge-color) 12%, transparent);
+    color: var(--badge-color);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    line-height: 1.4;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.badge-success { --badge-color: var(--color-success); }
+.badge-info    { --badge-color: var(--color-info, #7cb4ff); }
+.badge-warning { --badge-color: var(--color-warning, #fbbf24); }
+.badge-danger  { --badge-color: var(--color-danger); }
+
+/* =========================
+   TABLE FILTERS & TOOLBAR
+   A row of filters, then a row with the result count and the actions.
+========================= */
+.table-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.table-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 16px;
+    margin-bottom: 12px;
+}
+
+.table-toolbar .table-summary {
+    margin: 0;
+}
+
+.table-filters .form-field {
+    min-width: 140px;
+}
+
+.table-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    /* Stays on the right when it wraps below the filters. */
+    margin-left: auto;
+}
+
+.search-box {
+    position: relative;
+}
+
+.search-box i {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    color: var(--color-text-subtle);
+    font-size: var(--font-size-md);
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.search-box input {
+    width: 100%;
+    padding-left: 36px;
+}
+
+.table-summary {
+    min-height: 20px;
+    margin: 0 0 12px;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+input[type="date"] {
+    min-height: var(--control-height);
+    padding: 0 12px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-input-bg);
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+}
+
+input[type="date"]:focus-visible {
+    border-color: var(--color-focus);
+    outline-offset: 1px;
+}
+
+/* =========================
+   PAGINATION
+========================= */
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.pagination:empty {
+    display: none;
+}
+
+.pagination-summary {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.pagination-pages {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pagination-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: var(--control-height-sm, 32px);
+    height: var(--control-height-sm, 32px);
+    padding: 0 10px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.pagination-button:hover:not(:disabled) {
+    background: var(--color-surface-3);
+}
+
+.pagination-button[aria-current="page"] {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+.pagination-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.pagination-ellipsis {
+    padding: 0 4px;
+    color: var(--color-text-subtle);
+}
+
+/* A button that reads like an inline link, such as "Download the template". */
+.link-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-info, #7cb4ff);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.link-button:hover {
+    color: var(--color-text);
+}
+
+.link-button:disabled {
+    cursor: progress;
+    opacity: 0.7;
+}
+
+/* =========================
+   DETAIL LIST (label / value pairs)
+========================= */
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px 24px;
+    margin: 0;
+}
+
+.detail-grid dt {
+    color: var(--color-text-subtle);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.detail-grid dd {
+    margin: 4px 0 0;
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+/* =========================
+   TOASTS (non-blocking notices)
+========================= */
+.toast-stack {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(380px, calc(100vw - 32px));
+    pointer-events: none;
+}
+
+.toast {
+    --toast-accent: var(--color-info, #7cb4ff);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 14px 14px 16px;
+    border: 1px solid var(--color-border);
+    border-left: 4px solid var(--toast-accent);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: var(--shadow-lg);
+    font-size: var(--font-size-md);
+    pointer-events: auto;
+    animation: toast-in 0.2s ease-out;
+}
+
+.toast-success { --toast-accent: var(--color-success); }
+.toast-error   { --toast-accent: var(--color-danger); }
+
+.toast-icon {
+    margin-top: 2px;
+    color: var(--toast-accent);
+}
+
+.toast-message {
+    flex: 1;
+    margin: 0;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.toast-close {
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    margin: -4px -4px 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+}
+
+.toast-close:hover {
+    background: var(--color-surface-2);
+    color: var(--color-text);
+}
+
+.toast.is-leaving {
+    animation: toast-out 0.18s ease-in forwards;
+}
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-out {
+    to { opacity: 0; transform: translateY(8px); }
+}
+
+/* =========================
+   LOADING BUTTONS & CONTENT FADE
+========================= */
+.btn-spinner {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+.btn[aria-busy="true"] {
+    cursor: progress;
+}
+
+.fade-in {
+    animation: fade-in 0.25s ease-out;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =========================
+   REDUCED MOTION
+   Shimmer and slides stop; skeletons stay as plain blocks.
+========================= */
+@media (prefers-reduced-motion: reduce) {
+    .skeleton {
+        animation: none;
+        background: var(--color-surface-3);
+    }
+
+    .toast {
+        animation-name: fade-in;
+    }
+
+    .toast.is-leaving {
+        animation: none;
+        opacity: 0;
+    }
+
+    .btn-spinner {
+        animation-duration: 1.6s;
+    }
+}
+
+@media (max-width: 800px) {
+    .table-toolbar,
+    .table-filters,
+    .table-actions {
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .table-filters .form-field {
+        flex: 1 1 140px;
+    }
+
+    .table-actions .btn {
+        flex: 1 1 auto;
+    }
+
+    .toast-stack {
+        right: 16px;
+        bottom: 16px;
+    }
+}

@@ -1,0 +1,274 @@
+/* ── EXCHANGES ── */
+
+.exchange-step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.exchange-step-copy {
+    flex: 1;
+    min-width: 0;
+}
+
+.exchange-step-number {
+    display: inline-grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-size: var(--font-size-md);
+    font-weight: 700;
+}
+
+.exchange-step-header .card-title:focus {
+    outline: none;
+}
+
+/* Step 1: find the sale */
+.exchange-lookup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+.exchange-lookup-field {
+    flex: 1 1 320px;
+    max-width: 520px;
+}
+
+.lookup-status {
+    min-height: 20px;
+    margin: 10px 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.lookup-status.is-error {
+    color: var(--color-danger);
+    font-weight: 700;
+}
+
+.recent-sales {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-border);
+}
+
+.recent-sales h3 {
+    margin: 0 0 12px;
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+}
+
+.transaction-table .col-amount {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.transaction-table .col-action {
+    width: 1%;
+    text-align: right;
+}
+
+.transaction-table .col-wrap {
+    min-width: 260px;
+    white-space: normal;
+}
+
+/* Step 2: choose what to exchange */
+.exchange-sale-summary {
+    margin: 20px 0;
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+}
+
+.exchange-items {
+    display: grid;
+    gap: 12px;
+}
+
+.exchange-item {
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
+    align-items: end;
+    gap: 12px 24px;
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.exchange-item.is-selected {
+    border-color: var(--color-info);
+    background: color-mix(in srgb, var(--color-info) 6%, var(--color-surface));
+}
+
+.exchange-item-info {
+    display: grid;
+    justify-items: start;
+    gap: 4px;
+    align-self: center;
+}
+
+.exchange-item-name {
+    margin: 0;
+    color: var(--color-text);
+    font-size: var(--font-size-lg);
+}
+
+.exchange-item-meta {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.exchange-item-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.exchange-item-controls select:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.exchange-item-availability,
+.exchange-item-note {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.exchange-item-availability.is-error {
+    color: var(--color-danger);
+    font-weight: 700;
+}
+
+.exchange-review {
+    margin: 20px 0;
+    padding: 16px;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-md);
+}
+
+.exchange-review h3 {
+    margin: 0 0 12px;
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+}
+
+.exchange-review-empty {
+    margin: 0;
+    color: var(--color-text-subtle);
+    font-size: var(--font-size-sm);
+}
+
+.exchange-review-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 24px;
+}
+
+.exchange-review-columns h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    color: var(--color-text-subtle);
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.exchange-review-columns ul {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding-left: 18px;
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+}
+
+.exchange-review-columns ul:empty::before {
+    content: "None";
+    color: var(--color-text-subtle);
+}
+
+.exchange-error {
+    margin: 16px 0 0;
+    padding: 12px 14px;
+    border: 1px solid var(--color-danger-border);
+    border-radius: var(--radius-md);
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+    font-size: var(--font-size-md);
+    font-weight: 700;
+}
+
+.exchange-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-border);
+}
+
+/* Result */
+.exchange-result {
+    border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border));
+}
+
+.exchange-result-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.exchange-result-header .card-title:focus {
+    outline: none;
+}
+
+.exchange-result-icon {
+    color: var(--color-success);
+    font-size: 32px;
+    line-height: 1;
+}
+
+.exchange-change-list {
+    margin: 0;
+    padding-left: 18px;
+}
+
+@media (max-width: 900px) {
+    .exchange-item {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .exchange-item-controls,
+    .exchange-review-columns {
+        grid-template-columns: 1fr;
+    }
+
+    .exchange-step-header {
+        flex-wrap: wrap;
+    }
+
+    .exchange-actions .btn {
+        flex: 1 1 auto;
+    }
+}

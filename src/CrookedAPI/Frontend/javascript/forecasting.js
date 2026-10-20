@@ -1,46 +1,51 @@
 /* =========================
    FORECAST TABLE
 ========================= */
-async function loadForecast() {
-    try {
-        const response = await fetch(`${apiBase}/api/Forecasting/daily-sales`);
-        if (!response.ok) throw new Error(`Daily sales request failed (${response.status})`);
+const VELOCITY_TONES = { fast: 'success', moderate: 'info' };
 
-        const analytics = await response.json();
-        renderForecastTable(analytics.products);
+async function loadForecast() {
+    const tableBody = document.getElementById('forecastTableBody');
+    if (!tableBody) return;
+    UI.tableSkeleton(tableBody, 4, 6);
+
+    try {
+        const analytics = await UI.fetchJson(`${apiBase}/api/Forecasting/daily-sales`);
+        renderForecastTable(tableBody, analytics.products);
     } catch (error) {
         console.error('Forecast Error:', error);
+        UI.tableMessage(tableBody, 4, {
+            isError: true,
+            title: 'Unable to load the forecast',
+            message: error.message,
+            actionLabel: 'Try again',
+            onAction: loadForecast
+        });
     }
 }
 
-function renderForecastTable(products) {
-    const tableBody = document.getElementById('forecastTableBody');
-    if (!tableBody) return;
-
-    tableBody.replaceChildren();
-    products.forEach(product => {
-        const row = document.createElement('tr');
-        [
-            product.productName,
-            Number(product.averageDailySales).toFixed(2),
-            product.lowStockThreshold,
-            product.salesVelocityRating
-        ].forEach(value => {
-            const cell = document.createElement('td');
-            cell.textContent = value;
-            row.appendChild(cell);
+function renderForecastTable(tableBody, products) {
+    if (!products.length) {
+        UI.tableMessage(tableBody, 4, {
+            icon: 'fa-chart-column',
+            title: 'No forecast data yet',
+            message: 'Forecasts appear once active products have sales.'
         });
-        tableBody.appendChild(row);
-    });
-
-    if (products.length === 0) {
-        const row = document.createElement('tr');
-        const cell = document.createElement('td');
-        cell.colSpan = 4;
-        cell.textContent = 'No forecast data available.';
-        row.appendChild(cell);
-        tableBody.appendChild(row);
+        return;
     }
+
+    UI.fillTable(tableBody, products.map(product => {
+        const velocity = String(product.salesVelocityRating || 'slow').toLowerCase();
+        const label = velocity.charAt(0).toUpperCase() + velocity.slice(1);
+
+        const row = document.createElement('tr');
+        row.append(
+            UI.cell(product.productName),
+            UI.cell(Number(product.averageDailySales).toFixed(2)),
+            UI.cell(String(product.lowStockThreshold)),
+            UI.cell(UI.badge(label, VELOCITY_TONES[velocity]))
+        );
+        return row;
+    }));
 }
 
 /* =========================

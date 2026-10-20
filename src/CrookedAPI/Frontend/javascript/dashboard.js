@@ -38,6 +38,13 @@ window.addEventListener('themechange', updateSalesChartTheme);
 
 async function loadSalesAnalytics() {
     const status = document.getElementById('salesAnalyticsStatus');
+    const totalProductsSold = document.getElementById('totalProductsSold');
+    const todayRevenue = document.getElementById('todayRevenue');
+    const chartSkeleton = UI.skeleton('skeleton-block chart-skeleton');
+    document.querySelector('.chart-canvas-wrap')?.appendChild(chartSkeleton);
+    if (totalProductsSold) UI.textSkeleton(totalProductsSold, '3em');
+    if (todayRevenue) UI.textSkeleton(todayRevenue, '70%');
+
     try {
         const [salesResponse, revenueResponse] = await Promise.all([
             fetch(`${apiBase}/api/Forecasting/daily-sales`),
@@ -54,10 +61,8 @@ async function loadSalesAnalytics() {
             (total, product) => total + product.dailySales.reduce((dailyTotal, units) => dailyTotal + units, 0),
             0
         );
-        const totalProductsSold = document.getElementById('totalProductsSold');
         if (totalProductsSold) totalProductsSold.textContent = totalUnitsSold.toLocaleString('en-PH');
 
-        const todayRevenue = document.getElementById('todayRevenue');
         if (todayRevenue) {
             todayRevenue.textContent = Number(revenueData.revenue).toLocaleString('en-PH', {
                 style: 'currency',
@@ -73,6 +78,10 @@ async function loadSalesAnalytics() {
     } catch (error) {
         console.error('Sales Analytics Error:', error);
         if (status) status.textContent = 'Unable to load sales analytics. Please try again later.';
+        if (totalProductsSold) totalProductsSold.textContent = '—';
+        if (todayRevenue) todayRevenue.textContent = '—';
+    } finally {
+        chartSkeleton.remove();
     }
 }
 
@@ -131,26 +140,39 @@ function renderSalesChart(analytics) {
    ACTIVITY LOGS
 ========================= */
 async function fetchLogs() {
+    const logBody = document.getElementById('logTableBody');
+    if (!logBody) return;
+    UI.tableSkeleton(logBody, 3, 5);
+
     try {
-        const response = await fetch(`${apiBase}/api/Auth/get-logs`);
-        if (!response.ok) return;
-        const logs = await response.json();
+        const logs = await UI.fetchJson(`${apiBase}/api/Auth/get-logs`);
+        if (!logs.length) {
+            UI.tableMessage(logBody, 3, {
+                icon: 'fa-clock-rotate-left',
+                title: 'No activity yet',
+                message: 'Logins, exchanges and imports will show up here.'
+            });
+            return;
+        }
 
-        const logBody = document.getElementById('logTableBody');
-        if (!logBody) return;
-
-        logBody.innerHTML = logs.map(log => {
-            const date = new Date(log.dateOccurred).toLocaleString();
-            return `
-                <tr>
-                    <td>${log.staffName}</td>
-                    <td>${log.action}</td>
-                    <td>${date}</td>
-                </tr>
-            `;
-        }).join('');
+        UI.fillTable(logBody, logs.map(log => {
+            const row = document.createElement('tr');
+            row.append(
+                UI.cell(log.staffName),
+                UI.cell(log.action),
+                UI.cell(new Date(log.dateOccurred).toLocaleString(), 'col-muted')
+            );
+            return row;
+        }));
     } catch (error) {
         console.error('Logs Error:', error);
+        UI.tableMessage(logBody, 3, {
+            isError: true,
+            title: 'Unable to load activity logs',
+            message: error.message,
+            actionLabel: 'Try again',
+            onAction: fetchLogs
+        });
     }
 }
 
@@ -158,21 +180,22 @@ async function fetchLogs() {
    STAFF DASHBOARD STATS
 ========================= */
 async function fetchStaffStats() {
-    try {
-        const response = await fetch(`${apiBase}/api/products/get-inventory`);
-        if (!response.ok) return;
+    const remainingEl = document.getElementById('statRemainingStock');
+    const outEl = document.getElementById('statOutOfStock');
+    [remainingEl, outEl].forEach(element => element && UI.textSkeleton(element, '2.5em'));
 
-        const products = await response.json();
+    try {
+        const products = await UI.fetchJson(`${apiBase}/api/products/get-inventory`);
         const remaining = products.reduce((sum, p) => sum + p.stock_quantity, 0);
         const outOfStock = products.filter(p => p.stock_quantity === 0).length;
 
-        const remainingEl = document.getElementById('statRemainingStock');
-        const outEl = document.getElementById('statOutOfStock');
-
-        if (remainingEl) remainingEl.innerText = remaining;
-        if (outEl) outEl.innerText = outOfStock;
+        if (remainingEl) remainingEl.textContent = remaining.toLocaleString('en-PH');
+        if (outEl) outEl.textContent = outOfStock.toLocaleString('en-PH');
     } catch (error) {
         console.error('Staff Stats Error:', error);
+        [remainingEl, outEl].forEach(element => {
+            if (element) element.textContent = '—';
+        });
     }
 }
 

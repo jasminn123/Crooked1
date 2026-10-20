@@ -1,21 +1,30 @@
 /* =========================
    INVENTORY
 ========================= */
+const INVENTORY_COLUMNS = 8;
 let inventoryProducts = [];
 
 async function loadInventory() {
-    try {
-        const response = await fetch(`${apiBase}/api/products/get-inventory`);
-        if (!response.ok) throw new Error('Inventory fetch failed');
+    const tableBody = document.getElementById('inventory-list-main');
+    if (!tableBody) return;
+    UI.tableSkeleton(tableBody, INVENTORY_COLUMNS, 8);
 
-        inventoryProducts = await response.json();
-        renderInventoryTable();
+    try {
+        inventoryProducts = await UI.fetchJson(`${apiBase}/api/products/get-inventory`);
+        renderInventoryTable({ fade: true });
     } catch (error) {
         console.error('Inventory Error:', error);
+        UI.tableMessage(tableBody, INVENTORY_COLUMNS, {
+            isError: true,
+            title: 'Unable to load inventory',
+            message: error.message,
+            actionLabel: 'Try again',
+            onAction: loadInventory
+        });
     }
 }
 
-function renderInventoryTable() {
+function renderInventoryTable({ fade = false } = {}) {
     const tableBody = document.getElementById('inventory-list-main');
     if (!tableBody) return;
 
@@ -24,55 +33,48 @@ function renderInventoryTable() {
         [item.product_name, item.category, item.size, item.color]
             .some(value => String(value || '').toLocaleLowerCase().includes(query))
     );
-    tableBody.replaceChildren();
 
     if (!products.length) {
-        const row = document.createElement('tr');
-        const cell = document.createElement('td');
-        cell.colSpan = 8;
-        cell.className = 'transaction-empty';
-        cell.textContent = query ? 'No inventory matches your search.' : 'No inventory products found.';
-        row.appendChild(cell);
-        tableBody.appendChild(row);
+        UI.tableMessage(tableBody, INVENTORY_COLUMNS, query
+            ? {
+                icon: 'fa-magnifying-glass',
+                title: 'No matching products',
+                message: 'Try a different product name, category, size or color.'
+            }
+            : {
+                icon: 'fa-boxes-stacked',
+                title: 'No inventory yet',
+                message: 'Products you add on the Products page will be listed here.'
+            });
         return;
     }
 
-    products.forEach(item => {
+    UI.fillTable(tableBody, products.map(item => {
         const threshold = item.low_stock_threshold || 5;
         const isOut = item.stock_quantity === 0;
         const isLow = item.stock_quantity <= threshold && item.stock_quantity > 0;
-        const status = document.createElement('span');
-        status.className = isOut
-            ? 'inventory-stock-out'
+        const status = isOut
+            ? UI.badge('Out of stock', 'danger')
             : isLow
-                ? 'inventory-stock-low'
-                : 'inventory-stock-available';
-        status.textContent = isOut ? 'OUT OF STOCK' : isLow ? 'LOW STOCK' : 'OK';
+                ? UI.badge('Low stock', 'warning')
+                : UI.badge('In stock', 'success');
 
         const row = document.createElement('tr');
-        [
-            item.product_name,
-            item.category,
-            item.size || '—',
-            item.color || '—',
-            `₱${Number(item.price).toLocaleString('en-PH')}`,
-            item.stock_quantity,
-            threshold
-        ].forEach((value, index) => {
-            const cell = document.createElement('td');
-            cell.textContent = value;
-            if (index === 1) cell.className = 'col-muted';
-            row.appendChild(cell);
-        });
-
-        const statusCell = document.createElement('td');
-        statusCell.appendChild(status);
-        row.appendChild(statusCell);
-        tableBody.appendChild(row);
-    });
+        row.append(
+            UI.cell(item.product_name),
+            UI.cell(item.category, 'col-muted'),
+            UI.cell(item.size || '—'),
+            UI.cell(item.color || '—'),
+            UI.cell(UI.formatPeso(item.price)),
+            UI.cell(String(item.stock_quantity)),
+            UI.cell(String(threshold), 'col-muted'),
+            UI.cell(status)
+        );
+        return row;
+    }), { fade });
 }
 
-document.getElementById('inventorySearch')?.addEventListener('input', renderInventoryTable);
+document.getElementById('inventorySearch')?.addEventListener('input', UI.debounce(() => renderInventoryTable(), 200));
 
 /* =========================
    PAGE LOAD

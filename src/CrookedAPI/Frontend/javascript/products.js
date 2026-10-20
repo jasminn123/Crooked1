@@ -3,32 +3,36 @@
 ========================= */
 async function fetchProducts() {
     try {
-        const response = await fetch(`${apiBase}/api/Products/get-products`);
-
-        if (!response.ok) {
-            showToast(`Server error: ${response.status}`, true);
-            return;
-        }
-
-        const text = await response.text();
-        if (!text || text.trim().length === 0) {
-            console.warn('Products API returned empty response.');
-            return;
-        }
-
-        try {
-            const products = JSON.parse(text);
-            if (typeof renderProductGrid === 'function') {
-                renderProductGrid(products);
-            }
-            await fetchArchivedProducts();
-        } catch (parseError) {
-            showToast('JSON Parse Error. Raw Response: ' + text, true);
-        }
-
+        const products = await UI.fetchJson(`${apiBase}/api/Products/get-products`);
+        renderProductGrid(products || []);
+        await fetchArchivedProducts();
     } catch (error) {
-        showToast('Network Error fetching products.', true);
+        console.error('Products Error:', error);
+        showProductGridMessage('Unable to load products.', error.message, true);
     }
+}
+
+// Fills the product grid with a message, e.g. when it is empty or failed to load.
+function showProductGridMessage(title, message, canRetry = false) {
+    const grid = document.getElementById('productGrid');
+    if (!grid) return;
+
+    const box = UI.el('div', 'product-grid-message');
+    box.appendChild(UI.icon(canRetry ? 'fa-triangle-exclamation' : 'fa-shirt'));
+    box.appendChild(UI.el('p', 'product-grid-message-title', title));
+    if (message) box.appendChild(UI.el('p', null, message));
+    if (canRetry) {
+        const retry = UI.el('button', 'btn btn-secondary btn-sm');
+        retry.type = 'button';
+        retry.append(UI.icon('fa-rotate-right'), 'Try again');
+        retry.addEventListener('click', () => {
+            UI.cardSkeletons(grid, { count: 8, cardClass: 'product-card', mediaHeight: '200px', lines: 4 });
+            fetchProducts();
+        });
+        box.appendChild(retry);
+    }
+    UI.doneLoading(grid);
+    grid.replaceChildren(box);
 }
 
 /* =========================
@@ -160,8 +164,14 @@ function renderProductGrid(products) {
     const userRole = localStorage.getItem('userRole')?.toLowerCase();
 
     if (!grid) return;
+    UI.doneLoading(grid);
     grid.innerHTML = '';
     productsById.clear();
+
+    if (!products.length) {
+        showProductGridMessage('No products yet', userRole === 'owner' ? 'Use Add Product to create the first one.' : '');
+        return;
+    }
 
     products.forEach(p => {
         productsById.set(p.id, p);
@@ -450,5 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (addProductBtn) addProductBtn.style.display = 'none';
     }
 
+    const grid = document.getElementById('productGrid');
+    if (grid) UI.cardSkeletons(grid, { count: 8, cardClass: 'product-card', mediaHeight: '200px', lines: 4 });
     fetchProducts();
 });

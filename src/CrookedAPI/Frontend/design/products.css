@@ -188,6 +188,38 @@
     flex: 1;
 }
 
+/* Empty or failed product list */
+.product-grid-message {
+    display: grid;
+    grid-column: 1 / -1;
+    justify-items: center;
+    gap: 6px;
+    padding: 40px 16px;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-md);
+    text-align: center;
+}
+
+.product-grid-message > i {
+    color: var(--color-text-subtle);
+    font-size: 28px;
+}
+
+.product-grid-message p {
+    margin: 0;
+}
+
+.product-grid-message .product-grid-message-title {
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+.product-grid-message .btn {
+    margin-top: 8px;
+}
+
 /* Archived products */
 .archived-products {
     padding: var(--card-padding);
