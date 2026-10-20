@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:5055/api/Auth";
+const API_BASE = "/api/Auth";
 
 const focusableSelector = [
     'a[href]',

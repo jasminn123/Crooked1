@@ -11,13 +11,16 @@ namespace Crooked.Services
         private readonly string _connectionString;
         private readonly ILogger<ThresholdForecastService> _logger;
         private readonly ThresholdForecastOptions _options;
+        private readonly LiveUpdates _liveUpdates;
 
         public ThresholdForecastService(
             ILogger<ThresholdForecastService> logger,
-            IOptions<ThresholdForecastOptions> options)
+            IOptions<ThresholdForecastOptions> options,
+            LiveUpdates liveUpdates)
         {
             _logger = logger;
             _options = options.Value;
+            _liveUpdates = liveUpdates;
             _connectionString = Crooked.DatabaseConfig.ConnectionString;
         }
 
@@ -29,7 +32,10 @@ namespace Crooked.Services
             {
                 try
                 {
-                    await AdjustThresholdsAsync(stoppingToken);
+                    if (await AdjustThresholdsAsync(stoppingToken) > 0)
+                    {
+                        _liveUpdates.Publish(LiveTopics.Forecast, LiveTopics.Products, LiveTopics.Notifications);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -49,8 +55,10 @@ namespace Crooked.Services
             _logger.LogInformation("Threshold Forecast Service stopping...");
         }
 
-        private async Task AdjustThresholdsAsync(CancellationToken cancellationToken)
+        // Returns how many products were updated.
+        private async Task<int> AdjustThresholdsAsync(CancellationToken cancellationToken)
         {
+            var updated = 0;
             await using var connection = new NpgsqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
@@ -140,12 +148,15 @@ namespace Crooked.Services
                     }
 
                     await transaction.CommitAsync(cancellationToken);
+                    updated++;
                     _logger.LogInformation(
                         "Updated forecast for {ProductName}: threshold {OldThreshold} -> {NewThreshold}; velocity {OldVelocity} -> {NewVelocity}; sales {UnitsSold} in 7 days",
                         product.Name, product.CurrentThreshold, threshold,
                         product.CurrentVelocity, velocity, product.UnitsSoldLast7Days);
                 }
             }
+
+            return updated;
         }
     }
 }

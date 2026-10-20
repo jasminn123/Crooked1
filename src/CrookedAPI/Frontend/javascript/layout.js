@@ -1,4 +1,4 @@
-// Shared by every management page. Load it after theme.js and before the page's own script.
+// Shared by every management page. Load it after theme.js and ui.js, and before the page's own script.
 const apiBase = window.location.origin.startsWith('http')
     ? window.location.origin
     : 'http://127.0.0.1:5055';
@@ -132,7 +132,7 @@ function showDialog(title, message, onConfirm, onCancel, options = {}) {
 }
 
 function showToast(message, isError) {
-    showDialog(isError ? 'Error' : 'Notice', message);
+    UI.toast(message, { tone: isError ? 'error' : 'success' });
 }
 
 function limitAmountInput(input) {
@@ -358,6 +358,9 @@ function initializeForecastNotifications() {
             console.error('Forecast Notifications Error:', error);
         });
     }, 60000);
+    Live.on(['notifications', 'forecast'], () => {
+        loadForecastNotifications().catch(error => console.error('Forecast Notifications Error:', error));
+    });
 
     function closePanel() {
         panel.style.display = 'none';

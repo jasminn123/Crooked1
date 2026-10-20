@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Crooked.Models;
+using Crooked.Services;
 
 namespace Crooked.Controllers;
 
@@ -110,6 +111,7 @@ public IActionResult GetProducts()
     }
 
     [HttpPost("restore-product/{id}")]
+    [LiveUpdate(LiveTopics.Products)]
     public IActionResult RestoreProduct(int id)
     {
         try
@@ -137,6 +139,7 @@ public IActionResult GetProducts()
     }
 
     [HttpPut("update-product/{id}")]
+    [LiveUpdate(LiveTopics.Products)]
     public async Task<IActionResult> UpdateProduct(int id, [FromForm] ProductUploadDTO dto)
     {
         if (dto == null || string.IsNullOrWhiteSpace(dto.ProductName))
@@ -201,6 +204,7 @@ public IActionResult GetProducts()
     }
 
     [HttpPost("archive-product/{id}")]
+    [LiveUpdate(LiveTopics.Products)]
     public IActionResult ArchiveProduct(int id)
     {
         try
@@ -228,6 +232,7 @@ public IActionResult GetProducts()
     }
 
     [HttpPost("add-product")]
+    [LiveUpdate(LiveTopics.Products)]
     public async Task<IActionResult> AddProduct([FromForm] ProductUploadDTO dto)
     {
         if (dto == null) return BadRequest("Data is empty");

@@ -18,19 +18,3 @@
 .inventory-toolbar input {
     width: min(100%, 360px);
 }
-
-/* Status text always says OK / LOW STOCK / OUT OF STOCK, so colour is not the only cue. */
-.inventory-stock-available {
-    color: var(--color-success);
-    font-weight: 700;
-}
-
-.inventory-stock-low {
-    color: var(--color-warning);
-    font-weight: 700;
-}
-
-.inventory-stock-out {
-    color: var(--color-danger);
-    font-weight: 700;
-}

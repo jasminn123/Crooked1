@@ -1,53 +1,59 @@
 /* =========================
    STAFF
 ========================= */
-async function fetchStaff() {
+function staffRow(member) {
+    const button = UI.el('button', `btn btn-sm ${member.isActive ? 'btn-danger-outline' : 'btn-secondary'}`);
+    button.type = 'button';
+    button.append(member.isActive ? 'Archive' : 'Unarchive', UI.el('span', 'visually-hidden', ` ${member.fullName}`));
+    button.addEventListener('click', () => member.isActive
+        ? archiveStaff(member.id, member.fullName)
+        : unarchiveStaff(member.id, member.fullName));
+
+    const row = document.createElement('tr');
+    row.append(UI.cell(member.fullName), UI.cell(member.username, 'col-muted'), UI.cell(button));
+    return row;
+}
+
+async function fetchStaff({ quiet = false } = {}) {
+    const staffBody = document.getElementById('staffTableBody');
+    const archiveBody = document.getElementById('archiveTableBody');
+    if (!staffBody || !archiveBody) return;
+    if (!quiet) {
+        UI.tableSkeleton(staffBody, 3, 4);
+        UI.tableSkeleton(archiveBody, 3, 2);
+    }
+
     try {
-        const response = await fetch(`${apiBase}/api/Auth/get-staff`);
-        if (!response.ok) return;
-        const staff = await response.json();
+        const staff = await UI.fetchJson(`${apiBase}/api/Auth/get-staff`);
+        const active = staff.filter(member => member.isActive);
+        const archived = staff.filter(member => !member.isActive);
 
-        const staffBody   = document.getElementById('staffTableBody');
-        const archiveBody = document.getElementById('archiveTableBody');
-        if (!staffBody || !archiveBody) return;
-
-        let activeHtml  = '';
-        let archiveHtml = '';
-
-        staff.forEach(s => {
-            const row = `
-                <tr>
-                    <td>${s.fullName}</td>
-                    <td>${s.username}</td>
-                    <td>
-                        <button type="button" onclick="${s.isActive ? `archiveStaff(${s.id})` : `unarchiveStaff(${s.id})`}"
-                            class="btn btn-sm ${s.isActive ? 'btn-danger-outline' : 'btn-secondary'}">
-                            ${s.isActive ? 'Archive' : 'Unarchive'}<span class="visually-hidden"> ${s.fullName}</span>
-                        </button>
-                    </td>
-                </tr>
-            `;
-            s.isActive ? activeHtml += row : archiveHtml += row;
+        if (active.length) UI.fillTable(staffBody, active.map(staffRow), { fade: !quiet });
+        else UI.tableMessage(staffBody, 3, {
+            icon: 'fa-user-plus',
+            title: 'No active staff accounts',
+            message: 'Create an account above to give a staff member access.'
         });
 
-        staffBody.innerHTML   = activeHtml;
-        archiveBody.innerHTML = archiveHtml;
+        if (archived.length) UI.fillTable(archiveBody, archived.map(staffRow), { fade: !quiet });
+        else UI.tableMessage(archiveBody, 3, { icon: 'fa-box-archive', title: 'No archived accounts' });
     } catch (error) {
         console.error('Staff Error:', error);
+        UI.tableMessage(staffBody, 3, {
+            isError: true,
+            title: 'Unable to load staff accounts',
+            message: error.message,
+            actionLabel: 'Try again',
+            onAction: () => fetchStaff()
+        });
+        UI.tableMessage(archiveBody, 3, { isError: true, title: 'Unable to load archived accounts' });
     }
 }
 
 /* =========================
    ARCHIVE STAFF
 ========================= */
-async function archiveStaff(id) {
-    const staff = document.getElementById('staffTableBody');
-    if (!staff) return;
-
-    const row = [...staff.children].find(r => r.querySelector(`button[onclick="archiveStaff(${id})"]`));
-    const nameCell = row ? row.querySelector('td:first-child') : null;
-    const staffName = nameCell ? nameCell.textContent.trim() : 'this staff member';
-
+async function archiveStaff(id, staffName) {
     showDialog(
         'Archive Staff Member',
         `Are you sure you want to archive "${staffName}"?`,
@@ -74,14 +80,7 @@ async function archiveStaff(id) {
     );
 }
 
-async function unarchiveStaff(id) {
-    const staff = document.getElementById('archiveTableBody');
-    if (!staff) return;
-
-    const row = [...staff.children].find(r => r.querySelector(`button[onclick="unarchiveStaff(${id})"]`));
-    const nameCell = row ? row.querySelector('td:first-child') : null;
-    const staffName = nameCell ? nameCell.textContent.trim() : 'this staff member';
-
+async function unarchiveStaff(id, staffName) {
     showDialog(
         'Unarchive Staff Member',
         `Are you sure you want to unarchive "${staffName}"?`,
@@ -158,4 +157,7 @@ async function submitStaffAccount(fullName, username, password) {
 /* =========================
    PAGE LOAD
 ========================= */
-document.addEventListener('DOMContentLoaded', fetchStaff);
+document.addEventListener('DOMContentLoaded', () => {
+    fetchStaff();
+    Live.on(['staff'], () => fetchStaff({ quiet: true }));
+});

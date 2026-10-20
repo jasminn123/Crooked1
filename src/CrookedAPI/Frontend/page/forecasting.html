@@ -7,7 +7,8 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../design/dashboard.css?v=23">
-    <link rel="stylesheet" href="../design/forecasting.css?v=7">
+    <link rel="stylesheet" href="../design/components.css?v=2">
+    <link rel="stylesheet" href="../design/forecasting.css?v=8">
 
     <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
     <script src="../javascript/theme.js?v=2"></script>
@@ -28,6 +29,7 @@
         <a id="nav-products" href="products.html" class="nav-item"><i class="fa-solid fa-shirt" aria-hidden="true"></i>PRODUCTS</a>
         <a href="inventory.html" class="nav-item"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>INVENTORY</a>
         <a href="transaction-logs.html" class="nav-item"><i class="fa-solid fa-receipt" aria-hidden="true"></i>TRANSACTION LOGS</a>
+        <a href="exchange.html" class="nav-item"><i class="fa-solid fa-right-left" aria-hidden="true"></i>EXCHANGES</a>
         <a id="nav-sales-history" href="sales-history.html" class="nav-item"><i class="fa-solid fa-chart-line" aria-hidden="true"></i>SALES HISTORY</a>
         <a id="nav-staff-management" href="staff-management.html" class="nav-item"><i class="fa-solid fa-users" aria-hidden="true"></i>STAFF MANAGEMENT</a>
         <a id="nav-forecasting" href="forecasting.html" class="nav-item nav-active" aria-current="page"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>FORECASTING</a>
@@ -100,6 +102,29 @@
                         <h2>Demand-based Stock Forecast</h2>
                         <p>Low-stock thresholds are recalculated from each active product's average daily sales over the last 7 days, with 2 days of demand coverage.</p>
                     </div>
+                    <div class="table-toolbar">
+                        <p id="forecastSummary" class="table-summary" role="status" aria-live="polite">Loading forecast data...</p>
+                        <div class="table-actions">
+                            <button id="forecastListToggle" class="btn btn-secondary btn-sm" type="button"
+                                aria-expanded="false" aria-controls="forecastProductPanel">
+                                <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                                Show or hide products
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="forecastProductPanel" class="forecast-product-panel" hidden>
+                        <fieldset>
+                            <legend>Products in the forecast</legend>
+                            <p class="form-hint">Products with no sales in the last 7 days start hidden. Your choices are remembered on this device.</p>
+                            <div class="forecast-product-actions">
+                                <button id="forecastShowAll" class="link-button" type="button">Show all</button>
+                                <button id="forecastShowSold" class="link-button" type="button">Only products with sales</button>
+                            </div>
+                            <div id="forecastProductOptions" class="forecast-product-options"></div>
+                        </fieldset>
+                    </div>
+
                     <div class="transaction-table-scroll">
                         <table class="transaction-table">
                             <thead>
@@ -110,9 +135,7 @@
                                     <th scope="col">Sales Velocity</th>
                                 </tr>
                             </thead>
-                            <tbody id="forecastTableBody">
-                                <tr><td colspan="4">Loading forecast data...</td></tr>
-                            </tbody>
+                            <tbody id="forecastTableBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -121,8 +144,10 @@
         </main>
     </div>
 
-    <script src="../javascript/layout.js?v=2"></script>
-    <script src="../javascript/forecasting.js?v=4"></script>
+    <script src="../javascript/ui.js?v=2"></script>
+    <script src="../javascript/live.js?v=2"></script>
+    <script src="../javascript/layout.js?v=4"></script>
+    <script src="../javascript/forecasting.js?v=6"></script>
 
 </body>
 </html>

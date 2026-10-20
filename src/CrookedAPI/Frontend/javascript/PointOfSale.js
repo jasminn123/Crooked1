@@ -328,7 +328,7 @@ function showGridMessage(text) {
 
 async function loadProducts() {
   try {
-    const res = await fetch("http://localhost:5055/api/POS/products");
+    const res = await fetch("/api/POS/products");
     if (!res.ok) throw new Error(`Product request failed (${res.status})`);
     const products = await res.json();
 
@@ -345,6 +345,8 @@ async function loadProducts() {
     grid.replaceChildren();
     showGridMessage("Unable to load products. Please try again.");
     productSearchStatus.textContent = "Products could not be loaded.";
+  } finally {
+    UI.doneLoading(grid);
   }
 }
 
@@ -682,7 +684,7 @@ async function processCheckout(tx) {
   }));
 
   try {
-    const checkoutRes = await fetch("http://localhost:5055/api/POS/checkout", {
+    const checkoutRes = await fetch("/api/POS/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(cartPayload)
@@ -690,7 +692,7 @@ async function processCheckout(tx) {
 
     if (!checkoutRes.ok) throw new Error("Stock deduction failed");
 
-    const transactionRes = await fetch("http://localhost:5055/api/POS/Transaction", {
+    const transactionRes = await fetch("/api/POS/Transaction", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(tx)
@@ -965,4 +967,7 @@ if (userName) {
 }
 
 renderCheckout();
+UI.cardSkeletons(grid, { count: 8, tag: "li", cardClass: "product-card", mediaHeight: "160px", lines: 3 });
 loadProducts();
+// Stock changes from other tills, exchanges and product edits show up without a reload.
+Live.on(["products", "exchanges"], loadProducts);

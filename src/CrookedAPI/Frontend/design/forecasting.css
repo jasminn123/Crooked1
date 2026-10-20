@@ -17,3 +17,87 @@
     font-size: var(--font-size-md);
     line-height: 1.6;
 }
+
+/* Pages are short, so the table shows every shown product instead of scrolling inside the panel. */
+.data-table-panel .transaction-table-scroll {
+    max-height: none;
+}
+
+/* Show or hide products */
+.forecast-product-panel {
+    margin-bottom: 16px;
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+}
+
+.forecast-product-panel fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.forecast-product-panel legend {
+    margin-bottom: 4px;
+    padding: 0;
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+    font-weight: 700;
+}
+
+.forecast-product-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin: 10px 0 14px;
+    font-size: var(--font-size-sm);
+}
+
+.forecast-product-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 8px 16px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.forecast-product-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+    cursor: pointer;
+}
+
+.forecast-product-option:hover {
+    background: var(--color-surface-3);
+}
+
+.forecast-product-option input {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--color-info);
+}
+
+.forecast-product-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.forecast-product-tag {
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--color-text-subtle);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}

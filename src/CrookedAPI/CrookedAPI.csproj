@@ -4,10 +4,16 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <StaticWebAssetsContentRoot>memberworks\page</StaticWebAssetsContentRoot>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Update="Frontend\**" CopyToPublishDirectory="PreserveNewest" />
+    <None Remove="Database\schema.sql" />
+    <EmbeddedResource Include="Database\schema.sql" LogicalName="schema.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0" />
     <PackageReference Include="MySql.Data" Version="9.6.0" />
     <PackageReference Include="Npgsql" Version="8.0.9" />
