@@ -328,7 +328,7 @@ function showGridMessage(text) {
 
 async function loadProducts() {
   try {
-    const res = await fetch("http://localhost:5055/api/POS/products");
+    const res = await fetch("/api/POS/products");
     if (!res.ok) throw new Error(`Product request failed (${res.status})`);
     const products = await res.json();
 
@@ -682,7 +682,7 @@ async function processCheckout(tx) {
   }));
 
   try {
-    const checkoutRes = await fetch("http://localhost:5055/api/POS/checkout", {
+    const checkoutRes = await fetch("/api/POS/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(cartPayload)
@@ -690,7 +690,7 @@ async function processCheckout(tx) {
 
     if (!checkoutRes.ok) throw new Error("Stock deduction failed");
 
-    const transactionRes = await fetch("http://localhost:5055/api/POS/Transaction", {
+    const transactionRes = await fetch("/api/POS/Transaction", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(tx)

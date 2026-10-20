@@ -1,12 +1,17 @@
-using System.IO;
 using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using Crooked;
 using Crooked.Models;
 using Crooked.Services;
-using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Railway assigns the listening port at runtime through PORT.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -29,60 +34,16 @@ var app = builder.Build();
 
 EnsureDatabaseSetup();
 
+var frontend = Path.Combine(app.Environment.ContentRootPath, "Frontend");
+var pages = new PhysicalFileProvider(Path.Combine(frontend, "page"));
+var uploads = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+Directory.CreateDirectory(uploads);
 
-var pageProvider = new PhysicalFileProvider(
-    Path.Combine(builder.Environment.ContentRootPath, "Frontend", "page")
-);
-app.UseDefaultFiles(new DefaultFilesOptions
-{
-    FileProvider = pageProvider,
-    RequestPath = ""
-});
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = pageProvider,
-    RequestPath = ""
-});
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "Frontend", "assets")),
-    RequestPath = "/assets"
-});
-
-var designProvider = new PhysicalFileProvider(
-    Path.Combine(builder.Environment.ContentRootPath, "Frontend", "design")
-);
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = designProvider,
-    RequestPath = "/design"
-});
-
-var jsProvider = new PhysicalFileProvider(
-    Path.Combine(builder.Environment.ContentRootPath, "Frontend", "javascript")
-);
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = jsProvider,
-    RequestPath = "/javascript"
-});
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "Frontend")),
-    RequestPath = ""
-});
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")
-    ),
-    RequestPath = ""
-});
+app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = pages });
+app.UseStaticFiles(new StaticFileOptions { FileProvider = pages });
+// Pages link to ../page, ../design, ../javascript and ../assets, so Frontend is also served from the root.
+app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(frontend) });
+app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(uploads) });
 
 app.MapControllers();
 app.Run();
