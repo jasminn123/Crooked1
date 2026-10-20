@@ -47,6 +47,6 @@ Pages:
 ## Run and deploy
 
 - Local: `dotnet run --project src/CrookedAPI`, then open http://localhost:5055.
-- Railway builds the root `Dockerfile` from the repo root. The app listens on Railway's `PORT` variable, and Program.cs handles that.
+- Railway builds the root `Dockerfile`. The Dockerfile finds `CrookedAPI.csproj` itself, so the build works whether the service's Root Directory is empty or `src`. The app listens on Railway's `PORT` variable, and Program.cs handles that.
 - Production runs on Linux, so file names are case-sensitive. Links must match file names exactly; for example, `PointofSale.html` and `PointofSale.css` but `PointOfSale.js`.
 - Uploaded product images in `wwwroot` are lost on every redeploy unless a Railway volume is mounted at `/app/wwwroot/images/products`.
