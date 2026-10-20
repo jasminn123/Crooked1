@@ -33,8 +33,26 @@ const Live = (() => {
         });
     }
 
+    // Turns Supabase's reason for refusing the channel into what to check.
+    function describeProblem(channelStatus, error) {
+        const reason = error?.message || '';
+        if (/PrivateOnly/i.test(reason)) {
+            return 'Supabase only allows private channels. In Supabase, open Realtime > Settings and turn on "Allow public access to channels".';
+        }
+        if (/jwt|token|api ?key|unauthori[sz]ed|forbidden/i.test(reason)) {
+            return `Supabase rejected the key (${reason}). Check SUPABASE_ANON_KEY in Railway.`;
+        }
+        if (channelStatus === 'TIMED_OUT') {
+            return 'Supabase did not answer. Check SUPABASE_URL in Railway, then reload. /api/Realtime/check shows what the server sees.';
+        }
+        return reason
+            ? `Live updates are paused: ${reason}`
+            : 'Live updates are paused. Reload the page to see the latest data.';
+    }
+
     // A small "Live" pill in the top bar, so people know the page updates by itself.
-    function setStatus(state) {
+    // problem: why it is offline, shown when hovering over the pill.
+    function setStatus(state, problem) {
         if (!status) {
             const bar = document.querySelector('.header-icons') || document.querySelector('.pos-header');
             if (!bar) return;
@@ -52,7 +70,7 @@ const Live = (() => {
         const [label, title] = states[state];
         status.className = `live-status is-${state}`;
         status.textContent = label;
-        status.title = title;
+        status.title = problem || title;
     }
 
     async function connect() {
@@ -69,7 +87,7 @@ const Live = (() => {
                 const topics = (message.payload ?? message)?.topics;
                 if (Array.isArray(topics)) notify(topics);
             })
-            .subscribe(channelStatus => {
+            .subscribe((channelStatus, error) => {
                 if (channelStatus === 'SUBSCRIBED') {
                     setStatus('live');
                     // Changes made while the connection was down were never announced.
@@ -77,17 +95,21 @@ const Live = (() => {
                         missedUpdates = false;
                         listeners.forEach(listener => listener.refresh([]));
                     }
-                } else {
-                    missedUpdates = true;
-                    setStatus(channelStatus === 'CLOSED' ? 'offline' : 'connecting');
+                    return;
                 }
+
+                // supabase-js keeps retrying; the pill returns to Live once a retry succeeds.
+                missedUpdates = true;
+                const problem = describeProblem(channelStatus, error);
+                console.warn(`Live updates ${channelStatus}${error?.message ? `: ${error.message}` : ''}. ${problem}`);
+                setStatus('offline', problem);
             });
     }
 
     function start() {
         connecting ??= connect().catch(error => {
             console.warn('Live updates are off:', error.message);
-            if (status) setStatus('offline');
+            if (status) setStatus('offline', `Live updates are off: ${error.message}`);
         });
         return connecting;
     }
