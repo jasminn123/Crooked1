@@ -307,6 +307,11 @@
     width: min(100%, 560px);
 }
 
+/* Text box under the Size or Color dropdown when "Other…" is chosen */
+.variant-other {
+    margin-top: 8px;
+}
+
 .edit-product-image-preview {
     display: none;
     width: 100%;

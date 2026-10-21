@@ -220,6 +220,87 @@ function renderProductGrid(products) {
     });
 
     applyProductFilters();
+    refreshVariantSelects();
+}
+
+/* =========================
+   SIZE & COLOR DROPDOWNS
+   Each list starts with a blank choice (saved empty, shown elsewhere as
+   "One Size" / "Default"), then common values and every value products
+   already use, then "Other…", which shows a text box for a new value.
+========================= */
+const STANDARD_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const STANDARD_COLORS = ['Black', 'White', 'Gray', 'Navy', 'Blue', 'Red', 'Green', 'Brown', 'Beige', 'Cream', 'Maroon', 'Pink', 'Yellow', 'Orange', 'Purple', 'Olive'];
+const OTHER_CHOICE = '__other__';
+
+function variantChoices(kind) {
+    const standard = kind === 'size' ? STANDARD_SIZES : STANDARD_COLORS;
+    const inUse = [...productsById.values()]
+        .map(product => (kind === 'size' ? product.size : product.color)?.trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+
+    // One entry per value, ignoring case; the standard spelling wins.
+    const seen = new Set();
+    const choices = [...standard, ...inUse].filter(value => {
+        const key = value.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    return kind === 'size' ? choices.sort(UI.compareSizes) : choices;
+}
+
+function otherInput(select) {
+    return document.getElementById(`${select.id}Other`);
+}
+
+// The text box is shown, and required, only while "Other…" is chosen.
+function syncOtherInput(select, { focus = false } = {}) {
+    const input = otherInput(select);
+    const isOther = select.value === OTHER_CHOICE;
+    input.hidden = !isOther;
+    input.required = isOther;
+    if (focus && isOther) input.focus();
+}
+
+// Selects a product's size or color. A value missing from the list (older data) is added to it.
+function setVariantValue(select, value) {
+    const text = (value || '').trim();
+    const match = [...select.options].find(option =>
+        option.value !== OTHER_CHOICE && option.value.toLowerCase() === text.toLowerCase());
+    if (!match) select.insertBefore(new Option(text, text), select.lastElementChild);
+    select.value = match ? match.value : text;
+    otherInput(select).value = '';
+    syncOtherInput(select);
+}
+
+// Rebuilds a list from the current products, keeping what is chosen (or typed under "Other…").
+function fillVariantSelect(select) {
+    const kind = select.dataset.variant;
+    const current = select.value;
+    select.replaceChildren(
+        new Option(kind === 'size' ? 'One Size' : 'No specific color', ''),
+        ...variantChoices(kind).map(value => new Option(value, value)),
+        new Option(kind === 'size' ? 'Other size…' : 'Other color…', OTHER_CHOICE)
+    );
+
+    if (current === OTHER_CHOICE) {
+        select.value = OTHER_CHOICE;
+        syncOtherInput(select);
+    } else {
+        setVariantValue(select, current);
+    }
+}
+
+function refreshVariantSelects() {
+    document.querySelectorAll('select[data-variant]').forEach(fillVariantSelect);
+}
+
+// The size or color to save: the chosen value, or the text typed under "Other…".
+function readVariant(id) {
+    const select = document.getElementById(id);
+    return select.value === OTHER_CHOICE ? otherInput(select).value.trim() : select.value;
 }
 
 // Closing a product form with unsaved typing asks before throwing it away.
@@ -276,10 +357,12 @@ function openEditProductModal(id) {
     categorySelect.value = category;
     document.getElementById('editProdPrice').value = product.price;
     document.getElementById('editProdStock').value = product.stock_quantity;
-    document.getElementById('editProdSize').value = product.size || '';
-    document.getElementById('editProdColor').value = product.color || '';
+    refreshVariantSelects();
+    setVariantValue(document.getElementById('editProdSize'), product.size);
+    setVariantValue(document.getElementById('editProdColor'), product.color);
 
     const preview = document.getElementById('editProdImagePreview');
+    preview.onerror = () => { preview.style.display = 'none'; };
     preview.src = product.image_url || '';
     preview.style.display = product.image_url ? 'block' : 'none';
     const imageInput = document.getElementById('editProdImage');
@@ -324,8 +407,8 @@ async function submitProductEdit(priceText) {
     formData.append('Category', document.getElementById('editProdCategory').value);
     formData.append('Price', priceText);
     formData.append('StockQuantity', document.getElementById('editProdStock').value);
-    formData.append('Size', document.getElementById('editProdSize').value);
-    formData.append('Color', document.getElementById('editProdColor').value);
+    formData.append('Size', readVariant('editProdSize'));
+    formData.append('Color', readVariant('editProdColor'));
     const imageFile = document.getElementById('editProdImage').files[0];
     if (imageFile) formData.append('ImageFile', imageFile);
 
@@ -378,8 +461,8 @@ async function submitNewProduct(priceText) {
     formData.append("Category", document.getElementById('prodCategory').value);
     formData.append("Price", priceText);
     formData.append("StockQuantity", document.getElementById('prodStock').value);
-    formData.append("Size", document.getElementById('prodSize').value);
-    formData.append("Color", document.getElementById('prodColor').value);
+    formData.append("Size", readVariant('prodSize'));
+    formData.append("Color", readVariant('prodColor'));
 
     const imageFile = document.getElementById('prodImage').files[0];
     if (imageFile) formData.append("ImageFile", imageFile);
@@ -448,7 +531,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ['input', 'change'].forEach(type => form?.addEventListener(type, () => {
             form.dataset.dirty = 'true';
         }));
+        // reset() puts the dropdowns back on their first choice; hide any "Other…" text box too.
+        form?.addEventListener('reset', () => setTimeout(() =>
+            form.querySelectorAll('select[data-variant]').forEach(select => syncOtherInput(select))));
     });
+
+    refreshVariantSelects();
+    document.querySelectorAll('select[data-variant]').forEach(select =>
+        select.addEventListener('change', () => syncOtherInput(select, { focus: true })));
 
     const role = localStorage.getItem('userRole');
     const isOwner = role?.toLowerCase() === 'owner';

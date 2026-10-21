@@ -8,7 +8,6 @@
 ========================= */
 const RECENT_SALES_PAGE_SIZE = 5;
 const RECENT_SALES_COLUMNS = 6;
-const SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL'];
 
 // The sale being exchanged: { transaction, exchangeUntil, hiddenItemCount, items, exchanges }
 // from /api/Exchange/lookup.
@@ -34,11 +33,6 @@ const resultSection = document.getElementById('exchangeResult');
 function scrollToSection(section) {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     section.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
-}
-
-function sizeRank(size) {
-    const index = SIZE_ORDER.indexOf(size.toUpperCase());
-    return index === -1 ? SIZE_ORDER.length : index;
 }
 
 function sameText(a, b) {
@@ -234,8 +228,7 @@ function buildItemCard(item) {
     availability.dataset.itemId = id;
     [size.select, color.select].forEach(select => select.setAttribute('aria-describedby', availability.id));
 
-    const sizes = [...new Set(item.options.map(option => option.size?.trim() || 'One Size'))]
-        .sort((a, b) => sizeRank(a) - sizeRank(b) || a.localeCompare(b, undefined, { numeric: true }));
+    const sizes = [...new Set(item.options.map(option => option.size?.trim() || 'One Size'))].sort(UI.compareSizes);
     const sizeInStock = value => item.options.some(option =>
         (option.size?.trim() || 'One Size') === value && option.stock > 0);
     size.select.append(...sizes.map(value => {

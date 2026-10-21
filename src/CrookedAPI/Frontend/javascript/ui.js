@@ -20,6 +20,18 @@ const UI = (() => {
         return size?.trim() || color?.trim() ? `${name} · ${variantLabel(size, color)}` : name;
     }
 
+    const SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL'];
+
+    // For sort(): clothing sizes from smallest to largest, then other sizes (such as waist
+    // sizes) in numeric order.
+    function compareSizes(a, b) {
+        const rank = size => {
+            const index = SIZE_ORDER.indexOf(size.trim().toUpperCase());
+            return index === -1 ? SIZE_ORDER.length : index;
+        };
+        return rank(a) - rank(b) || a.localeCompare(b, undefined, { numeric: true });
+    }
+
     function debounce(callback, wait = 300) {
         let timer;
         return (...args) => {
@@ -406,6 +418,7 @@ const UI = (() => {
         formatPeso,
         variantLabel,
         variantName,
+        compareSizes,
         debounce,
         el,
         icon,
