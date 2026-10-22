@@ -196,7 +196,7 @@ document.addEventListener('keydown', (event) => {
 /* =========================
    PAGE ACCESS
 ========================= */
-// Pages marked data-owner-only (Products, Sales History, Staff Management, Forecasting)
+// Pages marked data-owner-only (Products, Exchanges, Sales History, Staff Management, Forecasting)
 // send everyone else back to the dashboard.
 if (document.body.hasAttribute('data-owner-only')
     && localStorage.getItem('userRole')?.toLowerCase() !== 'owner') {
@@ -411,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Role-based UI hiding
         if (role && !isOwner) {
-            ['nav-products', 'nav-forecasting', 'nav-sales-history', 'nav-staff-management']
+            ['nav-products', 'nav-exchange', 'nav-forecasting', 'nav-sales-history', 'nav-staff-management']
                 .forEach(id => document.getElementById(id)?.remove());
         }
     } catch (error) {

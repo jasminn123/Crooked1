@@ -23,7 +23,7 @@ namespace Crooked.Models
         public int Quantity { get; set; }
     }
 
-    // Search, filters and paging for the transaction logs and the Excel export.
+    // Search, filters and paging for the audit logs and the Excel export.
     public sealed class TransactionQuery
     {
         public string? Search { get; set; }

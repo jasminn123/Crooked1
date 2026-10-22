@@ -59,7 +59,7 @@ Pages:
 
 ## Transactions and exchanges
 
-- Sale records are read-only in the Transaction Logs. The page lists 10 per page from `GET /api/POS/Transaction/search` (search, status, payment and date filters). Export and import use `/export`, `/import-template` and `/import` with `.xlsx` files only. Import matches sales by Reference ID: new ones are added, existing ones are updated when any field (or, if the file lists them, any item) differs, and unchanged ones are skipped. It never changes stock.
+- Sale records are read-only in the Audit Logs (the `transaction-logs` page). The page lists 10 per page from `GET /api/POS/Transaction/search` (search, status, payment and date filters). Export and import use `/export`, `/import-template` and `/import` with `.xlsx` files only. Import matches sales by Reference ID: new ones are added, existing ones are updated when any field (or, if the file lists them, any item) differs, and unchanged ones are skipped. It never changes stock.
 - `transactions.payment_method` is `Cash`, `GCash` or `Unknown`.
 - An exchanged sale keeps `status = 'Completed'` (so it still counts as revenue) and gets `has_exchange = TRUE`. The API shows it as "Exchanged".
 - Exchanges go through `ExchangeController` and follow `ExchangePolicy`: only items bought as a single piece (quantity 1), only within 3 days of the sale (Philippine dates), for the same product (name and category) at the same price in a different size and/or color. Items bought in larger quantities are not shown. Each exchange:

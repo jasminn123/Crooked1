@@ -1,11 +1,11 @@
 /* =========================
-   TRANSACTION LOGS
+   AUDIT LOGS
    A read-only record of sales: search, filters, pages of 10,
    Excel export/import and a details view. Exchanges are made
    on the Exchanges page.
 ========================= */
 const PAGE_SIZE = 10;
-const COLUMN_COUNT = 7;
+const COLUMN_COUNT = 6;
 const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 
 const filters = { search: '', status: '', payment: '', from: '', to: '' };
@@ -134,7 +134,6 @@ function renderTransactions(transactions, { fade = true } = {}) {
             UI.cell(UI.formatPeso(transaction.totalAmount), 'col-amount'),
             UI.cell(transaction.referenceId || '—', 'col-muted'),
             UI.cell(paymentLabel(transaction.paymentMethod)),
-            UI.cell(transaction.soldBy || 'Unknown', 'col-muted'),
             UI.cell(UI.statusBadge(transaction.status)),
             UI.cell(viewButton, 'col-action')
         );
@@ -444,6 +443,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = localStorage.getItem('userRole');
     if (role && role.toLowerCase() !== 'owner') {
         document.getElementById('importButton')?.remove();
+        detailsExchangeLink.remove();
+        document.getElementById('detailsSubtitle').textContent = "Sale records can't be edited.";
     }
 
     const debouncedFilter = UI.debounce(applyFilters, 350);

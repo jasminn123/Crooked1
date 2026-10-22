@@ -210,8 +210,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const role = localStorage.getItem('userRole');
         const isOwner = role?.toLowerCase() === 'owner';
 
-        // Staff see stock cards instead of the sales chart and revenue card
+        // Staff see stock cards instead of the sales chart and revenue card,
+        // and the activity logs are for the owner only.
         if (role && !isOwner) {
+            document.getElementById('activityLogsCard')?.remove();
+
             const staffStats = document.getElementById('staff-stats-container');
             if (staffStats) {
                 staffStats.style.display = 'flex';
@@ -223,9 +226,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (statsContainer) statsContainer.style.display = 'none';
         }
 
-        fetchLogs();
+        if (isOwner) {
+            fetchLogs();
+            Live.on(['activity'], () => fetchLogs({ quiet: true }));
+        }
         loadSalesAnalytics();
-        Live.on(['activity'], () => fetchLogs({ quiet: true }));
         Live.on(['transactions', 'exchanges', 'products'], () => loadSalesAnalytics({ quiet: true }));
     } catch (error) {
         console.error('Dashboard Init Error:', error);

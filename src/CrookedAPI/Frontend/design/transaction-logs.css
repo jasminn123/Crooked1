@@ -1,4 +1,4 @@
-/* ── TRANSACTION LOGS ── */
+/* ── AUDIT LOGS ── */
 
 /* Pages hold at most 10 rows, so the table shows them all instead of scrolling inside the panel. */
 .data-table-panel .transaction-table-scroll {

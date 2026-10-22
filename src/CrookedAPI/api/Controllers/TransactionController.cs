@@ -169,7 +169,7 @@ namespace Crooked.Controllers
             }
         }
 
-        // One page of the transaction logs, with search and filters applied.
+        // One page of the audit logs, with search and filters applied.
         [HttpGet("search")]
         public async Task<IActionResult> SearchTransactions([FromQuery] TransactionQuery query)
         {
