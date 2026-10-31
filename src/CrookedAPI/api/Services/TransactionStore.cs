@@ -4,7 +4,7 @@ using Crooked.Models;
 
 namespace Crooked.Services
 {
-    // Read queries shared by the transaction logs and the exchange module.
+    // Read queries shared by the audit logs and the exchange module.
     public static class TransactionStore
     {
         // Select list for ReadSummary; the query must alias transactions as t.

@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRKD | Transaction Logs</title>
+    <title>CRKD | Audit Logs</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../design/dashboard.css?v=23">
-    <link rel="stylesheet" href="../design/components.css?v=2">
-    <link rel="stylesheet" href="../design/transaction-logs.css?v=4">
+    <link rel="stylesheet" href="../design/components.css?v=3">
+    <link rel="stylesheet" href="../design/transaction-logs.css?v=5">
 
     <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
     <script src="../javascript/theme.js?v=2"></script>
@@ -28,8 +28,8 @@
         <a href="dashboard.html" class="nav-item"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i>DASHBOARD</a>
         <a id="nav-products" href="products.html" class="nav-item"><i class="fa-solid fa-shirt" aria-hidden="true"></i>PRODUCTS</a>
         <a href="inventory.html" class="nav-item"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>INVENTORY</a>
-        <a href="transaction-logs.html" class="nav-item nav-active" aria-current="page"><i class="fa-solid fa-receipt" aria-hidden="true"></i>TRANSACTION LOGS</a>
-        <a href="exchange.html" class="nav-item"><i class="fa-solid fa-right-left" aria-hidden="true"></i>EXCHANGES</a>
+        <a href="transaction-logs.html" class="nav-item nav-active" aria-current="page"><i class="fa-solid fa-receipt" aria-hidden="true"></i>AUDIT LOGS</a>
+        <a id="nav-exchange" href="exchange.html" class="nav-item"><i class="fa-solid fa-right-left" aria-hidden="true"></i>EXCHANGES</a>
         <a id="nav-sales-history" href="sales-history.html" class="nav-item"><i class="fa-solid fa-chart-line" aria-hidden="true"></i>SALES HISTORY</a>
         <a id="nav-staff-management" href="staff-management.html" class="nav-item"><i class="fa-solid fa-users" aria-hidden="true"></i>STAFF MANAGEMENT</a>
         <a id="nav-forecasting" href="forecasting.html" class="nav-item"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>FORECASTING</a>
@@ -93,9 +93,9 @@
         <!-- CONTENT WRAPPER -->
         <main id="main-content" class="content-wrapper" tabindex="-1">
 
-            <h1>TRANSACTION LOGS</h1>
+            <h1>AUDIT LOGS</h1>
 
-            <!-- TRANSACTION LOGS SECTION -->
+            <!-- AUDIT LOGS SECTION -->
             <div id="view-transactions" class="content-section">
 
                 <section class="data-table-panel" aria-label="Transactions">
@@ -163,7 +163,6 @@
                                     <th scope="col">Total Amount</th>
                                     <th scope="col">Reference ID</th>
                                     <th scope="col">Payment Method</th>
-                                    <th scope="col">Sold By</th>
                                     <th scope="col">Status</th>
                                     <th scope="col"><span class="visually-hidden">Details</span></th>
                                 </tr>
@@ -244,8 +243,8 @@
 
     <script src="../javascript/ui.js?v=3"></script>
     <script src="../javascript/live.js?v=2"></script>
-    <script src="../javascript/layout.js?v=4"></script>
-    <script src="../javascript/transaction-logs.js?v=4"></script>
+    <script src="../javascript/layout.js?v=5"></script>
+    <script src="../javascript/transaction-logs.js?v=6"></script>
 
 </body>
 </html>

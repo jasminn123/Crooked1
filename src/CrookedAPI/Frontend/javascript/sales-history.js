@@ -1,15 +1,17 @@
 /* =========================
    SALES HISTORY
 ========================= */
+const COLUMN_COUNT = 5;
+
 async function loadSalesHistory({ quiet = false } = {}) {
     const tbody = document.getElementById('salesHistoryTableBody');
     if (!tbody) return;
-    if (!quiet) UI.tableSkeleton(tbody, 4, 8);
+    if (!quiet) UI.tableSkeleton(tbody, COLUMN_COUNT, 8);
 
     try {
         const transactions = await UI.fetchJson(`${apiBase}/api/POS/Transaction`);
         if (!transactions.length) {
-            UI.tableMessage(tbody, 4, {
+            UI.tableMessage(tbody, COLUMN_COUNT, {
                 icon: 'fa-chart-line',
                 title: 'No sales recorded yet',
                 message: 'Sales made at the POS will appear here.'
@@ -23,13 +25,14 @@ async function loadSalesHistory({ quiet = false } = {}) {
                 UI.cell(transaction.date_time, 'col-muted'),
                 UI.cell(transaction.reference_id || '—'),
                 UI.cell(UI.formatPeso(transaction.total_amount)),
+                UI.cell(transaction.assisted_by || 'Unknown', 'col-muted'),
                 UI.cell(UI.statusBadge(transaction.has_exchange ? 'Exchanged' : transaction.status))
             );
             return row;
         }), { fade: !quiet });
     } catch (error) {
         console.error('Sales History Error:', error);
-        UI.tableMessage(tbody, 4, {
+        UI.tableMessage(tbody, COLUMN_COUNT, {
             isError: true,
             title: 'Unable to load sales history',
             message: error.message,

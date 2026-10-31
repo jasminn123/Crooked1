@@ -79,7 +79,7 @@ namespace Crooked.Services
                 "   and skipped when nothing changed, so importing the same file twice is safe.",
                 "   Its items are only replaced when the Items sheet lists items for it.",
                 "6. Transaction ID is ignored on import; new sales get new numbers.",
-                "7. Importing adds sales to the transaction logs only. Stock levels are not changed.",
+                "7. Importing adds sales to the audit logs only. Stock levels are not changed.",
                 "",
                 "Only .xlsx files up to 5 MB and 5,000 sales can be imported."
             };
