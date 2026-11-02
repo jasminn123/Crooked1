@@ -2,9 +2,9 @@
    CRKD SHARED COMPONENTS
    Confirmation dialogs, skeleton loaders, table states, badges,
    pagination, toolbars, toasts, loading buttons, file pickers,
-   dropdowns, category buttons, password rules, the live-update
-   status and the small-screen blocker.
-   ui.js and live.js build the markup.
+   dropdowns, category buttons, the Change Password form, the
+   live-update status and the small-screen blocker.
+   ui.js, live.js and account.js build the markup.
 
    Every page loads it after its base stylesheet (dashboard.css,
    PointofSale.css or index.css), whose colour tokens it uses.
@@ -288,42 +288,25 @@ html[data-theme="light"] .mobile-blocker-logo {
 }
 
 /* =========================
-   PASSWORD RULES (UI.passwordChecklist)
-   Each rule gets a tick once the typed password meets it.
+   CHANGE PASSWORD FORM (account.js)
 ========================= */
-.password-rules {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-    gap: 4px 16px;
+.password-form-modal .form-field input {
+    width: 100%;
+}
+
+.password-form-modal input[readonly] {
+    background: var(--color-surface-2);
+    color: var(--color-text-muted);
+}
+
+.password-form-error {
     margin: 0;
-    padding: 0;
-    list-style: none;
-    color: var(--color-text-subtle);
-    font-size: var(--font-size-xs);
+    color: var(--color-danger);
+    font-size: var(--font-size-sm);
 }
 
-.password-rule {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-/* The alternative text after "/" tells screen readers whether the rule is met. */
-.password-rule::before {
-    flex: 0 0 12px;
-    content: "\25CB";
-    content: "\25CB" / "Not met: ";
-    text-align: center;
-}
-
-.password-rule.is-met {
-    color: var(--color-success);
-}
-
-.password-rule.is-met::before {
-    content: "\2713";
-    content: "\2713" / "Met: ";
-    font-weight: 700;
+.password-form-error:empty {
+    display: none;
 }
 
 /* =========================

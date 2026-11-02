@@ -2,15 +2,27 @@
    STAFF
 ========================= */
 function staffRow(member) {
+    const actions = UI.el('div', 'staff-actions');
+
+    // Active accounts only: an archived account can't log in until it is unarchived.
+    if (member.isActive) {
+        const passwordButton = UI.el('button', 'btn btn-sm btn-secondary');
+        passwordButton.type = 'button';
+        passwordButton.append('Change Password', UI.el('span', 'visually-hidden', ` for ${member.fullName}`));
+        passwordButton.addEventListener('click', () => changeStaffPassword(member));
+        actions.appendChild(passwordButton);
+    }
+
     const button = UI.el('button', `btn btn-sm ${member.isActive ? 'btn-danger-outline' : 'btn-secondary'}`);
     button.type = 'button';
     button.append(member.isActive ? 'Archive' : 'Unarchive', UI.el('span', 'visually-hidden', ` ${member.fullName}`));
     button.addEventListener('click', () => member.isActive
         ? archiveStaff(member.id, member.fullName)
         : unarchiveStaff(member.id, member.fullName));
+    actions.appendChild(button);
 
     const row = document.createElement('tr');
-    row.append(UI.cell(member.fullName), UI.cell(member.username, 'col-muted'), UI.cell(button));
+    row.append(UI.cell(member.fullName), UI.cell(member.username, 'col-muted'), UI.cell(actions));
     return row;
 }
 
@@ -108,6 +120,25 @@ async function unarchiveStaff(id, staffName) {
 }
 
 /* =========================
+   CHANGE STAFF PASSWORD
+========================= */
+// The owner sets a new password without needing the old one (account.js builds the form).
+function changeStaffPassword(member) {
+    openPasswordForm({
+        title: 'Change Staff Password',
+        description: `Choose a new password for ${member.fullName} (${member.username}).`,
+        onSubmit: async ({ newPassword }) => {
+            const result = await UI.fetchJson(`${apiBase}/api/Auth/staff-password/${member.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newPassword })
+            });
+            return result?.message;
+        }
+    });
+}
+
+/* =========================
    ADD STAFF
 ========================= */
 async function addStaff(event) {
@@ -115,7 +146,7 @@ async function addStaff(event) {
     const passwordInput = document.getElementById('staffPass');
     const fullName = document.getElementById('staffName').value.trim();
     const username = document.getElementById('staffUser').value.trim();
-    // Not trimmed: spaces break the password rules, so they are shown instead of removed.
+    // Not trimmed: spaces break the password rules, so they are reported instead of removed.
     const password = passwordInput.value;
 
     if (!fullName || !username || !password) {
@@ -126,7 +157,7 @@ async function addStaff(event) {
     if (!UI.isValidPassword(password)) {
         passwordInput.setAttribute('aria-invalid', 'true');
         passwordInput.focus();
-        showDialog('Password Too Weak', 'The password does not meet all the rules listed under the form.');
+        showDialog('Password Too Weak', UI.passwordRulesText);
         return;
     }
     passwordInput.removeAttribute('aria-invalid');
@@ -150,7 +181,6 @@ async function submitStaffAccount(fullName, username, password) {
 
         if (response.ok) {
             showToast('Staff account created successfully.', false);
-            // reset() also clears the ticks on the password rules.
             document.getElementById('staffPass').form.reset();
             fetchStaff();
         } else {
@@ -167,7 +197,6 @@ async function submitStaffAccount(fullName, username, password) {
    PAGE LOAD
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
-    UI.passwordChecklist(document.getElementById('staffPass'), document.getElementById('staffPassRules'));
     fetchStaff();
     Live.on(['staff'], () => fetchStaff({ quiet: true }));
 });

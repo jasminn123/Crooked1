@@ -26,7 +26,7 @@ src/
     Frontend/
       page/                     # one .html per page
       design/                   # one .css per page, plus dashboard.css (admin base) and components.css (shared components)
-      javascript/               # one .js per page, plus shared ui.js, live.js, layout.js and theme.js
+      javascript/               # one .js per page, plus shared ui.js, live.js, layout.js, account.js and theme.js
       assets/                   # static images and logo
     wwwroot/images/products/    # uploaded product images (written at runtime)
 ```
@@ -46,8 +46,9 @@ Pages:
   - `live.js` (the `Live` namespace): `Live.on(topics, reload)` reloads a view when the server broadcasts that those topics changed. Loaders take `{ quiet: true }` for these refreshes so they skip skeletons and keep the current rows until new ones arrive.
   - `layout.js` provides `apiBase`, dialogs (`showDialog`), `showToast`, modals with focus trapping, the profile card, logout, the owner-only redirect, and forecast notifications.
   - `theme.js` handles light and dark mode.
+  - `account.js` holds the Change Password form (`openPasswordForm`) and the profile menu's `changeOwnPassword`. It uses the `trapFocus`, `restoreFocus`, `showDialog` and `setProfileCardOpen` helpers that both `layout.js` and `PointOfSale.js` define. Staff Management uses the same form for the owner to set a staff member's password.
   - `dashboard.css` holds the shared admin styles and colour tokens.
-  - Admin pages load `theme.js` in `<head>`, then `ui.js`, `live.js`, `layout.js` and the page's own script at the end of `<body>`. The POS loads `ui.js` and `live.js`; the login page loads `ui.js`.
+  - Admin pages load `theme.js` in `<head>`, then `ui.js`, `live.js`, `layout.js`, `account.js` and the page's own script at the end of `<body>`. The POS loads `ui.js`, `live.js`, `PointOfSale.js` and `account.js`; the login page loads `ui.js`.
   - Show a skeleton while data loads and a `tableMessage` (with a retry action) when a request fails, instead of leaving a table blank.
   - Build rows with DOM methods and `textContent` (`UI.cell`, `UI.el`), not `innerHTML` with server data.
   - `index.js` and `PointOfSale.js` still keep their own copies of the `showDialog` and `trapFocus` helpers. Don't add more copies like them.

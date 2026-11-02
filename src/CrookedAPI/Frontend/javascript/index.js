@@ -194,6 +194,8 @@ async function login(event) {
             const result = await response.json();
             localStorage.setItem("userRole", result.role);
             localStorage.setItem("userName", result.fullName || result.username || "User");
+            // The Change Password form (account.js) needs the login name, not the display name.
+            localStorage.setItem("userUsername", username);
 
             setMessage(loginMessage, 'Access granted. Opening dashboard...', 'success');
             // loginPending stays true so the form cannot be sent again while the page changes.
@@ -263,7 +265,7 @@ function submitReset(event) {
     if (!UI.isValidPassword(newPassword.value)) {
         newPassword.setAttribute('aria-invalid', 'true');
         newPassword.focus();
-        setMessage(resetMessage, 'The new password does not meet all the rules listed under it.', 'error');
+        setMessage(resetMessage, UI.passwordRulesText, 'error');
         return;
     }
 
@@ -309,7 +311,6 @@ async function sendReset() {
     }
 }
 
-UI.passwordChecklist(resetFields[2], document.getElementById('new-password-rules'));
 document.getElementById('forgot-password-link').addEventListener('click', openReset);
 resetForm.addEventListener('submit', submitReset);
 resetModal.querySelectorAll('[data-close-reset]').forEach(button => {
