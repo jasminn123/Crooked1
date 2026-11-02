@@ -14,6 +14,10 @@ namespace Crooked.Controllers
         // Tinatawag nya yung connection string mula sa DatabaseConfig.cs
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
+        // Same text as UI.passwordRulesText in ui.js, which the forms show before sending.
+        private const string WeakPasswordMessage =
+            "Password must be 8 to 64 characters, with an uppercase letter, a lowercase letter, a number and a symbol, and no spaces.";
+
         [HttpPost("login")]
         [LiveUpdate(LiveTopics.Activity)]
         public IActionResult Login([FromBody] User loginRequest)
@@ -184,6 +188,11 @@ namespace Crooked.Controllers
         [LiveUpdate(LiveTopics.Staff)]
         public IActionResult RegisterStaff([FromBody] User request)
         {
+            if (!PasswordPolicy.IsValid(request.Password))
+            {
+                return BadRequest(new { message = WeakPasswordMessage });
+            }
+
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 connection.Open();
@@ -199,6 +208,111 @@ namespace Crooked.Controllers
             return Ok();
         }
 
+        // Any signed-in user (owner or staff) changing their own password; the current one must match.
+        [HttpPost("change-password")]
+        [LiveUpdate(LiveTopics.Activity)]
+        public IActionResult ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrEmpty(request.CurrentPassword))
+            {
+                return BadRequest(new { message = "Enter your username and current password." });
+            }
+
+            if (!PasswordPolicy.IsValid(request.NewPassword))
+            {
+                return BadRequest(new { message = WeakPasswordMessage });
+            }
+
+            if (request.NewPassword == request.CurrentPassword)
+            {
+                return BadRequest(new { message = "The new password must be different from your current password." });
+            }
+
+            try
+            {
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    connection.Open();
+                    string? fullName;
+
+                    const string updateSql = @"UPDATE users SET password = @newPass
+                        WHERE username = @user AND password = @currentPass AND is_active = true
+                        RETURNING full_name";
+                    using (var cmd = new NpgsqlCommand(updateSql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@newPass", request.NewPassword);
+                        cmd.Parameters.AddWithValue("@user", request.Username.Trim());
+                        cmd.Parameters.AddWithValue("@currentPass", request.CurrentPassword);
+                        fullName = cmd.ExecuteScalar()?.ToString();
+                    }
+
+                    if (fullName == null)
+                    {
+                        return BadRequest(new { message = "Your current password is incorrect." });
+                    }
+
+                    var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES (@name, 'Changed their password', NOW())";
+                    using (var logCmd = new NpgsqlCommand(logSql, connection))
+                    {
+                        logCmd.Parameters.AddWithValue("@name", fullName);
+                        logCmd.ExecuteNonQuery();
+                    }
+                }
+
+                return Ok(new { message = "Your password has been changed." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        // The owner setting a staff member's password from Staff Management. Only staff accounts can be changed here.
+        [HttpPost("staff-password/{id}")]
+        [LiveUpdate(LiveTopics.Activity)]
+        public IActionResult SetStaffPassword(int id, [FromBody] SetPasswordRequest request)
+        {
+            if (!PasswordPolicy.IsValid(request.NewPassword))
+            {
+                return BadRequest(new { message = WeakPasswordMessage });
+            }
+
+            try
+            {
+                using (var connection = new NpgsqlConnection(_connectionString))
+                {
+                    connection.Open();
+                    string? staffName;
+
+                    const string updateSql = "UPDATE users SET password = @newPass WHERE id = @id AND role = 'staff' RETURNING full_name";
+                    using (var cmd = new NpgsqlCommand(updateSql, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@newPass", request.NewPassword);
+                        cmd.Parameters.AddWithValue("@id", id);
+                        staffName = cmd.ExecuteScalar()?.ToString();
+                    }
+
+                    if (staffName == null)
+                    {
+                        return NotFound(new { message = "Staff account not found." });
+                    }
+
+                    var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES ('Main Owner', @action, NOW())";
+                    using (var logCmd = new NpgsqlCommand(logSql, connection))
+                    {
+                        logCmd.Parameters.AddWithValue("@action", $"Changed password: {staffName}");
+                        logCmd.ExecuteNonQuery();
+                    }
+
+                    return Ok(new { message = $"The password for \"{staffName}\" has been changed." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
         [HttpPost("reset-password")]
 public IActionResult ResetPassword([FromBody] ResetRequest request)
 {
@@ -208,6 +322,11 @@ public IActionResult ResetPassword([FromBody] ResetRequest request)
     if (request.RecoveryKey != masterRecoveryKey)
     {
         return BadRequest(new { message = "Invalid Recovery Key!" });
+    }
+
+    if (!PasswordPolicy.IsValid(request.NewPassword))
+    {
+        return BadRequest(new { message = WeakPasswordMessage });
     }
 
     try

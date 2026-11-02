@@ -501,6 +501,7 @@ html[data-theme="light"] .theme-toggle-button::before {
 ========================= */
 input[type="text"],
 input[type="search"],
+input[type="password"],
 select {
   width: 100%;
   min-height: var(--control-height);

@@ -1,5 +1,5 @@
 // Shared UI building blocks: skeleton loaders, table states, badges, pagination,
-// toasts, loading buttons, file pickers, the small-screen blocker and small helpers.
+// toasts, loading buttons, file pickers, password checks, the small-screen blocker and small helpers.
 // Every page loads it (with components.css) before its own scripts and uses it
 // through the UI namespace.
 const UI = (() => {
@@ -362,6 +362,27 @@ const UI = (() => {
     }
 
     /* =========================
+       PASSWORD RULES
+    ========================= */
+    // The same rules as PasswordPolicy on the server (api/Models/User.cs).
+    const PASSWORD_RULES = [
+        value => value.length >= 8 && value.length <= 64,
+        value => /[A-Z]/.test(value),
+        value => /[a-z]/.test(value),
+        value => /\d/.test(value),
+        value => /[^A-Za-z0-9\s]/.test(value),
+        value => !/\s/.test(value)
+    ];
+
+    // Shown when a password breaks a rule; the forms don't list the rules otherwise.
+    const passwordRulesText =
+        'Password must be 8 to 64 characters, with an uppercase letter, a lowercase letter, a number and a symbol, and no spaces.';
+
+    function isValidPassword(password) {
+        return PASSWORD_RULES.every(test => test(password));
+    }
+
+    /* =========================
        SMALL-SCREEN BLOCKER
     ========================= */
     // components.css shows this notice, and hides everything else, on screens under 768px wide.
@@ -438,6 +459,8 @@ const UI = (() => {
         toast,
         setLoading,
         filePickerButton,
+        isValidPassword,
+        passwordRulesText,
         download
     };
 })();

@@ -2,8 +2,9 @@
    CRKD SHARED COMPONENTS
    Confirmation dialogs, skeleton loaders, table states, badges,
    pagination, toolbars, toasts, loading buttons, file pickers,
-   the live-update status and the small-screen blocker.
-   ui.js and live.js build the markup.
+   dropdowns, category buttons, the Change Password form, the
+   live-update status and the small-screen blocker.
+   ui.js, live.js and account.js build the markup.
 
    Every page loads it after its base stylesheet (dashboard.css,
    PointofSale.css or index.css), whose colour tokens it uses.
@@ -249,6 +250,63 @@ html[data-theme="light"] .mobile-blocker-logo {
             margin-left: auto;
         }
     }
+}
+
+/* =========================
+   CATEGORY BUTTONS (Products page and POS)
+   Toggle buttons in a role="group"; the chosen one has .active and aria-pressed="true".
+========================= */
+.category-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tab-btn {
+    min-width: var(--button-min-width-sm, 80px);
+    min-height: 36px;
+    padding: 0 16px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tab-btn:hover {
+    background: var(--color-surface-2);
+    color: var(--color-text);
+}
+
+.tab-btn.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+/* =========================
+   CHANGE PASSWORD FORM (account.js)
+========================= */
+.password-form-modal .form-field input {
+    width: 100%;
+}
+
+.password-form-modal input[readonly] {
+    background: var(--color-surface-2);
+    color: var(--color-text-muted);
+}
+
+.password-form-error {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: var(--font-size-sm);
+}
+
+.password-form-error:empty {
+    display: none;
 }
 
 /* =========================

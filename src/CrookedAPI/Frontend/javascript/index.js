@@ -194,6 +194,8 @@ async function login(event) {
             const result = await response.json();
             localStorage.setItem("userRole", result.role);
             localStorage.setItem("userName", result.fullName || result.username || "User");
+            // The Change Password form (account.js) needs the login name, not the display name.
+            localStorage.setItem("userUsername", username);
 
             setMessage(loginMessage, 'Access granted. Opening dashboard...', 'success');
             // loginPending stays true so the form cannot be sent again while the page changes.
@@ -256,6 +258,14 @@ function submitReset(event) {
 
     if (!checkRequired(resetFields)) {
         setMessage(resetMessage, 'Please fill in all three fields.', 'error');
+        return;
+    }
+
+    const newPassword = resetFields[2];
+    if (!UI.isValidPassword(newPassword.value)) {
+        newPassword.setAttribute('aria-invalid', 'true');
+        newPassword.focus();
+        setMessage(resetMessage, UI.passwordRulesText, 'error');
         return;
     }
 

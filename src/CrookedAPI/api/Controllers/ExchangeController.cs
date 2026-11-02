@@ -91,7 +91,7 @@ namespace Crooked.Controllers
                 transaction = await reader.ReadAsync() ? TransactionStore.ReadSummary(reader) : null;
             }
 
-            if (transaction == null) return NotFound(new { message = $"No sale was found for \"{text}\"." });
+            if (transaction == null) return NotFound(new { message = $"Please put full reference \"{text}\"." });
             if (transaction.StoredStatus != TransactionStatuses.Completed)
                 return Conflict(new { message = $"Only completed sales can be exchanged. This sale is {transaction.StoredStatus}." });
             if (!ExchangePolicy.IsOpen(transaction.StoredDateTime))

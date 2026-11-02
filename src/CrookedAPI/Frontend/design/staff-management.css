@@ -15,6 +15,12 @@
     max-height: 320px;
 }
 
+/* Change Password and Archive / Unarchive, side by side in the Action column */
+.staff-actions {
+    display: flex;
+    gap: 8px;
+}
+
 .archive-card {
     border-color: var(--color-danger-border);
 }
