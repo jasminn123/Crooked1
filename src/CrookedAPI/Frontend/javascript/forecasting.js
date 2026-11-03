@@ -14,8 +14,6 @@ const TRENDS = {
 const VISIBILITY_KEY = 'crkd-forecast-visibility';
 
 let forecastProducts = [];
-// How the server forecasts (days predicted, history needed, ...), from the API.
-let forecastSettings = null;
 // Product id -> shown (true/false) for products someone showed or hid by hand.
 // Products without a choice follow hasSales().
 const visibilityChoices = readChoices();
@@ -49,8 +47,6 @@ async function loadForecast({ quiet = false } = {}) {
     try {
         const analytics = await UI.fetchJson(`${apiBase}/api/Forecasting/daily-sales`);
         forecastProducts = analytics.products;
-        forecastSettings = analytics.settings;
-        renderMethodNotes();
         renderProductOptions();
         renderForecastTable({ fade: !quiet });
     } catch (error) {
@@ -102,14 +98,16 @@ function renderForecastTable({ fade = false } = {}) {
         const label = velocity.charAt(0).toUpperCase() + velocity.slice(1);
         const sold = product.dailySales.reduce((total, units) => total + units, 0);
 
+        const forecast = product.forecast;
+
         const row = document.createElement('tr');
         row.append(
             UI.cell(productName(product)),
             UI.cell(String(sold)),
-            predictionCell(product.forecast),
-            trendCell(product.forecast),
-            stockCell(product),
-            restockCell(product.forecast),
+            UI.cell(forecast ? formatUnits(forecast.predictedUnits) : '—'),
+            trendCell(forecast),
+            UI.cell(String(product.stockQuantity)),
+            UI.cell(!forecast ? '—' : forecast.suggestedRestock > 0 ? String(forecast.suggestedRestock) : 'None'),
             UI.cell(String(product.lowStockThreshold)),
             UI.cell(UI.badge(label, VELOCITY_TONES[velocity]))
         );
@@ -117,98 +115,17 @@ function renderForecastTable({ fade = false } = {}) {
     }), { fade });
 }
 
-/* =========================
-   FORECAST CELLS
-========================= */
 const formatUnits = value => Number(value).toLocaleString('en-PH', { maximumFractionDigits: 1 });
-const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
-
-// A value with smaller lines of detail under it.
-function detailedCell(value, ...details) {
-    const cell = UI.cell(value);
-    details.filter(Boolean).forEach(detail => cell.appendChild(UI.el('span', 'forecast-detail', detail)));
-    return cell;
-}
-
-// The predicted units, which method made them, and how each method did in the backtest.
-function predictionCell(forecast) {
-    if (!forecast) return detailedCell('—', 'Waiting for the first forecast');
-
-    const cell = detailedCell(formatUnits(forecast.predictedUnits));
-    const method = UI.el('span', 'forecast-detail');
-    const isModel = forecast.method === 'ml';
-    method.append(
-        UI.el('span', `forecast-method${isModel ? ' is-ml' : ''}`, isModel ? 'ML model' : '7-day average'),
-        ` · ${isModel ? `likely ${formatUnits(forecast.predictedLow)}–${formatUnits(forecast.predictedHigh)}` : averageReason(forecast)}`
-    );
-    cell.appendChild(method);
-
-    if (forecast.backtestWeeks > 0) {
-        cell.appendChild(UI.el('span', 'forecast-detail',
-            `Off by ${formatUnits(forecast.modelError)} (model) vs ${formatUnits(forecast.averageError)} (average) a week`));
-    }
-    return cell;
-}
-
-function averageReason(forecast) {
-    if (forecast.reason === 'short-history') {
-        return `needs ${forecastSettings?.minHistoryDays ?? 28} days of sales, has ${forecast.historyDays}`;
-    }
-    if (forecast.reason === 'model-less-accurate') {
-        return `more accurate over the last ${plural(forecast.backtestWeeks, 'week')}`;
-    }
-    if (forecast.reason === 'model-failed') return 'the model could not run';
-    return '';
-}
 
 function trendCell(forecast) {
     const trend = TRENDS[forecast?.trend];
-    if (!trend) return detailedCell('—', forecast ? 'Needs 2 weeks of sales' : '');
+    if (!trend) return UI.cell('—');
 
     const badge = UI.badge(trend.label, trend.tone);
     const icon = UI.el('i', `fa-solid ${trend.icon}`);
     icon.setAttribute('aria-hidden', 'true');
     badge.prepend(icon);
     return UI.cell(badge);
-}
-
-function stockCell(product) {
-    const days = product.forecast?.daysOfStockLeft;
-    const detail = !product.forecast ? ''
-        : product.stockQuantity <= 0 ? 'Out of stock'
-        : days === null ? 'No sales expected'
-        : `About ${plural(days, 'day')} left`;
-    return detailedCell(String(product.stockQuantity), detail);
-}
-
-function restockCell(forecast) {
-    if (!forecast) return UI.cell('—');
-    if (forecast.suggestedRestock <= 0) return detailedCell('None', 'Stock covers the forecast');
-    return detailedCell(String(forecast.suggestedRestock), `For ${forecastSettings?.restockDays ?? 14} days of sales`);
-}
-
-// Explains the settings in use and how many products the model is forecasting.
-function renderMethodNotes() {
-    const settings = forecastSettings;
-    if (settings) {
-        document.getElementById('forecastSettingsNote').textContent =
-            `It learns from up to ${settings.historyDays} days of sales and predicts the next ${settings.horizonDays}. `
-            + 'Sizes and colors are forecast together and split by their share of recent sales. '
-            + `Products with under ${settings.minHistoryDays} days of sales use the 7-day average. `
-            + `The low-stock threshold covers ${plural(settings.coverageDays, 'day')} of predicted sales, `
-            + `and the restock suggestion covers ${settings.restockDays} days.`;
-    }
-
-    const forecasts = forecastProducts.map(product => product.forecast);
-    const byModel = forecasts.filter(forecast => forecast?.method === 'ml').length;
-    const tooNew = forecasts.filter(forecast => forecast?.reason === 'short-history').length;
-    const averageBetter = forecasts.filter(forecast => forecast?.reason === 'model-less-accurate').length;
-    const waiting = forecasts.filter(forecast => !forecast).length;
-    const parts = [`The ML model is forecasting ${byModel} of ${plural(forecastProducts.length, 'product')}.`];
-    if (averageBetter) parts.push(`For ${averageBetter}, the 7-day average tested more accurate.`);
-    if (tooNew) parts.push(`${tooNew} ${tooNew === 1 ? 'needs' : 'need'} more sales history.`);
-    if (waiting) parts.push(`${waiting} ${waiting === 1 ? 'is' : 'are'} waiting for a first forecast.`);
-    document.getElementById('forecastModelStatus').textContent = forecastProducts.length ? parts.join(' ') : '';
 }
 
 // One checkbox per product. Rebuilding keeps keyboard focus on the same product's checkbox.

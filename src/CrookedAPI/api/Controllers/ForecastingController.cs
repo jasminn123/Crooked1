@@ -94,15 +94,6 @@ namespace Crooked.Controllers
             return Ok(new
             {
                 dates = dates.Select(date => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
-                // The Forecasting page explains the method with these numbers.
-                settings = new
-                {
-                    horizonDays = _options.HorizonDays,
-                    historyDays = _options.HistoryDays,
-                    minHistoryDays = SalesForecaster.MinimumHistory(_options),
-                    coverageDays = _options.CoverageDays,
-                    restockDays = _options.RestockDays
-                },
                 products = products.Values
                     .OrderByDescending(product => product.DailySales.Sum())
                     .Select(product => new

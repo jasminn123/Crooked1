@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../design/dashboard.css?v=23">
     <link rel="stylesheet" href="../design/components.css?v=6">
-    <link rel="stylesheet" href="../design/forecasting.css?v=9">
+    <link rel="stylesheet" href="../design/forecasting.css?v=11">
     <link rel="icon" type="image/png" href="../assets/Favicon.jpg">
     <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
     <script src="../javascript/theme.js?v=2"></script>
@@ -102,12 +102,6 @@
             <!-- FORECASTING SECTION -->
             <div id="view-forecasting" class="content-section forecasting-section">
                 <div class="data-table-panel">
-                    <div class="forecasting-header">
-                        <h2>AI Sales Forecast</h2>
-                        <p id="forecastMethodNote">Next week's sales are predicted for each product with a machine-learning time-series model (ML.NET Singular Spectrum Analysis), trained on each product's daily sales. Before it's used, the model and the 7-day average both predict the product's last few weeks, and the one that missed by less makes the forecast.</p>
-                        <p id="forecastSettingsNote"></p>
-                        <p id="forecastModelStatus" class="forecast-model-status" role="status"></p>
-                    </div>
                     <div class="table-toolbar">
                         <p id="forecastSummary" class="table-summary" role="status" aria-live="polite">Loading forecast data...</p>
                         <div class="table-actions">
@@ -158,7 +152,7 @@
     <script src="../javascript/live.js?v=2"></script>
     <script src="../javascript/layout.js?v=5"></script>
     <script src="../javascript/account.js?v=2"></script>
-    <script src="../javascript/forecasting.js?v=7"></script>
+    <script src="../javascript/forecasting.js?v=9"></script>
 
 </body>
 </html>
