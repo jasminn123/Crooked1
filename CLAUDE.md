@@ -19,7 +19,7 @@ src/
       Program.cs                # service registration, schema setup call, static file serving
       Controllers/              # one controller per domain: Auth, POS, Transaction, Exchange, Products, Forecasting, Realtime
       Models/                   # request DTOs, read models (TransactionViews), sheet rows, value lists, ExchangePolicy
-      Services/                 # ThresholdForecastService, TransactionStore (shared reads),
+      Services/                 # ThresholdForecastService + SalesForecaster (ML.NET forecasting), TransactionStore (shared reads),
                                 # TransactionExcel (xlsx export/import), ShopClock (UTC <-> PH time),
                                 # LiveUpdates + [LiveUpdate] (Supabase Realtime broadcasts),
                                 # ProductImages (restores committed photos into the Railway volume)
@@ -69,6 +69,14 @@ Pages:
   - moves the sale's `product_daily_sales` count to the new variant;
   - updates `transaction_items` to match what the customer now has;
   - records the change in `exchanges` and `exchange_items`, and writes an `activity_logs` entry.
+
+## Sales forecasting
+
+- `ThresholdForecastService` checks every hour and updates each active product at most once per `DebounceHours` (24), using the `ThresholdForecast` settings in appsettings.json. Products with no stored forecast are updated on the next check.
+- `SalesForecaster` forecasts the next 7 days for each product (name and category) from `product_daily_sales`, using complete Philippine days only. With at least `MinHistoryDays` (28) since the first sale, it backtests ML.NET's SSA time-series model against the 7-day average on the last 1 to 3 weeks and uses whichever missed by less. Otherwise it uses the 7-day average. If ML.NET fails (for example, native libraries won't load), it logs a warning and falls back to the average.
+- Sizes and colors share a product's forecast, split by each one's share of the last 28 days' sales. Each one's low-stock threshold covers `CoverageDays` of predicted sales, and its Fast/Moderate/Slow rating comes from predicted units a day (3 or more, 1 or more).
+- Forecasts are stored in `product_forecasts`. `GET /api/Forecasting/daily-sales` adds them to each product, along with the days of stock left and a restock suggestion (`RestockDays`) worked out from the current stock.
+- The Excel import doesn't add to `product_daily_sales`, so imported sales don't feed the forecast.
 
 ## Live updates (Supabase Realtime)
 

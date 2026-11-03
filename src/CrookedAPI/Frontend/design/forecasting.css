@@ -12,10 +12,46 @@
 
 .forecasting-header p {
     max-width: 72ch;
-    margin: 0;
+    margin: 0 0 6px;
     color: var(--color-text-muted);
     font-size: var(--font-size-md);
     line-height: 1.6;
+}
+
+.forecasting-header .forecast-model-status {
+    margin: 10px 0 0;
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+/* The forecast table has more columns than the other tables, so its headers and details wrap
+   instead of making the table scroll sideways on a laptop screen. */
+.forecasting-section .transaction-table th,
+.forecasting-section .transaction-table td {
+    padding-inline: 12px;
+    white-space: normal;
+}
+
+.forecasting-section .transaction-table td:first-child {
+    min-width: 16ch;
+}
+
+/* Smaller lines under a value in the forecast table (method, range, days left). */
+.forecast-detail {
+    display: block;
+    margin-top: 2px;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.4;
+}
+
+.forecast-method {
+    color: var(--color-text);
+    font-weight: 700;
+}
+
+.forecast-method.is-ml {
+    color: var(--color-info);
 }
 
 /* Pages are short, so the table shows every shown product instead of scrolling inside the panel. */
