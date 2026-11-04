@@ -443,6 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = localStorage.getItem('userRole');
     if (role && role.toLowerCase() !== 'owner') {
         document.getElementById('importButton')?.remove();
+        document.getElementById('exportButton')?.remove();
         detailsExchangeLink.remove();
         document.getElementById('detailsSubtitle').textContent = "Sale records can't be edited.";
     }
@@ -456,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     clearFiltersButton.addEventListener('click', clearFilters);
 
-    document.getElementById('exportButton').addEventListener('click', exportTransactions);
+    document.getElementById('exportButton')?.addEventListener('click', exportTransactions);
     document.getElementById('importButton')?.addEventListener('click', openImport);
     document.getElementById('templateButton').addEventListener('click', downloadTemplate);
     importFile.addEventListener('change', checkImportFile);

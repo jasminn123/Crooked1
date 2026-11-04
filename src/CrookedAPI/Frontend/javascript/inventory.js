@@ -4,6 +4,8 @@
 const INVENTORY_COLUMNS = 8;
 let inventoryProducts = [];
 
+const isOutOfStock = item => item.stock_quantity <= 0;
+
 async function loadInventory({ quiet = false } = {}) {
     const tableBody = document.getElementById('inventory-list-main');
     if (!tableBody) return;
@@ -29,10 +31,12 @@ function renderInventoryTable({ fade = false } = {}) {
     if (!tableBody) return;
 
     const query = document.getElementById('inventorySearch')?.value.trim().toLocaleLowerCase() || '';
-    const products = inventoryProducts.filter(item =>
-        [item.product_name, item.category, item.size, item.color]
-            .some(value => String(value || '').toLocaleLowerCase().includes(query))
-    );
+    // Out-of-stock items go to the bottom; within each group the order from the API is kept.
+    const products = inventoryProducts
+        .filter(item =>
+            [item.product_name, item.category, item.size, item.color]
+                .some(value => String(value || '').toLocaleLowerCase().includes(query)))
+        .sort((a, b) => isOutOfStock(a) - isOutOfStock(b));
 
     if (!products.length) {
         UI.tableMessage(tableBody, INVENTORY_COLUMNS, query
@@ -51,7 +55,7 @@ function renderInventoryTable({ fade = false } = {}) {
 
     UI.fillTable(tableBody, products.map(item => {
         const threshold = item.low_stock_threshold || 5;
-        const isOut = item.stock_quantity === 0;
+        const isOut = isOutOfStock(item);
         const isLow = item.stock_quantity <= threshold && item.stock_quantity > 0;
         const status = isOut
             ? UI.badge('Out of stock', 'danger')
