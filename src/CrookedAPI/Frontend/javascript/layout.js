@@ -196,7 +196,7 @@ document.addEventListener('keydown', (event) => {
 /* =========================
    PAGE ACCESS
 ========================= */
-// Pages marked data-owner-only (Products, Exchanges, Sales History, Staff Management, Forecasting)
+// Pages marked data-owner-only (Products, Exchanges, Sales History, Accounts, Forecasting)
 // send everyone else back to the dashboard.
 if (document.body.hasAttribute('data-owner-only')
     && localStorage.getItem('userRole')?.toLowerCase() !== 'owner') {
@@ -236,10 +236,7 @@ function logout() {
     showDialog(
         'Log Out',
         'Are you sure you want to log out?',
-        () => {
-            localStorage.clear();
-            window.location.href = 'index.html';
-        },
+        () => Session.signOut(),
         null,
         { confirmText: 'Log Out' }
     );

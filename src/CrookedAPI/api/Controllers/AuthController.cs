@@ -1,8 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Crooked.Models;
 using Crooked.Services;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System;
 
 namespace Crooked.Controllers
@@ -18,17 +22,20 @@ namespace Crooked.Controllers
         private const string WeakPasswordMessage =
             "Password must be 8 to 64 characters, with an uppercase letter, a lowercase letter, a number and a symbol, and no spaces.";
 
+        private const string FullNameClaim = "full_name";
+
+        [AllowAnonymous]
         [HttpPost("login")]
         [LiveUpdate(LiveTopics.Activity)]
-        public IActionResult Login([FromBody] User loginRequest)
+        public async Task<IActionResult> Login([FromBody] User loginRequest)
         {
-            try 
+            try
             {
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     connection.Open();
 
-                    string sql = "SELECT role, full_name FROM users WHERE username = @user AND password = @pass AND is_active = true";
+                    string sql = "SELECT username, role, full_name FROM users WHERE username = @user AND password = @pass AND is_active = true";
                     using (var cmd = new NpgsqlCommand(sql, connection))
                     {
                         cmd.Parameters.AddWithValue("@user", loginRequest.Username);
@@ -38,16 +45,30 @@ namespace Crooked.Controllers
                         {
                             if (reader.Read())
                             {
-                                string role = reader["role"].ToString();
-                                string fullName = reader["full_name"].ToString();
-                                reader.Close(); 
+                                string username = reader["username"].ToString() ?? string.Empty;
+                                string role = (reader["role"].ToString() ?? string.Empty).ToLowerInvariant();
+                                string fullName = reader["full_name"].ToString() ?? string.Empty;
+                                reader.Close();
 
-                                var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES (@name, 'Logged into the system', NOW())";                            
+                                var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES (@name, 'Logged into the system', NOW())";
                                 using (var logCmd = new NpgsqlCommand(logSql, connection))
                                 {
                                     logCmd.Parameters.AddWithValue("@name", fullName);
                                     logCmd.ExecuteNonQuery();
                                 }
+
+                                // The session cookie is what the API checks from now on; the role the
+                                // browser keeps in localStorage only decides which buttons it shows.
+                                var identity = new ClaimsIdentity(new[]
+                                {
+                                    new Claim(ClaimTypes.Name, username),
+                                    new Claim(ClaimTypes.Role, role),
+                                    new Claim(FullNameClaim, fullName)
+                                }, CookieAuthenticationDefaults.AuthenticationScheme);
+                                await HttpContext.SignInAsync(
+                                    CookieAuthenticationDefaults.AuthenticationScheme,
+                                    new ClaimsPrincipal(identity),
+                                    new AuthenticationProperties { IsPersistent = false });
 
                                 return Ok(new { role, fullName });
                             }
@@ -63,6 +84,25 @@ namespace Crooked.Controllers
             }
         }
 
+        // Ends the session by deleting the cookie. Anonymous so an expired session can still clear it.
+        [AllowAnonymous]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return NoContent();
+        }
+
+        // Who is signed in. session.js calls it when the browser shows a page again from Back/Forward.
+        [HttpGet("session")]
+        public IActionResult CurrentSession() => Ok(new
+        {
+            username = User.Identity?.Name,
+            role = User.FindFirstValue(ClaimTypes.Role),
+            fullName = User.FindFirstValue(FullNameClaim)
+        });
+
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet("dashboard-stats")]
         public IActionResult GetStats()
         {
@@ -85,6 +125,7 @@ namespace Crooked.Controllers
             }
         }
 
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpPost("toggle-archive/{id}")]
         [LiveUpdate(LiveTopics.Staff, LiveTopics.Activity)]
         public IActionResult ToggleArchive(int id, [FromQuery] bool archive)
@@ -135,6 +176,7 @@ namespace Crooked.Controllers
             }
         }
 
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet("get-staff")]
         public IActionResult GetStaff()
         {
@@ -160,6 +202,7 @@ namespace Crooked.Controllers
             return Ok(staffList);
         }
 
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet("get-logs")]
         public IActionResult GetLogs()
         {
@@ -186,6 +229,7 @@ namespace Crooked.Controllers
             return Ok(logs);
         }
 
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpPost("register-staff")]
         [LiveUpdate(LiveTopics.Staff)]
         public IActionResult RegisterStaff([FromBody] User request)
@@ -215,9 +259,12 @@ namespace Crooked.Controllers
         [LiveUpdate(LiveTopics.Activity)]
         public IActionResult ChangePassword([FromBody] ChangePasswordRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrEmpty(request.CurrentPassword))
+            // Always the signed-in account; the username sent in the form is not trusted.
+            var username = User.Identity?.Name ?? string.Empty;
+
+            if (string.IsNullOrEmpty(request.CurrentPassword))
             {
-                return BadRequest(new { message = "Enter your username and current password." });
+                return BadRequest(new { message = "Enter your current password." });
             }
 
             if (!PasswordPolicy.IsValid(request.NewPassword))
@@ -243,7 +290,7 @@ namespace Crooked.Controllers
                     using (var cmd = new NpgsqlCommand(updateSql, connection))
                     {
                         cmd.Parameters.AddWithValue("@newPass", request.NewPassword);
-                        cmd.Parameters.AddWithValue("@user", request.Username.Trim());
+                        cmd.Parameters.AddWithValue("@user", username);
                         cmd.Parameters.AddWithValue("@currentPass", request.CurrentPassword);
                         fullName = cmd.ExecuteScalar()?.ToString();
                     }
@@ -270,6 +317,7 @@ namespace Crooked.Controllers
         }
 
         // The owner setting a staff member's password from Staff Management. Only staff accounts can be changed here.
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpPost("staff-password/{id}")]
         [LiveUpdate(LiveTopics.Activity)]
         public IActionResult SetStaffPassword(int id, [FromBody] SetPasswordRequest request)
@@ -315,6 +363,8 @@ namespace Crooked.Controllers
             }
         }
 
+        // Owner recovery from the login page, so no session is needed.
+        [AllowAnonymous]
         [HttpPost("reset-password")]
 public IActionResult ResetPassword([FromBody] ResetRequest request)
 {

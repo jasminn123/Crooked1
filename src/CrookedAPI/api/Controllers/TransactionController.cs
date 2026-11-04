@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Crooked.Models;
@@ -13,6 +14,7 @@ namespace Crooked.Controllers
         private const int MaxExportRows = 50000;
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet("today-revenue")]
         public IActionResult GetTodayRevenue()
         {
@@ -125,6 +127,7 @@ namespace Crooked.Controllers
         }
 
         // Every sale, newest first (used by Sales History).
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet]
         public IActionResult GetTransactions()
         {
@@ -230,6 +233,7 @@ namespace Crooked.Controllers
         }
 
         // Excel workbook of every sale that matches the current search and filters.
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet("export")]
         public async Task<IActionResult> ExportTransactions([FromQuery] TransactionQuery query)
         {
@@ -293,6 +297,7 @@ namespace Crooked.Controllers
             return File(TransactionExcel.Build(transactions, items), TransactionExcel.ContentType, fileName);
         }
 
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet("import-template")]
         public IActionResult DownloadImportTemplate() =>
             File(TransactionExcel.BuildTemplate(), TransactionExcel.ContentType, "crkd-transactions-template.xlsx");
@@ -300,6 +305,7 @@ namespace Crooked.Controllers
         // Adds sales from an Excel workbook to the logs. A sale whose reference ID already exists is
         // updated when any of its fields (or, when the file lists them, its items) differ, and skipped
         // when nothing changed. Stock levels are never changed.
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpPost("import")]
         [LiveUpdate(LiveTopics.Transactions, LiveTopics.Activity)]
         public async Task<IActionResult> ImportTransactions(IFormFile? file, [FromForm] string? importedBy)

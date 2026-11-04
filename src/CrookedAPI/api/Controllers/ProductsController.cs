@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using System;
@@ -45,6 +46,7 @@ public class ProductsController : ControllerBase
         return Ok(products);
     }
 
+[Authorize(Roles = UserRoles.Owner)]
 [HttpGet("get-products")]
 public IActionResult GetProducts()
 {
@@ -75,6 +77,7 @@ public IActionResult GetProducts()
     return Ok(products);
 }
 
+    [Authorize(Roles = UserRoles.Owner)]
     [HttpGet("get-archived-products")]
     public IActionResult GetArchivedProducts()
     {
@@ -110,6 +113,7 @@ public IActionResult GetProducts()
         return Ok(products);
     }
 
+    [Authorize(Roles = UserRoles.Owner)]
     [HttpPost("restore-product/{id}")]
     [LiveUpdate(LiveTopics.Products)]
     public IActionResult RestoreProduct(int id)
@@ -138,6 +142,7 @@ public IActionResult GetProducts()
         }
     }
 
+    [Authorize(Roles = UserRoles.Owner)]
     [HttpPut("update-product/{id}")]
     [LiveUpdate(LiveTopics.Products)]
     public async Task<IActionResult> UpdateProduct(int id, [FromForm] ProductUploadDTO dto)
@@ -203,6 +208,7 @@ public IActionResult GetProducts()
         }
     }
 
+    [Authorize(Roles = UserRoles.Owner)]
     [HttpPost("archive-product/{id}")]
     [LiveUpdate(LiveTopics.Products)]
     public IActionResult ArchiveProduct(int id)
@@ -231,6 +237,7 @@ public IActionResult GetProducts()
         }
     }
 
+    [Authorize(Roles = UserRoles.Owner)]
     [HttpPost("add-product")]
     [LiveUpdate(LiveTopics.Products)]
     public async Task<IActionResult> AddProduct([FromForm] ProductUploadDTO dto)

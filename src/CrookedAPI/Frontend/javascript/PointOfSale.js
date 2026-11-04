@@ -280,10 +280,7 @@ function logout() {
     hasItems
       ? "Are you sure you want to log out? The items in the current checkout will be cleared."
       : "Are you sure you want to log out?",
-    () => {
-      localStorage.clear();
-      window.location.href = "index.html";
-    },
+    () => Session.signOut(),
     null,
     { confirmText: "Log Out", danger: hasItems }
   );

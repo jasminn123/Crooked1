@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Crooked.Models;
 using Crooked.Services;
 
 namespace Crooked.Controllers
@@ -27,6 +29,7 @@ namespace Crooked.Controllers
 
         // Troubleshooting: checks SUPABASE_URL and SUPABASE_ANON_KEY by sending a test broadcast
         // (on a channel no page listens to) and reports Supabase's answer. Open it in a browser.
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet("check")]
         public async Task<IActionResult> Check()
         {

@@ -226,12 +226,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (statsContainer) statsContainer.style.display = 'none';
         }
 
+        // The sales chart and revenue come from owner-only endpoints.
         if (isOwner) {
             fetchLogs();
             Live.on(['activity'], () => fetchLogs({ quiet: true }));
+            loadSalesAnalytics();
+            Live.on(['transactions', 'exchanges', 'products'], () => loadSalesAnalytics({ quiet: true }));
         }
-        loadSalesAnalytics();
-        Live.on(['transactions', 'exchanges', 'products'], () => loadSalesAnalytics({ quiet: true }));
     } catch (error) {
         console.error('Dashboard Init Error:', error);
     }

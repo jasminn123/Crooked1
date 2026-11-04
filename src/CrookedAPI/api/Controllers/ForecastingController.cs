@@ -1,5 +1,6 @@
 using Crooked.Models;
 using Crooked.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -9,6 +10,8 @@ namespace Crooked.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // Forecasting, the dashboard sales chart and forecast notifications are for the owner only.
+    [Authorize(Roles = UserRoles.Owner)]
     public sealed class ForecastingController : ControllerBase
     {
         private readonly string _connectionString = DatabaseConfig.ConnectionString;

@@ -26,7 +26,7 @@ src/
     Frontend/
       page/                     # one .html per page
       design/                   # one .css per page, plus dashboard.css (admin base) and components.css (shared components)
-      javascript/               # one .js per page, plus shared ui.js, live.js, layout.js, account.js and theme.js
+      javascript/               # one .js per page, plus shared ui.js, live.js, layout.js, account.js, theme.js and session.js
       assets/                   # static images and logo
     wwwroot/images/products/    # uploaded product images (written at runtime)
 ```
@@ -46,9 +46,10 @@ Pages:
   - `live.js` (the `Live` namespace): `Live.on(topics, reload)` reloads a view when the server broadcasts that those topics changed. Loaders take `{ quiet: true }` for these refreshes so they skip skeletons and keep the current rows until new ones arrive.
   - `layout.js` provides `apiBase`, dialogs (`showDialog`), `showToast`, modals with focus trapping, the profile card, logout, the owner-only redirect, and forecast notifications.
   - `theme.js` handles light and dark mode.
+  - `session.js` (the `Session` namespace) guards every page behind the login. It sends signed-out visitors to `index.html` (also when Back/Forward shows a page from the browser's memory), sends the browser to the login page whenever our API answers 401, and provides `Session.signOut()` for the logout buttons.
   - `account.js` holds the Change Password form (`openPasswordForm`) and the profile menu's `changeOwnPassword`. It uses the `trapFocus`, `restoreFocus`, `showDialog` and `setProfileCardOpen` helpers that both `layout.js` and `PointOfSale.js` define. Staff Management uses the same form for the owner to set a staff member's password.
   - `dashboard.css` holds the shared admin styles and colour tokens.
-  - Admin pages load `theme.js` in `<head>`, then `ui.js`, `live.js`, `layout.js`, `account.js` and the page's own script at the end of `<body>`. The POS loads `ui.js`, `live.js`, `PointOfSale.js` and `account.js`; the login page loads `ui.js`.
+  - Admin pages load `theme.js` and `session.js` in `<head>`, then `ui.js`, `live.js`, `layout.js`, `account.js` and the page's own script at the end of `<body>`. The POS loads `theme.js` and `session.js` in `<head>`, then `ui.js`, `live.js`, `PointOfSale.js` and `account.js`; the login page loads `theme.js` and `ui.js` (never `session.js`).
   - Show a skeleton while data loads and a `tableMessage` (with a retry action) when a request fails, instead of leaving a table blank.
   - Build rows with DOM methods and `textContent` (`UI.cell`, `UI.el`), not `innerHTML` with server data.
   - `index.js` and `PointOfSale.js` still keep their own copies of the `showDialog` and `trapFocus` helpers. Don't add more copies like them.
@@ -56,6 +57,7 @@ Pages:
 - Call the API with same-origin paths (`/api/...` or `${apiBase}/api/...`). Never hardcode `localhost:5055`, because it breaks the deployed site.
 - Bump the `?v=` number on a script or stylesheet link when you change that file, so browsers don't keep the old copy.
 - New backend features go in a controller for their domain under `api/Controllers`, with models in `api/Models`. Schema changes go in `Database/schema.sql` as idempotent SQL (`IF NOT EXISTS`).
+- Login uses ASP.NET Core cookie authentication: `POST /api/Auth/login` sets the HttpOnly `crkd_session` cookie (with the user's username, role and full name), and `POST /api/Auth/logout` deletes it. Program.cs makes every API endpoint require a signed-in user. Add `[Authorize(Roles = UserRoles.Owner)]` to endpoints that only owner pages use, and `[AllowAnonymous]` only to endpoints the login page needs (login, logout, owner recovery). The `userRole` in localStorage only decides what the UI shows; the server never trusts it.
 - Mark every endpoint that changes data with `[LiveUpdate(LiveTopics.X, ...)]` so open pages refresh, and register matching `Live.on([...])` reloads on the pages that show that data.
 - Times are stored in UTC. Convert them with `ShopClock` (Philippine time, UTC+8) instead of `ToLocalTime()`, because the server runs on UTC.
 
