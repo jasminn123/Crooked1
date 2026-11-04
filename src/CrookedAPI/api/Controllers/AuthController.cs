@@ -173,10 +173,12 @@ namespace Crooked.Controllers
                 {
                     while (reader.Read())
                     {
-                        logs.Add(new { 
-                            staffName = reader["staff_name"], 
-                            action = reader["action"], 
-                            dateOccurred = reader["date_occurred"] 
+                        // date_occurred is stored in UTC; format it in Philippine time on the server
+                        // so the browser doesn't read the bare timestamp as its own local time.
+                        logs.Add(new {
+                            staffName = reader["staff_name"],
+                            action = reader["action"],
+                            dateOccurred = ShopClock.Display(Convert.ToDateTime(reader["date_occurred"]))
                         });
                     }
                 }

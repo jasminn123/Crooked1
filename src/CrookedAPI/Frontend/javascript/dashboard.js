@@ -163,7 +163,7 @@ async function fetchLogs({ quiet = false } = {}) {
             row.append(
                 UI.cell(log.staffName),
                 UI.cell(log.action),
-                UI.cell(new Date(log.dateOccurred).toLocaleString(), 'col-muted')
+                UI.cell(log.dateOccurred, 'col-muted')
             );
             return row;
         }), { fade: !quiet });
