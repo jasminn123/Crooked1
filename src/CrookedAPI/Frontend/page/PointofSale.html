@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRKD | Point of Sale</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="../design/PointofSale.css?v=21">
-  <link rel="stylesheet" href="../design/components.css?v=6">
+  <link rel="stylesheet" href="../design/PointofSale.css?v=22">
+  <link rel="stylesheet" href="../design/components.css?v=7">
   <link rel="icon" type="image/png" href="../assets/Favicon.jpg">
 
   <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
-  <script src="../javascript/theme.js?v=2"></script>
+  <script src="../javascript/theme.js?v=3"></script>
   <!-- Sends signed-out visitors to the login page before the page is drawn. -->
-  <script src="../javascript/session.js?v=1"></script>
+  <script src="../javascript/session.js?v=2"></script>
 </head>
 <body>
 
@@ -34,24 +34,24 @@
         <i class="fa-solid fa-chevron-down profile-chevron" aria-hidden="true"></i>
       </button>
 
-      <div id="profileCard" class="profile-card">
+      <div id="profileCard" class="profile-card" hidden>
         <div class="profile-card-header">
           <i class="fa-solid fa-user" aria-hidden="true"></i>
           <span>Main Owner</span>
         </div>
 
         <div class="profile-card-body">
-          <button type="button" class="profile-menu-item" onclick="switchToDashboard()">
+          <button type="button" class="profile-menu-item" data-action="switch-to-dashboard">
             <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
             Switch to Dashboard
           </button>
-          <button type="button" class="profile-menu-item theme-toggle-button" onclick="toggleDarkMode()">Light Mode</button>
-          <button type="button" class="profile-menu-item" onclick="changeOwnPassword()">
+          <button type="button" class="profile-menu-item theme-toggle-button">Light Mode</button>
+          <button type="button" class="profile-menu-item" data-action="change-password">
             <i class="fa-solid fa-key" aria-hidden="true"></i>
             Change Password
           </button>
           <hr class="profile-menu-separator">
-          <button type="button" class="profile-menu-item profile-menu-item-danger" onclick="logout()">
+          <button type="button" class="profile-menu-item profile-menu-item-danger" data-action="logout">
             <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
             Logout
           </button>
@@ -83,8 +83,13 @@
     </section>
 
     <!-- CHECKOUT -->
-    <aside class="checkout-panel" aria-labelledby="checkoutHeading">
-      <h2 id="checkoutHeading">Checkout</h2>
+    <aside id="checkoutPanel" class="checkout-panel" aria-labelledby="checkoutHeading">
+      <div class="checkout-header">
+        <h2 id="checkoutHeading">Checkout</h2>
+        <button type="button" id="closeCartBtn" class="btn btn-ghost btn-icon checkout-close" aria-label="Close checkout">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
       <p id="checkoutEmpty" class="checkout-empty">No items yet. Choose a product to add it.</p>
       <ul id="checkoutList" class="checkout-list" aria-labelledby="checkoutHeading"></ul>
       <p class="checkout-total">
@@ -93,9 +98,19 @@
       </p>
       <div class="checkout-actions">
         <button type="button" id="checkoutBtn" class="btn btn-primary">Check Out</button>
-        <button type="button" id="cancelCheckoutBtn" class="btn btn-danger-outline" onclick="confirmCancelCheckout()">Cancel</button>
+        <button type="button" id="cancelCheckoutBtn" class="btn btn-danger-outline">Cancel</button>
       </div>
     </aside>
+
+    <!-- Phones and short windows: the checkout stays out of the way and opens from this bar. -->
+    <button type="button" id="cartBar" class="cart-bar" aria-expanded="false" aria-controls="checkoutPanel">
+      <span class="cart-bar-count">
+        <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+        <span id="cartBarCount">0 items</span>
+      </span>
+      <strong id="cartBarTotal">&#8369;0.00</strong>
+    </button>
+    <div id="cartBackdrop" class="cart-backdrop"></div>
   </main>
 
   <!-- Announces cart changes to screen readers. -->
@@ -248,10 +263,10 @@
     </div>
   </div>
 
-  <script src="../javascript/ui.js?v=5"></script>
+  <script src="../javascript/ui.js?v=6"></script>
   <script src="../javascript/live.js?v=2"></script>
-  <script src="../javascript/PointOfSale.js?v=14"></script>
-  <script src="../javascript/account.js?v=2"></script>
+  <script src="../javascript/PointOfSale.js?v=15"></script>
+  <script src="../javascript/account.js?v=3"></script>
 
 </body>
 </html>

@@ -14,7 +14,7 @@ const Session = (() => {
     function toLogin() {
         SESSION_KEYS.forEach(key => localStorage.removeItem(key));
         // Hide the page first so its data doesn't stay on screen while the login page loads.
-        document.documentElement.style.visibility = 'hidden';
+        document.documentElement.classList.add('session-ended');
         // replace() keeps this page out of the history, so Back doesn't return to it.
         window.location.replace(LOGIN_PAGE);
     }

@@ -22,7 +22,7 @@ function staffRow(member) {
     actions.appendChild(button);
 
     const row = document.createElement('tr');
-    row.append(UI.cell(member.fullName), UI.cell(member.username, 'col-muted'), UI.cell(actions));
+    row.append(UI.cell(member.fullName), UI.cell(member.username, 'col-muted'), UI.cell(actions, 'col-wrap'));
     return row;
 }
 
@@ -197,6 +197,7 @@ async function submitStaffAccount(fullName, username, password) {
    PAGE LOAD
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('staffForm')?.addEventListener('submit', addStaff);
     fetchStaff();
     Live.on(['staff'], () => fetchStaff({ quiet: true }));
 });

@@ -17,6 +17,14 @@ const checkoutList = document.getElementById("checkoutList");
 const checkoutEmpty = document.getElementById("checkoutEmpty");
 const checkoutTotal = document.getElementById("checkoutTotal");
 const checkoutBtn = document.getElementById("checkoutBtn");
+const checkoutPanel = document.getElementById("checkoutPanel");
+const closeCartBtn = document.getElementById("closeCartBtn");
+const cartBar = document.getElementById("cartBar");
+const cartBarCount = document.getElementById("cartBarCount");
+const cartBarTotal = document.getElementById("cartBarTotal");
+const cartBackdrop = document.getElementById("cartBackdrop");
+// Matches the phone layout in PointofSale.css.
+const sheetLayout = window.matchMedia("(max-width: 760px), (max-height: 559px)");
 const variantForm = document.getElementById("variantForm");
 const variantSize = document.getElementById("variantSize");
 const variantColor = document.getElementById("variantColor");
@@ -51,9 +59,12 @@ function trapFocus(event, container) {
 }
 
 // Returns focus to the element that opened a dialog, or to the product search
-// when that element was re-rendered in the meantime.
+// when that element was re-rendered in the meantime. A button in a closed checkout
+// sheet can't take focus, so the bar that opens the sheet takes it instead.
 function restoreFocus(element) {
-  if (element?.isConnected && element !== document.body) {
+  if (sheetLayout.matches && !isCartOpen() && checkoutPanel.contains(element)) {
+    cartBar.focus();
+  } else if (element?.isConnected && element !== document.body) {
     element.focus();
   } else {
     productSearch.focus();
@@ -240,13 +251,13 @@ const profileCard = document.getElementById("profileCard");
 const profileSection = document.querySelector(".profile-section");
 
 function setProfileCardOpen(open) {
-  profileCard.style.display = open ? "block" : "none";
+  profileCard.hidden = !open;
   userIcon.setAttribute("aria-expanded", String(open));
 }
 
 userIcon.addEventListener("click", (event) => {
   event.stopPropagation();
-  setProfileCardOpen(profileCard.style.display !== "block");
+  setProfileCardOpen(profileCard.hidden);
 });
 
 document.addEventListener("click", (event) => {
@@ -254,7 +265,7 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && profileCard.style.display === "block") {
+  if (event.key === "Escape" && !profileCard.hidden) {
     setProfileCardOpen(false);
     userIcon.focus();
   }
@@ -666,6 +677,12 @@ function renderCheckout(focusTarget = null) {
   checkoutEmpty.hidden = cartHasItems();
   checkoutTotal.textContent = formatPeso(cartTotal());
 
+  const itemCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
+  cartBarCount.textContent = `${itemCount} item${itemCount === 1 ? "" : "s"}`;
+  cartBarTotal.textContent = checkoutTotal.textContent;
+  // An empty checkout has nothing to show; the receipt modal keeps focus if a sale just ended.
+  if (!itemCount && isCartOpen()) setCartOpen(false, { restore: !openModals.length });
+
   if (focusTarget) {
     checkoutList.querySelector(
       `[data-item-id="${CSS.escape(String(focusTarget.id))}"][data-action="${focusTarget.action}"]`
@@ -677,6 +694,40 @@ function clearCheckout() {
   cart = {};
   renderCheckout();
 }
+
+/* =========================
+   CART SHEET (phones and short windows)
+========================= */
+// PointofSale.css keeps the checkout off screen on these screens and shows a bar with the
+// item count and total. The bar slides the checkout up over the page as a sheet.
+const isCartOpen = () => document.body.classList.contains("cart-open");
+
+function setCartOpen(open, { restore = true } = {}) {
+  document.body.classList.toggle("cart-open", open);
+  cartBar.setAttribute("aria-expanded", String(open));
+  if (open) closeCartBtn.focus();
+  else if (restore) cartBar.focus();
+}
+
+cartBar.addEventListener("click", () => setCartOpen(true));
+closeCartBtn.addEventListener("click", () => setCartOpen(false));
+cartBackdrop.addEventListener("click", () => setCartOpen(false));
+
+document.addEventListener("keydown", (event) => {
+  if (!isCartOpen() || openModals.length || document.getElementById("customDialog")) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    setCartOpen(false);
+  } else if (event.key === "Tab") {
+    trapFocus(event, checkoutPanel);
+  }
+});
+
+// Turning a phone or widening the window brings the checkout back beside the products.
+sheetLayout.addEventListener("change", event => {
+  if (!event.matches && isCartOpen()) setCartOpen(false, { restore: false });
+});
 
 function confirmCancelCheckout() {
   if (!cartHasItems()) {
@@ -891,114 +942,17 @@ document.getElementById("gcashForm").addEventListener("submit", event => {
 /* =========================
    RECEIPT
 ========================= */
+// receipt.js reads the sale from here, clears it and prints the receipt.
 function printReceipt(tx) {
-  const receiptWindow = window.open("", "Receipt", "width=420,height=700");
+  localStorage.setItem("crkdPendingReceipt", JSON.stringify(tx));
+  const receiptWindow = window.open("../page/receipt.html", "Receipt", "width=420,height=700");
   if (!receiptWindow) {
+    localStorage.removeItem("crkdPendingReceipt");
     showToast("The receipt window was blocked. Allow pop-ups and try printing again.", true);
     return false;
   }
 
-  const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[character]);
-
-  const items = tx.items.map(item => `
-    <div class="item">
-      <div class="item-name">${escapeHtml(item.name)}</div>
-      <div class="item-details">
-        <span>${item.quantity} x ${formatPeso(item.price)}</span>
-        <span>${formatPeso(item.quantity * item.price)}</span>
-      </div>
-    </div>
-  `).join("");
-  const paymentDetails = tx.payment_method === "Cash" ? `
-    <div class="row"><span>Cash</span><span>${formatPeso(tx.amount_received)}</span></div>
-    <div class="row"><span>Change</span><span>${formatPeso(tx.change_given)}</span></div>
-  ` : `
-    <div class="row"><span>Payment</span><span>${escapeHtml(tx.payment_method || "GCash")}</span></div>
-    ${tx.referenceId ? `<div class="row"><span>Reference</span><span>${escapeHtml(tx.referenceId)}</span></div>` : ""}
-  `;
-
-  receiptWindow.document.write(`<!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Crooked Receipt</title>
-        <style>
-          * { box-sizing: border-box; }
-          body {
-            width: 72mm;
-            margin: 0 auto;
-            padding: 5mm 4mm;
-            background: #fff;
-            color: #000;
-            font: 12px/1.4 "Courier New", monospace;
-          }
-          .receipt { width: 100%; }
-          .center { text-align: center; }
-          .shop-name {
-            margin: 0;
-            font-size: 23px;
-            font-weight: 900;
-            letter-spacing: 2px;
-            line-height: 1.1;
-          }
-          .address { margin: 5px 0 12px; font-size: 11px; }
-          .divider { border: 0; border-top: 1px dashed #000; margin: 9px 0; }
-          .row, .item-details {
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
-          }
-          .meta { font-size: 11px; }
-          .meta div { margin: 2px 0; }
-          .item { margin: 8px 0; }
-          .item-name { overflow-wrap: anywhere; }
-          .item-details { margin-top: 2px; padding-left: 8px; font-size: 11px; }
-          .total { font-size: 15px; font-weight: bold; }
-          .footer { margin-top: 14px; }
-          @media print {
-            @page { size: 80mm auto; margin: 0; }
-            body { width: 72mm; padding: 4mm; }
-          }
-        </style>
-      </head>
-      <body>
-        <main class="receipt">
-          <header class="center">
-            <h1 class="shop-name">CROOKED</h1>
-            <p class="address">2057 Bagong Sikat St., Baclaran,<br>Parañaque City</p>
-          </header>
-          <hr class="divider">
-          <section class="meta">
-            <div>Receipt: ${escapeHtml(tx.referenceId)}</div>
-            <div>Date: ${escapeHtml(new Date(tx.date_time).toLocaleString("en-PH"))}</div>
-            <div>Cashier: ${escapeHtml(tx.assistedBy)}</div>
-          </section>
-          <hr class="divider">
-          <section aria-label="Purchased items">${items}</section>
-          <hr class="divider">
-          <div class="row total"><span>TOTAL</span><span>${formatPeso(tx.total_amount)}</span></div>
-          <hr class="divider">
-          <section class="meta">${paymentDetails}</section>
-          <hr class="divider">
-          <footer class="center footer">
-            <div>Thank you for shopping at</div>
-            <strong>CROOKED</strong>
-            <div>Please come again!</div>
-          </footer>
-        </main>
-      </body>
-    </html>
-  `);
-  receiptWindow.document.close();
   receiptWindow.focus();
-  receiptWindow.print();
   return true;
 }
 
@@ -1016,6 +970,10 @@ document.getElementById("receiptNoBtn").addEventListener("click", () => finishRe
 /* =========================
    PAGE LOAD
 ========================= */
+document.querySelector('[data-action="logout"]').addEventListener("click", logout);
+document.querySelector('[data-action="switch-to-dashboard"]').addEventListener("click", switchToDashboard);
+document.getElementById("cancelCheckoutBtn").addEventListener("click", confirmCancelCheckout);
+
 const userName = localStorage.getItem("userName");
 if (userName) {
   document.querySelectorAll(".pos-user-name, .profile-card-header span").forEach(element => {

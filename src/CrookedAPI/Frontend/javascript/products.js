@@ -39,12 +39,7 @@ function showProductGridMessage(title, message, canRetry = false) {
    ARCHIVE PRODUCT
 ========================= */
 async function archiveProduct(id) {
-    const grid = document.getElementById('productGrid');
-    if (!grid) return;
-
-    const card = [...grid.children].find(c => c.querySelector(`button[onclick="archiveProduct(${id})"]`));
-    const nameEl = card ? card.querySelector('h3') : null;
-    const productName = nameEl ? nameEl.textContent.trim() : 'this product';
+    const productName = productsById.get(id)?.product_name || 'this product';
 
     showDialog(
         'Archive Product',
@@ -159,64 +154,66 @@ async function restoreProduct(id, productName) {
 const productsById = new Map();
 let activeCategory = 'All';
 
+// Fills in a copy of the card in products.html.
+function productCard(product, isOwner) {
+    const template = document.getElementById('productCardTemplate');
+    const card = template.content.firstElementChild.cloneNode(true);
+    const field = name => card.querySelector(`[data-field="${name}"]`);
+    card.dataset.category = product.category;
+
+    if (product.image_url) {
+        const placeholder = field('image');
+        const noImageText = placeholder.textContent;
+        const image = UI.el('img');
+        image.src = product.image_url;
+        image.alt = product.product_name;
+        image.addEventListener('error', () => { placeholder.textContent = noImageText; });
+        placeholder.replaceChildren(image);
+    }
+
+    field('category').textContent = product.category;
+    field('price').textContent = `₱${product.price.toLocaleString()}`;
+    field('name').textContent = product.product_name;
+    field('size').textContent = product.size || '-';
+    field('color').textContent = product.color || '-';
+
+    // Low stock is spelled out as well as coloured, so colour is not the only cue.
+    const isLowStock = product.stock_quantity <= 5;
+    const stockNote = product.stock_quantity === 0 ? ' (out)' : isLowStock ? ' (low)' : '';
+    field('stock').textContent = `${product.stock_quantity}${stockNote}`;
+    field('stock').classList.toggle('is-low', isLowStock);
+
+    const actions = field('actions');
+    if (isOwner) {
+        actions.querySelectorAll('.visually-hidden').forEach(name => {
+            name.textContent = ` ${product.product_name}`;
+        });
+        actions.querySelector('[data-action="edit"]').addEventListener('click', () => openEditProductModal(product.id));
+        actions.querySelector('[data-action="archive"]').addEventListener('click', () => archiveProduct(product.id));
+    } else {
+        actions.remove();
+    }
+
+    return card;
+}
+
 function renderProductGrid(products) {
     const grid = document.getElementById('productGrid');
-    const userRole = localStorage.getItem('userRole')?.toLowerCase();
+    const isOwner = localStorage.getItem('userRole')?.toLowerCase() === 'owner';
 
     if (!grid) return;
     UI.doneLoading(grid);
-    grid.innerHTML = '';
+    grid.replaceChildren();
     productsById.clear();
 
     if (!products.length) {
-        showProductGridMessage('No products yet', userRole === 'owner' ? 'Use Add Product to create the first one.' : '');
+        showProductGridMessage('No products yet', isOwner ? 'Use Add Product to create the first one.' : '');
         return;
     }
 
-    products.forEach(p => {
-        productsById.set(p.id, p);
-        const card = document.createElement('div');
-        card.className = 'product-card';
-        card.dataset.category = p.category;
-
-        let ownerActions = '';
-
-        if (userRole === 'owner') {
-            ownerActions = `
-                <div class="product-card-actions">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="openEditProductModal(${p.id})">Edit<span class="visually-hidden"> ${p.product_name}</span></button>
-                    <button type="button" class="btn btn-danger-outline btn-sm" onclick="archiveProduct(${p.id})">Archive<span class="visually-hidden"> ${p.product_name}</span></button>
-                </div>
-            `;
-        }
-
-        // Low stock is spelled out as well as coloured, so colour is not the only cue.
-        const isLowStock = p.stock_quantity <= 5;
-        const stockNote = p.stock_quantity === 0 ? ' (out)' : isLowStock ? ' (low)' : '';
-
-        card.innerHTML = `
-            <div class="img-placeholder">
-                ${p.image_url
-                    ? `<img src="${p.image_url}" alt="${p.product_name}" onerror="this.parentElement.textContent = 'NO IMAGE AVAILABLE'">`
-                    : 'NO IMAGE AVAILABLE'}
-            </div>
-
-            <div class="product-card-meta">
-                <span class="product-card-category">${p.category}</span>
-                <span class="product-card-price">₱${p.price.toLocaleString()}</span>
-            </div>
-
-            <h3 class="product-card-title">${p.product_name}</h3>
-
-            <div class="product-card-details">
-                <span>Size: <strong>${p.size || '-'}</strong></span>
-                <span>Color: <strong>${p.color || '-'}</strong></span>
-                <span>Stock: <strong class="${isLowStock ? 'is-low' : ''}">${p.stock_quantity}${stockNote}</strong></span>
-            </div>
-
-            ${ownerActions}
-        `;
-        grid.appendChild(card);
+    products.forEach(product => {
+        productsById.set(product.id, product);
+        grid.appendChild(productCard(product, isOwner));
     });
 
     applyProductFilters();
@@ -362,9 +359,9 @@ function openEditProductModal(id) {
     setVariantValue(document.getElementById('editProdColor'), product.color);
 
     const preview = document.getElementById('editProdImagePreview');
-    preview.onerror = () => { preview.style.display = 'none'; };
+    preview.onerror = () => { preview.hidden = true; };
     preview.src = product.image_url || '';
-    preview.style.display = product.image_url ? 'block' : 'none';
+    preview.hidden = !product.image_url;
     const imageInput = document.getElementById('editProdImage');
     imageInput.value = '';
     imageInput.dispatchEvent(new Event('change'));
@@ -494,15 +491,11 @@ function applyProductFilters() {
     document.querySelectorAll('.product-card').forEach(card => {
         const matchesCategory = activeCategory === 'All' || card.dataset.category === activeCategory;
         const matchesSearch = card.textContent.toLowerCase().includes(query);
-        card.style.display = matchesCategory && matchesSearch ? '' : 'none';
+        card.hidden = !(matchesCategory && matchesSearch);
     });
 }
 
-function filterProducts() {
-    applyProductFilters();
-}
-
-function filterBycategory(category, button) {
+function filterByCategory(category, button) {
     activeCategory = category;
     document.querySelectorAll('.tab-btn').forEach(btn => {
         const isActive = btn === button;
@@ -516,6 +509,24 @@ function filterBycategory(category, button) {
    PAGE LOAD
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('productSearch')?.addEventListener('input', applyProductFilters);
+    document.getElementById('addNewProductBtn')?.addEventListener('click', () => openAddModal());
+    document.getElementById('refreshArchivedBtn')?.addEventListener('click', () => fetchArchivedProducts());
+    document.getElementById('productForm')?.addEventListener('submit', saveProduct);
+    document.getElementById('editProductForm')?.addEventListener('submit', saveProductEdit);
+
+    document.querySelectorAll('.tab-btn').forEach(button =>
+        button.addEventListener('click', () => filterByCategory(button.dataset.category, button)));
+    document.querySelectorAll('#addProductModal [data-close-modal]').forEach(button =>
+        button.addEventListener('click', () => closeAddModal()));
+    document.querySelectorAll('#editProductModal [data-close-modal]').forEach(button =>
+        button.addEventListener('click', () => closeEditProductModal()));
+
+    ['prodPrice', 'editProdPrice'].forEach(id => {
+        const input = document.getElementById(id);
+        input?.addEventListener('input', () => limitAmountInput(input));
+    });
+
     document.getElementById('editProdImage')?.addEventListener('change', event => {
         const input = event.currentTarget;
         const preview = document.getElementById('editProdImagePreview');
@@ -523,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!imageFile) return;
 
         preview.src = URL.createObjectURL(imageFile);
-        preview.style.display = 'block';
+        preview.hidden = false;
     });
 
     ['productForm', 'editProductForm'].forEach(id => {
@@ -543,14 +554,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = localStorage.getItem('userRole');
     const isOwner = role?.toLowerCase() === 'owner';
     const archivedProductsSection = document.getElementById('archivedProductsSection');
-    if (archivedProductsSection) {
-        archivedProductsSection.style.display = isOwner ? '' : 'none';
-    }
+    if (archivedProductsSection) archivedProductsSection.hidden = !isOwner;
 
-    if (role && !isOwner) {
-        const addProductBtn = document.getElementById('addNewProductBtn');
-        if (addProductBtn) addProductBtn.style.display = 'none';
-    }
+    const addProductBtn = document.getElementById('addNewProductBtn');
+    if (addProductBtn && role && !isOwner) addProductBtn.hidden = true;
 
     const grid = document.getElementById('productGrid');
     if (grid) UI.cardSkeletons(grid, { count: 8, cardClass: 'product-card', mediaHeight: '200px', lines: 4 });

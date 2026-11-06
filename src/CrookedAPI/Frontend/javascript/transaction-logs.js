@@ -373,6 +373,7 @@ function renderDetails({ transaction, items, exchanges, canExchange, exchangeUnt
             body.appendChild(row);
         });
         table.append(head, body);
+        UI.labelCells(body);
         const scroll = UI.el('div', 'details-table-scroll');
         scroll.appendChild(table);
         itemsSection.appendChild(scroll);

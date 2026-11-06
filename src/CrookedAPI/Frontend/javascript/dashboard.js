@@ -76,7 +76,7 @@ async function loadSalesAnalytics({ quiet = false } = {}) {
         const soldProducts = analytics.products.filter(product => product.dailySales.some(units => units > 0));
         renderSalesChart(analytics.dates, soldProducts, { animate: !quiet });
         if (status) status.textContent = soldProducts.length
-            ? `Units sold per day over the last 7 days, for the ${soldProducts.length} product${soldProducts.length === 1 ? '' : 's'} that sold. Click a name below the chart to hide or show its line.`
+            ? `Units sold per day over the last 7 days, for the ${soldProducts.length} product${soldProducts.length === 1 ? '' : 's'} that sold. Click or tap a name below the chart to hide or show its line.`
             : 'No products were sold in the last 7 days.';
     } catch (error) {
         console.error('Sales Analytics Error:', error);
@@ -162,7 +162,7 @@ async function fetchLogs({ quiet = false } = {}) {
             const row = document.createElement('tr');
             row.append(
                 UI.cell(log.staffName),
-                UI.cell(log.action),
+                UI.cell(log.action, 'col-wrap'),
                 UI.cell(log.dateOccurred, 'col-muted')
             );
             return row;
@@ -217,13 +217,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const staffStats = document.getElementById('staff-stats-container');
             if (staffStats) {
-                staffStats.style.display = 'flex';
+                staffStats.hidden = false;
                 fetchStaffStats();
                 Live.on(['products', 'exchanges'], () => fetchStaffStats({ quiet: true }));
             }
 
             const statsContainer = document.querySelector('.dashboard-stats-container');
-            if (statsContainer) statsContainer.style.display = 'none';
+            if (statsContainer) statsContainer.hidden = true;
         }
 
         // The sales chart and revenue come from owner-only endpoints.

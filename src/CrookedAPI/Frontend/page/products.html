@@ -6,15 +6,15 @@
     <title>CRKD | Products</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../design/dashboard.css?v=23">
-    <link rel="stylesheet" href="../design/components.css?v=6">
-    <link rel="stylesheet" href="../design/products.css?v=4">
+    <link rel="stylesheet" href="../design/dashboard.css?v=24">
+    <link rel="stylesheet" href="../design/components.css?v=7">
+    <link rel="stylesheet" href="../design/products.css?v=5">
     <link rel="icon" type="image/png" href="../assets/Favicon.jpg">
 
     <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
-    <script src="../javascript/theme.js?v=2"></script>
+    <script src="../javascript/theme.js?v=3"></script>
     <!-- Sends signed-out visitors to the login page before the page is drawn. -->
-    <script src="../javascript/session.js?v=1"></script>
+    <script src="../javascript/session.js?v=2"></script>
 </head>
 
 <body data-page="products" data-owner-only>
@@ -46,13 +46,13 @@
         <header class="top-header">
             <div class="header-icons">
 
-                <div id="forecastNotifications" class="forecast-notifications" style="display:none;">
+                <div id="forecastNotifications" class="forecast-notifications" hidden>
                     <button id="forecastNotificationButton" class="forecast-notification-button" type="button"
                         aria-label="Forecast notifications" aria-expanded="false" aria-controls="forecastNotificationPanel">
                         <i class="fa-solid fa-bell" aria-hidden="true"></i>
-                        <span id="forecastNotificationCount" class="forecast-notification-count" style="display:none;" aria-hidden="true">0</span>
+                        <span id="forecastNotificationCount" class="forecast-notification-count" hidden aria-hidden="true">0</span>
                     </button>
-                    <div id="forecastNotificationPanel" class="forecast-notification-panel" style="display:none;">
+                    <div id="forecastNotificationPanel" class="forecast-notification-panel" hidden>
                         <h3>Forecast Notifications</h3>
                         <div id="forecastNotificationList" class="forecast-notification-list">
                             <p class="forecast-notification-empty">Loading notifications...</p>
@@ -62,31 +62,31 @@
 
                 <div class="profile-section">
                     <!-- The button is named by the signed-in user's name (layout.js fills .Owner). -->
-                    <button type="button" class="profile-icon" onclick="toggleProfileCard(event)"
+                    <button type="button" class="profile-icon"
                         aria-haspopup="true" aria-expanded="false" aria-controls="profileCard">
                         <i class="fa-solid fa-user" aria-hidden="true"></i>
                         <span class="Owner">Main Owner</span>
                         <i class="fa-solid fa-chevron-down profile-chevron" aria-hidden="true"></i>
                     </button>
 
-                    <div id="profileCard" class="profile-card">
+                    <div id="profileCard" class="profile-card" hidden>
                         <div class="profile-card-header">
                             <i class="fa-solid fa-user" aria-hidden="true"></i>
                             <span>Main Owner</span>
                         </div>
 
                         <div class="profile-card-body">
-                            <button type="button" class="profile-menu-item" onclick="window.location.href='../page/PointofSale.html'">
+                            <a class="profile-menu-item" href="../page/PointofSale.html">
                                 <i class="fa-solid fa-cash-register" aria-hidden="true"></i>
                                 Switch to POS
-                            </button>
-                            <button type="button" class="profile-menu-item theme-toggle-button" onclick="toggleDarkMode()">Light Mode</button>
-                            <button type="button" class="profile-menu-item" onclick="changeOwnPassword()">
+                            </a>
+                            <button type="button" class="profile-menu-item theme-toggle-button">Light Mode</button>
+                            <button type="button" class="profile-menu-item" data-action="change-password">
                                 <i class="fa-solid fa-key" aria-hidden="true"></i>
                                 Change Password
                             </button>
                             <hr class="profile-menu-separator">
-                            <button type="button" class="profile-menu-item profile-menu-item-danger" onclick="logout()">
+                            <button type="button" class="profile-menu-item profile-menu-item-danger" data-action="logout">
                                 <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
                                 Logout
                             </button>
@@ -115,10 +115,10 @@
                         <div class="search-field">
                             <label for="productSearch" class="visually-hidden">Search products</label>
                             <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-                            <input type="search" id="productSearch" placeholder="Search products..." oninput="filterProducts()" autocomplete="off">
+                            <input type="search" id="productSearch" placeholder="Search products..." autocomplete="off">
                         </div>
 
-                        <button id="addNewProductBtn" class="btn btn-primary owner-only" type="button" onclick="openAddModal()">
+                        <button id="addNewProductBtn" class="btn btn-primary owner-only" type="button">
                             <i class="fa-solid fa-plus" aria-hidden="true"></i>
                             Add Product
                         </button>
@@ -126,26 +126,26 @@
                 </div>
 
                 <div class="category-tabs" role="group" aria-label="Filter products by category">
-                    <button type="button" class="tab-btn active" aria-pressed="true" onclick="filterBycategory('All', this)">All</button>
-                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('Balaclavas', this)">Balaclavas</button>
-                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('T-Shirts', this)">T-Shirts</button>
-                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('Long Sleeves', this)">Long Sleeves</button>
-                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('Shorts', this)">Shorts</button>
-                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('Pants', this)">Pants</button>
-                    <button type="button" class="tab-btn" aria-pressed="false" onclick="filterBycategory('Tee Kids', this)">Tee Kids</button>
+                    <button type="button" class="tab-btn active" aria-pressed="true" data-category="All">All</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" data-category="Balaclavas">Balaclavas</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" data-category="T-Shirts">T-Shirts</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" data-category="Long Sleeves">Long Sleeves</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" data-category="Shorts">Shorts</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" data-category="Pants">Pants</button>
+                    <button type="button" class="tab-btn" aria-pressed="false" data-category="Tee Kids">Tee Kids</button>
                 </div>
 
                 <div id="productGrid" class="product-grid">
                     <!-- Product cards injected here -->
                 </div>
 
-                <section id="archivedProductsSection" class="archived-products" style="display:none;" aria-labelledby="archivedProductsTitle">
+                <section id="archivedProductsSection" class="archived-products" hidden aria-labelledby="archivedProductsTitle">
                     <div class="archived-products-header">
                         <div>
                             <h2 id="archivedProductsTitle">Archived Products</h2>
                             <p>Archived items are hidden from inventory and POS until restored.</p>
                         </div>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="fetchArchivedProducts()">Refresh</button>
+                        <button id="refreshArchivedBtn" type="button" class="btn btn-secondary btn-sm">Refresh</button>
                     </div>
                     <div id="archivedProductGrid" class="archived-product-grid">
                         <p class="archived-products-empty">Loading archived products...</p>
@@ -154,7 +154,7 @@
             </div>
 
             <!-- ADD PRODUCT MODAL -->
-            <div id="addProductModal" class="modal product-modal" style="display:none;"
+            <div id="addProductModal" class="modal product-modal" hidden
                 role="dialog" aria-modal="true" aria-labelledby="addProductTitle">
                 <div class="modal-content product-modal-content">
                     <div class="modal-header">
@@ -162,12 +162,12 @@
                             <h2 id="addProductTitle">Add New Product</h2>
                             <p>Fields marked <span class="required-mark" aria-hidden="true">*</span><span class="visually-hidden">with an asterisk</span> are required.</p>
                         </div>
-                        <button type="button" class="btn btn-ghost btn-icon" onclick="closeAddModal()" aria-label="Close add product form">
+                        <button type="button" class="btn btn-ghost btn-icon" data-close-modal aria-label="Close add product form">
                             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         </button>
                     </div>
 
-                    <form id="productForm" class="modal-form" onsubmit="saveProduct(event)">
+                    <form id="productForm" class="modal-form">
                         <div class="form-field">
                             <label for="prodImage">Product image</label>
                             <input type="file" id="prodImage" accept="image/*" data-file-picker="Choose image">
@@ -194,7 +194,7 @@
                             <div class="form-field">
                                 <label for="prodPrice">Price (₱) <span class="required-mark" aria-hidden="true">*</span></label>
                                 <input type="text" id="prodPrice" placeholder="0.00" inputmode="decimal" maxlength="8" required
-                                    oninput="limitAmountInput(this)" aria-describedby="prodPriceHint">
+                                    aria-describedby="prodPriceHint">
                                 <p id="prodPriceHint" class="field-hint">Up to 5 digits and 2 decimal places.</p>
                             </div>
                             <div class="form-field">
@@ -219,7 +219,7 @@
                         </div>
 
                         <div class="modal-actions">
-                            <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
+                            <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
                             <button type="submit" class="btn btn-primary">Save Product</button>
                         </div>
                     </form>
@@ -227,7 +227,7 @@
             </div>
 
             <!-- EDIT PRODUCT MODAL -->
-            <div id="editProductModal" class="modal product-modal" style="display:none;"
+            <div id="editProductModal" class="modal product-modal" hidden
                 role="dialog" aria-modal="true" aria-labelledby="editProductTitle">
                 <div class="modal-content product-modal-content">
                     <div class="modal-header">
@@ -235,18 +235,18 @@
                             <h2 id="editProductTitle">Edit Product</h2>
                             <p>Fields marked <span class="required-mark" aria-hidden="true">*</span><span class="visually-hidden">with an asterisk</span> are required.</p>
                         </div>
-                        <button type="button" class="btn btn-ghost btn-icon" onclick="closeEditProductModal()" aria-label="Close edit product form">
+                        <button type="button" class="btn btn-ghost btn-icon" data-close-modal aria-label="Close edit product form">
                             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         </button>
                     </div>
 
-                    <form id="editProductForm" class="modal-form" onsubmit="saveProductEdit(event)">
+                    <form id="editProductForm" class="modal-form">
                         <input type="hidden" id="editProdId">
 
                         <div class="form-field">
                             <label for="editProdImage">Replace product image</label>
                             <input type="file" id="editProdImage" accept="image/*" data-file-picker="Choose new image">
-                            <img id="editProdImagePreview" class="edit-product-image-preview" alt="Current product image">
+                            <img id="editProdImagePreview" class="edit-product-image-preview" alt="Current product image" hidden>
                         </div>
 
                         <div class="form-field">
@@ -270,7 +270,7 @@
                             <div class="form-field">
                                 <label for="editProdPrice">Price (₱) <span class="required-mark" aria-hidden="true">*</span></label>
                                 <input type="text" id="editProdPrice" placeholder="0.00" inputmode="decimal" maxlength="8" required
-                                    oninput="limitAmountInput(this)" aria-describedby="editProdPriceHint">
+                                    aria-describedby="editProdPriceHint">
                                 <p id="editProdPriceHint" class="field-hint">Up to 5 digits and 2 decimal places.</p>
                             </div>
                             <div class="form-field">
@@ -295,7 +295,7 @@
                         </div>
 
                         <div class="modal-actions">
-                            <button type="button" class="btn btn-secondary" onclick="closeEditProductModal()">Cancel</button>
+                            <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
                             <button type="submit" class="btn btn-primary">Save Changes</button>
                         </div>
                     </form>
@@ -305,11 +305,36 @@
         </main>
     </div>
 
-    <script src="../javascript/ui.js?v=5"></script>
+    <!-- One card in the product grid; products.js fills in a copy per product. -->
+    <template id="productCardTemplate">
+        <div class="product-card">
+            <div class="img-placeholder" data-field="image">NO IMAGE AVAILABLE</div>
+
+            <div class="product-card-meta">
+                <span class="product-card-category" data-field="category"></span>
+                <span class="product-card-price" data-field="price"></span>
+            </div>
+
+            <h3 class="product-card-title" data-field="name"></h3>
+
+            <div class="product-card-details">
+                <span>Size: <strong data-field="size"></strong></span>
+                <span>Color: <strong data-field="color"></strong></span>
+                <span>Stock: <strong data-field="stock"></strong></span>
+            </div>
+
+            <div class="product-card-actions" data-field="actions">
+                <button type="button" class="btn btn-secondary btn-sm" data-action="edit">Edit<span class="visually-hidden"></span></button>
+                <button type="button" class="btn btn-danger-outline btn-sm" data-action="archive">Archive<span class="visually-hidden"></span></button>
+            </div>
+        </div>
+    </template>
+
+    <script src="../javascript/ui.js?v=6"></script>
     <script src="../javascript/live.js?v=2"></script>
-    <script src="../javascript/layout.js?v=6"></script>
-    <script src="../javascript/account.js?v=2"></script>
-    <script src="../javascript/products.js?v=5"></script>
+    <script src="../javascript/layout.js?v=7"></script>
+    <script src="../javascript/account.js?v=3"></script>
+    <script src="../javascript/products.js?v=6"></script>
 
 </body>
 </html>

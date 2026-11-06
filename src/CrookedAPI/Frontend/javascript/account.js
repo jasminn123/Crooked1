@@ -23,7 +23,6 @@ function openPasswordForm(options) {
 
     const modal = UI.el('div', 'modal password-form-modal');
     modal.id = 'passwordFormModal';
-    modal.style.display = 'flex';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
     modal.setAttribute('aria-labelledby', 'passwordFormTitle');
@@ -188,6 +187,8 @@ function openPasswordForm(options) {
 /* =========================
    OWN PASSWORD (profile menu)
 ========================= */
+document.querySelector('[data-action="change-password"]')?.addEventListener('click', changeOwnPassword);
+
 // Any signed-in user, owner or staff. index.js saves the username at login; sessions
 // from before that was added type it in instead.
 function changeOwnPassword() {

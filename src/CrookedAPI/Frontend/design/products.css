@@ -221,7 +221,7 @@
 
 .archived-product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
     gap: 12px;
 }
 
@@ -283,7 +283,7 @@
 }
 
 .edit-product-image-preview {
-    display: none;
+    display: block;
     width: 100%;
     height: 180px;
     border: 1px solid var(--color-border);
@@ -329,5 +329,18 @@
     .archived-products-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    /* The button takes its own line, so the product's name has room. */
+    .archived-product-card {
+        flex-wrap: wrap;
+    }
+
+    .archived-product-info {
+        flex-basis: calc(100% - 68px);
+    }
+
+    .archived-product-card .btn {
+        flex: 1 1 100%;
     }
 }

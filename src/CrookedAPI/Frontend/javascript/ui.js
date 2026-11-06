@@ -1,5 +1,5 @@
 // Shared UI building blocks: skeleton loaders, table states, badges, pagination,
-// toasts, loading buttons, file pickers, password checks, the small-screen blocker and small helpers.
+// toasts, loading buttons, file pickers, password checks and small helpers.
 // Every page loads it (with components.css) before its own scripts and uses it
 // through the UI namespace.
 const UI = (() => {
@@ -79,7 +79,7 @@ const UI = (() => {
     function skeleton(className, width) {
         const node = el('span', `skeleton ${className || ''}`.trim());
         node.setAttribute('aria-hidden', 'true');
-        if (width) node.style.width = width;
+        if (width) node.style.setProperty('--skeleton-width', width);
         return node;
     }
 
@@ -135,10 +135,22 @@ const UI = (() => {
     function fillTable(tbody, rows, { fade = true } = {}) {
         doneLoading(tbody);
         tbody.replaceChildren(...rows);
+        labelCells(tbody);
         tbody.classList.remove('fade-in');
         if (!fade) return;
         void tbody.offsetWidth;
         tbody.classList.add('fade-in');
+    }
+
+    // Phones show each row as a stack of lines (dashboard.css), so every cell needs its
+    // column's name. A column whose heading is hidden holds only a button and gets no label.
+    function labelCells(tbody) {
+        const headings = [...(tbody.closest('table')?.tHead?.rows[0]?.cells ?? [])];
+        const labels = headings.map(heading =>
+            heading.querySelector('.visually-hidden') ? '' : heading.textContent.trim());
+        [...tbody.rows].forEach(row => [...row.cells].forEach((cell, index) => {
+            if (labels[index]) cell.dataset.label = labels[index];
+        }));
     }
 
     // One full-width row for an empty table, a search with no results, or a load error.
@@ -382,30 +394,8 @@ const UI = (() => {
         return PASSWORD_RULES.every(test => test(password));
     }
 
-    /* =========================
-       SMALL-SCREEN BLOCKER
-    ========================= */
-    // components.css shows this notice, and hides everything else, on screens under 768px wide.
-    function addMobileBlocker() {
-        if (document.querySelector('.mobile-blocker')) return;
-
-        const blocker = el('div', 'mobile-blocker');
-        const card = el('div', 'mobile-blocker-card');
-        const logo = el('img', 'mobile-blocker-logo');
-        logo.src = '../assets/logo.png';
-        logo.alt = 'CRKD';
-        card.append(
-            logo,
-            el('h2', null, 'Please use a larger screen'),
-            el('p', null, 'CRKD is made for computers and tablets. Open it on a bigger screen, or make this window wider.')
-        );
-        blocker.appendChild(card);
-        document.body.appendChild(blocker);
-    }
-
     function onPageReady() {
         ensureToastStack();
-        addMobileBlocker();
         document.querySelectorAll('input[type="file"][data-file-picker]').forEach(enhanceFilePicker);
     }
 
@@ -446,6 +436,7 @@ const UI = (() => {
         fetchJson,
         skeleton,
         tableSkeleton,
+        labelCells,
         cardSkeletons,
         textSkeleton,
         doneLoading,

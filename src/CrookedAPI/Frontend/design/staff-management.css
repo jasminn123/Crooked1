@@ -18,6 +18,7 @@
 /* Change Password and Archive / Unarchive, side by side in the Action column */
 .staff-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
@@ -36,6 +37,16 @@
 
     .staff-form .btn {
         justify-self: start;
+    }
+}
+
+@media (max-width: 760px) {
+    .table-container {
+        max-height: none;
+    }
+
+    .staff-actions .btn {
+        flex: 1 1 auto;
     }
 }
 

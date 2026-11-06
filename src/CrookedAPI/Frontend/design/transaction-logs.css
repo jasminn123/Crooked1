@@ -179,3 +179,11 @@
         flex-basis: 100%;
     }
 }
+
+@media (max-width: 760px) {
+    .details-table tbody tr,
+    .details-table tbody tr:first-child,
+    .details-table tbody tr:last-child {
+        padding: 12px;
+    }
+}

@@ -34,22 +34,27 @@ src/
 Pages:
 - `index` is the login page.
 - `PointofSale` is the cashier view.
+- `receipt` is the printable receipt. The POS leaves the sale in localStorage and opens the page in a small window; `receipt.js` reads and clears the sale, fills in the page and prints it.
 - The admin pages share a sidebar: `dashboard`, `products`, `inventory`, `transaction-logs`, `exchange`, `sales-history`, `staff-management`, and `forecasting`. Pages marked `data-owner-only` are restricted to the owner role.
 
 ## Conventions
 
 - Follow the existing structure. Don't add new top-level folders when an existing layer fits.
+- Keep HTML, CSS and JavaScript in their own files:
+  - HTML has no `style=` or `on...=` attributes and no inline `<style>` or `<script>` blocks. Scripts find elements by id or `data-action` and use `addEventListener`.
+  - JavaScript has no HTML strings (`innerHTML`, `document.write`) and doesn't set styles (`element.style.display`). Show and hide things with the `hidden` attribute, and change their look with a class. A value only known at runtime can be passed as a CSS variable.
+  - Markup a script repeats goes in a `<template>` in the page's HTML, as in `products.html` and `receipt.html`. Small pieces can be built with `UI.el` and `UI.cell`.
 - A new page needs three files that share its name: `page/<name>.html`, `design/<name>.css`, and `javascript/<name>.js`, using kebab-case for new names. Add its link to the sidebar on every admin page.
 - Reuse the shared pieces instead of copying them:
-  - `ui.js` (the `UI` namespace) with `components.css`: skeleton loaders (`tableSkeleton`, `cardSkeletons`, `textSkeleton`), table empty/error states (`tableMessage`), `fillTable`, badges (`statusBadge`), `pagination`, toasts, `setLoading` for buttons, `fetchJson`, `download`, `detailPair`, and formatters (`formatPeso`, `variantLabel`, `variantName`, and `compareSizes` for sorting sizes). It also adds the small-screen blocker (pages are hidden below 768px wide) and turns `<input type="file" data-file-picker="Label">` into a button-only file picker. Every page loads it, including the login page and the POS.
+  - `ui.js` (the `UI` namespace) with `components.css`: skeleton loaders (`tableSkeleton`, `cardSkeletons`, `textSkeleton`), table empty/error states (`tableMessage`), `fillTable`, `labelCells`, badges (`statusBadge`), `pagination`, toasts, `setLoading` for buttons, `fetchJson`, `download`, `detailPair`, and formatters (`formatPeso`, `variantLabel`, `variantName`, and `compareSizes` for sorting sizes). It also turns `<input type="file" data-file-picker="Label">` into a button-only file picker. Every page loads it, including the login page and the POS.
   - The confirmation dialog (`showDialog`) is styled once in `components.css`: blurred backdrop, centred text and buttons.
   - `live.js` (the `Live` namespace): `Live.on(topics, reload)` reloads a view when the server broadcasts that those topics changed. Loaders take `{ quiet: true }` for these refreshes so they skip skeletons and keep the current rows until new ones arrive.
-  - `layout.js` provides `apiBase`, dialogs (`showDialog`), `showToast`, modals with focus trapping, the profile card, logout, the owner-only redirect, and forecast notifications.
+  - `layout.js` provides `apiBase`, dialogs (`showDialog`), `showToast`, modals with focus trapping, the navigation drawer, the profile card, logout, the owner-only redirect, and forecast notifications.
   - `theme.js` handles light and dark mode.
   - `session.js` (the `Session` namespace) guards every page behind the login. It sends signed-out visitors to `index.html` (also when Back/Forward shows a page from the browser's memory), sends the browser to the login page whenever our API answers 401, and provides `Session.signOut()` for the logout buttons.
   - `account.js` holds the Change Password form (`openPasswordForm`) and the profile menu's `changeOwnPassword`. It uses the `trapFocus`, `restoreFocus`, `showDialog` and `setProfileCardOpen` helpers that both `layout.js` and `PointOfSale.js` define. Staff Management uses the same form for the owner to set a staff member's password.
   - `dashboard.css` holds the shared admin styles and colour tokens.
-  - Admin pages load `theme.js` and `session.js` in `<head>`, then `ui.js`, `live.js`, `layout.js`, `account.js` and the page's own script at the end of `<body>`. The POS loads `theme.js` and `session.js` in `<head>`, then `ui.js`, `live.js`, `PointOfSale.js` and `account.js`; the login page loads `theme.js` and `ui.js` (never `session.js`).
+  - Admin pages load `theme.js` and `session.js` in `<head>`, then `ui.js`, `live.js`, `layout.js`, `account.js` and the page's own script at the end of `<body>`. The POS loads `theme.js` and `session.js` in `<head>`, then `ui.js`, `live.js`, `PointOfSale.js` and `account.js`; the login page loads `theme.js` and `ui.js` (never `session.js`); the receipt loads `session.js` in `<head>`, then `ui.js` and `receipt.js`.
   - Show a skeleton while data loads and a `tableMessage` (with a retry action) when a request fails, instead of leaving a table blank.
   - Build rows with DOM methods and `textContent` (`UI.cell`, `UI.el`), not `innerHTML` with server data.
   - `index.js` and `PointOfSale.js` still keep their own copies of the `showDialog` and `trapFocus` helpers. Don't add more copies like them.
@@ -60,6 +65,17 @@ Pages:
 - Login uses ASP.NET Core cookie authentication: `POST /api/Auth/login` sets the HttpOnly `crkd_session` cookie (with the user's username, role and full name), and `POST /api/Auth/logout` deletes it. Program.cs makes every API endpoint require a signed-in user. Add `[Authorize(Roles = UserRoles.Owner)]` to endpoints that only owner pages use, and `[AllowAnonymous]` only to endpoints the login page needs (login, logout, owner recovery). The `userRole` in localStorage only decides what the UI shows; the server never trusts it.
 - Mark every endpoint that changes data with `[LiveUpdate(LiveTopics.X, ...)]` so open pages refresh, and register matching `Live.on([...])` reloads on the pages that show that data.
 - Times are stored in UTC. Convert them with `ShopClock` (Philippine time, UTC+8) instead of `ToLocalTime()`, because the server runs on UTC.
+
+## Responsive layout
+
+Every page works from small phones (320px wide) up to desktops, so there is no minimum screen size. Check new pages at phone, tablet and laptop widths.
+
+- Admin pages keep the fixed sidebar above 1100px. At 1100px and below, `initializeNavDrawer` in `layout.js` adds a menu button and logo to the top bar and the sidebar becomes a slide-in drawer.
+- Table cells wrap when a row doesn't fit, so tables fit their panel on tablets and laptops instead of scrolling sideways.
+- At 760px and below, each table row becomes a small card of labelled values (`dashboard.css`). `UI.fillTable` labels the cells from the `<th>` text; a table filled another way must call `UI.labelCells(tbody)`. The first cell, cells with the `col-wrap` class, and columns with a `.visually-hidden` heading get a full line.
+- POS: at 760px and below, or under 560px tall, the products fill the page and a bar at the bottom shows the item count and total. The bar slides the checkout up as a sheet (`setCartOpen` in `PointOfSale.js`). `sheetLayout` in `PointOfSale.js` must match the media query in `PointofSale.css`.
+- Follow `100vh` with `100dvh` for full-height elements, because phone browser bars change the visible height.
+- On touch screens `components.css` makes form fields 16px, because phone browsers zoom in on smaller text when a field gets focus.
 
 ## Transactions and exchanges
 

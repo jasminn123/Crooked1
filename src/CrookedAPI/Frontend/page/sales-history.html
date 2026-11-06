@@ -6,15 +6,15 @@
     <title>CRKD | Sales History</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../design/dashboard.css?v=23">
-    <link rel="stylesheet" href="../design/components.css?v=6">
+    <link rel="stylesheet" href="../design/dashboard.css?v=24">
+    <link rel="stylesheet" href="../design/components.css?v=7">
     <link rel="stylesheet" href="../design/sales-history.css?v=1">
     <link rel="icon" type="image/png" href="../assets/Favicon.jpg">
 
     <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
-    <script src="../javascript/theme.js?v=2"></script>
+    <script src="../javascript/theme.js?v=3"></script>
     <!-- Sends signed-out visitors to the login page before the page is drawn. -->
-    <script src="../javascript/session.js?v=1"></script>
+    <script src="../javascript/session.js?v=2"></script>
 </head>
 
 <body data-page="sales-history" data-owner-only>
@@ -46,13 +46,13 @@
         <header class="top-header">
             <div class="header-icons">
 
-                <div id="forecastNotifications" class="forecast-notifications" style="display:none;">
+                <div id="forecastNotifications" class="forecast-notifications" hidden>
                     <button id="forecastNotificationButton" class="forecast-notification-button" type="button"
                         aria-label="Forecast notifications" aria-expanded="false" aria-controls="forecastNotificationPanel">
                         <i class="fa-solid fa-bell" aria-hidden="true"></i>
-                        <span id="forecastNotificationCount" class="forecast-notification-count" style="display:none;" aria-hidden="true">0</span>
+                        <span id="forecastNotificationCount" class="forecast-notification-count" hidden aria-hidden="true">0</span>
                     </button>
-                    <div id="forecastNotificationPanel" class="forecast-notification-panel" style="display:none;">
+                    <div id="forecastNotificationPanel" class="forecast-notification-panel" hidden>
                         <h3>Forecast Notifications</h3>
                         <div id="forecastNotificationList" class="forecast-notification-list">
                             <p class="forecast-notification-empty">Loading notifications...</p>
@@ -62,31 +62,31 @@
 
                 <div class="profile-section">
                     <!-- The button is named by the signed-in user's name (layout.js fills .Owner). -->
-                    <button type="button" class="profile-icon" onclick="toggleProfileCard(event)"
+                    <button type="button" class="profile-icon"
                         aria-haspopup="true" aria-expanded="false" aria-controls="profileCard">
                         <i class="fa-solid fa-user" aria-hidden="true"></i>
                         <span class="Owner">Main Owner</span>
                         <i class="fa-solid fa-chevron-down profile-chevron" aria-hidden="true"></i>
                     </button>
 
-                    <div id="profileCard" class="profile-card">
+                    <div id="profileCard" class="profile-card" hidden>
                         <div class="profile-card-header">
                             <i class="fa-solid fa-user" aria-hidden="true"></i>
                             <span>Main Owner</span>
                         </div>
 
                         <div class="profile-card-body">
-                            <button type="button" class="profile-menu-item" onclick="window.location.href='../page/PointofSale.html'">
+                            <a class="profile-menu-item" href="../page/PointofSale.html">
                                 <i class="fa-solid fa-cash-register" aria-hidden="true"></i>
                                 Switch to POS
-                            </button>
-                            <button type="button" class="profile-menu-item theme-toggle-button" onclick="toggleDarkMode()">Light Mode</button>
-                            <button type="button" class="profile-menu-item" onclick="changeOwnPassword()">
+                            </a>
+                            <button type="button" class="profile-menu-item theme-toggle-button">Light Mode</button>
+                            <button type="button" class="profile-menu-item" data-action="change-password">
                                 <i class="fa-solid fa-key" aria-hidden="true"></i>
                                 Change Password
                             </button>
                             <hr class="profile-menu-separator">
-                            <button type="button" class="profile-menu-item profile-menu-item-danger" onclick="logout()">
+                            <button type="button" class="profile-menu-item profile-menu-item-danger" data-action="logout">
                                 <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
                                 Logout
                             </button>
@@ -125,10 +125,10 @@
         </main>
     </div>
 
-    <script src="../javascript/ui.js?v=5"></script>
+    <script src="../javascript/ui.js?v=6"></script>
     <script src="../javascript/live.js?v=2"></script>
-    <script src="../javascript/layout.js?v=6"></script>
-    <script src="../javascript/account.js?v=2"></script>
+    <script src="../javascript/layout.js?v=7"></script>
+    <script src="../javascript/account.js?v=3"></script>
     <script src="../javascript/sales-history.js?v=4"></script>
 
 </body>
