@@ -1,0 +1,74 @@
+using Npgsql;
+using Crooked.Models;
+
+namespace Crooked.Services
+{
+    // Discount coupon queries shared by the Discounts page and the POS sale (TransactionController).
+    public static class DiscountStore
+    {
+        private const string Columns = @"
+            discount_id, code, description, discount_type, value, min_purchase, max_uses, times_used,
+            starts_on, ends_on, is_active, created_by, created_at";
+
+        public static async Task<List<StoredDiscount>> ListAsync(NpgsqlConnection connection)
+        {
+            await using var command = new NpgsqlCommand(
+                $"SELECT {Columns} FROM discounts ORDER BY created_at DESC, discount_id DESC", connection);
+            await using var reader = await command.ExecuteReaderAsync();
+            var discounts = new List<StoredDiscount>();
+            while (await reader.ReadAsync()) discounts.Add(Read(reader));
+            return discounts;
+        }
+
+        // Codes match ignoring case. forUpdate locks the row until the transaction ends, so two
+        // tills can't both take the last use of a limited code.
+        public static async Task<StoredDiscount?> FindByCodeAsync(
+            NpgsqlConnection connection, NpgsqlTransaction? transaction, string code, bool forUpdate = false)
+        {
+            await using var command = new NpgsqlCommand(
+                $"SELECT {Columns} FROM discounts WHERE upper(code) = upper(@code){(forUpdate ? " FOR UPDATE" : "")}",
+                connection, transaction);
+            command.Parameters.AddWithValue("@code", code.Trim());
+            await using var reader = await command.ExecuteReaderAsync();
+            return await reader.ReadAsync() ? Read(reader) : null;
+        }
+
+        // The checkout's subtotal at the current product prices (the same prices transaction_items stores).
+        public static async Task<decimal> SubtotalAsync(
+            NpgsqlConnection connection, NpgsqlTransaction? transaction, IReadOnlyCollection<TransactionItemInput> items)
+        {
+            await using var command = new NpgsqlCommand(@"
+                SELECT COALESCE(SUM(COALESCE(p.price, 0) * i.quantity), 0)
+                FROM unnest(@product_ids, @quantities) AS i(product_id, quantity)
+                JOIN products p ON p.id = i.product_id", connection, transaction);
+            command.Parameters.AddWithValue("@product_ids", items.Select(item => item.ProductId).ToArray());
+            command.Parameters.AddWithValue("@quantities", items.Select(item => item.Quantity).ToArray());
+            return Convert.ToDecimal(await command.ExecuteScalarAsync());
+        }
+
+        public static async Task RecordUseAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, long discountId)
+        {
+            await using var command = new NpgsqlCommand(
+                "UPDATE discounts SET times_used = times_used + 1 WHERE discount_id = @id", connection, transaction);
+            command.Parameters.AddWithValue("@id", discountId);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        public static string NotFound(string code) => $"There is no discount code \"{code.Trim().ToUpperInvariant()}\".";
+
+        private static StoredDiscount Read(NpgsqlDataReader reader) => new(
+            reader.GetInt64(0),
+            reader.GetString(1),
+            reader.GetString(2),
+            reader.GetString(3),
+            reader.GetDecimal(4),
+            reader.GetDecimal(5),
+            reader.IsDBNull(6) ? null : reader.GetInt32(6),
+            reader.GetInt32(7),
+            reader.IsDBNull(8) ? null : reader.GetFieldValue<DateOnly>(8),
+            reader.IsDBNull(9) ? null : reader.GetFieldValue<DateOnly>(9),
+            reader.GetBoolean(10),
+            reader.GetString(11),
+            reader.GetDateTime(12));
+    }
+}

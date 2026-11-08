@@ -39,6 +39,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return Task.CompletedTask;
         };
+        // Ends sessions whose account was archived or given another role since login.
+        options.Events.OnValidatePrincipal = AccountSessions.ValidateAsync;
     });
 builder.Services.AddAuthorization();
 

@@ -257,8 +257,92 @@ html.theme-transition *::after {
     height: 100dvh;
     padding: 24px 16px;
     overflow-y: auto;
+    overscroll-behavior: contain; /* scrolling past the first or last link doesn't scroll the page */
     background: var(--chrome-bg);
     border-right: 1px solid var(--chrome-border);
+}
+
+/* Scrollbar: a slim rounded thumb on a clear track that brightens while the pointer is over the
+   sidebar. Chrome, Edge and Safari use the ::-webkit-scrollbar rules, which they ignore once
+   scrollbar-color is set, so only Firefox gets that. Both thumb colours meet 3:1. */
+.sidebar::-webkit-scrollbar {
+    width: 10px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    margin-block: 8px;
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: var(--chrome-control-border) padding-box;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb {
+    background-color: var(--chrome-text);
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover,
+.sidebar::-webkit-scrollbar-thumb:active {
+    border-width: 2px;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    .sidebar {
+        scrollbar-width: thin;
+        scrollbar-color: var(--chrome-control-border) transparent;
+    }
+
+    .sidebar:hover {
+        scrollbar-color: var(--chrome-text) transparent;
+    }
+}
+
+/* When links are cut off above or below, that edge of the sidebar fades out so it reads as
+   "scroll for more". The fades follow the sidebar's scroll position (scroll-driven animations);
+   they stay hidden when everything fits and in browsers without that feature. Each fade is
+   pulled out of the layout by its negative margin (which also cancels the 4px gap) and spans
+   the 16px side padding. Sticky offsets count from inside the 24px top and bottom padding, so
+   -24px puts the fades at the sidebar's edges. */
+@supports (animation-timeline: scroll()) {
+    .sidebar {
+        --sidebar-fade: 40px;
+    }
+
+    .sidebar::before,
+    .sidebar::after {
+        content: "";
+        position: sticky;
+        flex: 0 0 var(--sidebar-fade);
+        margin-inline: -16px;
+        pointer-events: none;
+        opacity: 0;
+        animation: sidebar-edge-fade linear both;
+        animation-timeline: scroll();
+    }
+
+    .sidebar::before {
+        top: -24px;
+        margin-bottom: calc(-1 * var(--sidebar-fade) - 4px);
+        background: linear-gradient(var(--chrome-bg), transparent);
+        animation-range: 0px var(--sidebar-fade);
+    }
+
+    .sidebar::after {
+        bottom: -24px;
+        margin-top: calc(-1 * var(--sidebar-fade) - 4px);
+        background: linear-gradient(transparent, var(--chrome-bg));
+        animation-direction: reverse;
+        animation-range: calc(100% - var(--sidebar-fade)) 100%;
+    }
+}
+
+@keyframes sidebar-edge-fade {
+    to {
+        opacity: 1;
+    }
 }
 
 .logo-img {
@@ -930,10 +1014,6 @@ table {
     border-radius: var(--radius-md);
     scrollbar-color: var(--color-border-strong) transparent;
     scrollbar-width: thin;
-}
-
-.recent-activity-table-scroll {
-    max-height: 320px;
 }
 
 .transaction-table {

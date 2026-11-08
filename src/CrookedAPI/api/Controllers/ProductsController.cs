@@ -16,6 +16,40 @@ public class ProductsController : ControllerBase
 {
     private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
+    // "CRKD Tee (M / Black)", or just the name when it has no size or color.
+    private static string ProductLabel(string? name, string? size, string? color)
+    {
+        var variant = string.Join(" / ", new[] { size, color }.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim()));
+        return variant.Length > 0 ? $"{name?.Trim()} ({variant})" : name?.Trim() ?? "";
+    }
+
+    private Task LogProductAsync(NpgsqlConnection connection, string action) =>
+        ActivityLog.WriteAsync(connection, null, SessionClaims.FullNameOf(User), ActivityTypes.Product, action);
+
+    // Archives or restores a product and logs it. Returns the product's label, or null when no product changed.
+    private async Task<string?> SetProductActiveAsync(int id, bool active)
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        string? label = null;
+        await using (var cmd = new NpgsqlCommand(
+            "UPDATE products SET is_active = @active WHERE id = @id AND is_active = NOT @active RETURNING product_name, size, color",
+            connection))
+        {
+            cmd.Parameters.AddWithValue("@active", active);
+            cmd.Parameters.AddWithValue("@id", id);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                label = ProductLabel(reader["product_name"] as string, reader["size"] as string, reader["color"] as string);
+            }
+        }
+
+        if (label != null) await LogProductAsync(connection, $"{(active ? "Restored" : "Archived")} product: {label}");
+        return label;
+    }
+
     [HttpGet("get-inventory")]
     public IActionResult GetInventory()
     {
@@ -115,23 +149,14 @@ public IActionResult GetProducts()
 
     [Authorize(Roles = UserRoles.Owner)]
     [HttpPost("restore-product/{id}")]
-    [LiveUpdate(LiveTopics.Products)]
-    public IActionResult RestoreProduct(int id)
+    [LiveUpdate(LiveTopics.Products, LiveTopics.Activity)]
+    public async Task<IActionResult> RestoreProduct(int id)
     {
         try
         {
-            using (var connection = new NpgsqlConnection(_connectionString))
+            if (await SetProductActiveAsync(id, true) == null)
             {
-                connection.Open();
-                const string sql = "UPDATE products SET is_active = true WHERE id = @id AND is_active = false";
-                using (var cmd = new NpgsqlCommand(sql, connection))
-                {
-                    cmd.Parameters.AddWithValue("@id", id);
-                    if (cmd.ExecuteNonQuery() == 0)
-                    {
-                        return NotFound(new { message = "Archived product was not found." });
-                    }
-                }
+                return NotFound(new { message = "Archived product was not found." });
             }
 
             return Ok(new { message = "Product restored successfully." });
@@ -144,7 +169,7 @@ public IActionResult GetProducts()
 
     [Authorize(Roles = UserRoles.Owner)]
     [HttpPut("update-product/{id}")]
-    [LiveUpdate(LiveTopics.Products)]
+    [LiveUpdate(LiveTopics.Products, LiveTopics.Activity)]
     public async Task<IActionResult> UpdateProduct(int id, [FromForm] ProductUploadDTO dto)
     {
         if (dto == null || string.IsNullOrWhiteSpace(dto.ProductName))
@@ -158,6 +183,22 @@ public IActionResult GetProducts()
             {
                 await connection.OpenAsync();
                 string? imageUrl = null;
+
+                // The price and stock before the edit, so the activity log can say what changed.
+                decimal oldPrice;
+                int oldStock;
+                await using (var current = new NpgsqlCommand(
+                    "SELECT COALESCE(price, 0), COALESCE(stock_quantity, 0) FROM products WHERE id = @id AND is_active = true", connection))
+                {
+                    current.Parameters.AddWithValue("@id", id);
+                    await using var reader = await current.ExecuteReaderAsync();
+                    if (!await reader.ReadAsync())
+                    {
+                        return NotFound(new { message = "Active product was not found." });
+                    }
+                    oldPrice = reader.GetDecimal(0);
+                    oldStock = reader.GetInt32(1);
+                }
 
                 if (dto.ImageFile != null && dto.ImageFile.Length > 0)
                 {
@@ -198,6 +239,12 @@ public IActionResult GetProducts()
                         return NotFound(new { message = "Active product was not found." });
                     }
                 }
+
+                var changes = new List<string>();
+                if (dto.Price != oldPrice) changes.Add($"price {Money.Peso(oldPrice)} → {Money.Peso(dto.Price)}");
+                if (dto.StockQuantity != oldStock) changes.Add($"stock {oldStock} → {dto.StockQuantity}");
+                await LogProductAsync(connection, $"Updated product: {ProductLabel(dto.ProductName, dto.Size, dto.Color)}"
+                    + (changes.Count > 0 ? $" ({string.Join(", ", changes)})" : ""));
             }
 
             return Ok(new { message = "Product updated successfully." });
@@ -210,24 +257,14 @@ public IActionResult GetProducts()
 
     [Authorize(Roles = UserRoles.Owner)]
     [HttpPost("archive-product/{id}")]
-    [LiveUpdate(LiveTopics.Products)]
-    public IActionResult ArchiveProduct(int id)
+    [LiveUpdate(LiveTopics.Products, LiveTopics.Activity)]
+    public async Task<IActionResult> ArchiveProduct(int id)
     {
         try
         {
-            using (var connection = new NpgsqlConnection(_connectionString))
+            if (await SetProductActiveAsync(id, false) == null)
             {
-                connection.Open();
-
-                string sql = "UPDATE products SET is_active = false WHERE id = @id AND is_active = true";
-                using (var cmd = new NpgsqlCommand(sql, connection))
-                {
-                    cmd.Parameters.AddWithValue("@id", id);
-                    if (cmd.ExecuteNonQuery() == 0)
-                    {
-                        return NotFound(new { message = "Product was not found or is already archived." });
-                    }
-                }
+                return NotFound(new { message = "Product was not found or is already archived." });
             }
             return Ok(new { message = "Product archive status updated successfully!" });
         }
@@ -239,7 +276,7 @@ public IActionResult GetProducts()
 
     [Authorize(Roles = UserRoles.Owner)]
     [HttpPost("add-product")]
-    [LiveUpdate(LiveTopics.Products)]
+    [LiveUpdate(LiveTopics.Products, LiveTopics.Activity)]
     public async Task<IActionResult> AddProduct([FromForm] ProductUploadDTO dto)
     {
         if (dto == null) return BadRequest("Data is empty");
@@ -281,6 +318,9 @@ public IActionResult GetProducts()
                     cmd.Parameters.AddWithValue("@image", imageUrl);
                     await cmd.ExecuteNonQueryAsync();
                 }
+
+                await LogProductAsync(connection, $"Added product: {ProductLabel(dto.ProductName, dto.Size, dto.Color)}"
+                    + $" ({Money.Peso(dto.Price)}, stock {dto.StockQuantity})");
             }
 
             return Ok(new { message = "Success" });

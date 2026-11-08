@@ -17,9 +17,11 @@ src/
       schema.sql                # idempotent schema updates + row level security (embedded in the build)
     api/
       Program.cs                # service registration, schema setup call, static file serving
-      Controllers/              # one controller per domain: Auth, POS, Transaction, Exchange, Products, Forecasting, Realtime
+      Controllers/              # one controller per domain: Auth, POS, Transaction, Exchange, Products, Discounts, Activity, Forecasting, Realtime
       Models/                   # request DTOs, read models (TransactionViews), sheet rows, value lists, ExchangePolicy
       Services/                 # ThresholdForecastService + SalesForecaster (ML.NET forecasting), TransactionStore (shared reads),
+                                # DiscountStore (coupon reads, subtotal, usage), AccountSessions (ends outdated sessions),
+                                # ActivityLog (writes activity_logs entries), Money (peso formatting),
                                 # TransactionExcel (xlsx export/import), ShopClock (UTC <-> PH time),
                                 # LiveUpdates + [LiveUpdate] (Supabase Realtime broadcasts),
                                 # ProductImages (restores committed photos into the Railway volume)
@@ -35,7 +37,7 @@ Pages:
 - `index` is the login page.
 - `PointofSale` is the cashier view.
 - `receipt` is the printable receipt. The POS leaves the sale in localStorage and opens the page in a small window; `receipt.js` reads and clears the sale, fills in the page and prints it.
-- The admin pages share a sidebar: `dashboard`, `products`, `inventory`, `transaction-logs`, `exchange`, `sales-history`, `staff-management`, and `forecasting`. Pages marked `data-owner-only` are restricted to the owner role.
+- The admin pages share a sidebar: `dashboard`, `products`, `inventory`, `transaction-logs`, `activity-logs`, `exchange`, `sales-history`, `discounts`, `staff-management` (shown as Accounts), and `forecasting`. Pages marked `data-owner-only` are restricted to the owner role.
 
 ## Conventions
 
@@ -63,6 +65,8 @@ Pages:
 - Bump the `?v=` number on a script or stylesheet link when you change that file, so browsers don't keep the old copy.
 - New backend features go in a controller for their domain under `api/Controllers`, with models in `api/Models`. Schema changes go in `Database/schema.sql` as idempotent SQL (`IF NOT EXISTS`).
 - Login uses ASP.NET Core cookie authentication: `POST /api/Auth/login` sets the HttpOnly `crkd_session` cookie (with the user's username, role and full name), and `POST /api/Auth/logout` deletes it. Program.cs makes every API endpoint require a signed-in user. Add `[Authorize(Roles = UserRoles.Owner)]` to endpoints that only owner pages use, and `[AllowAnonymous]` only to endpoints the login page needs (login, logout, owner recovery). The `userRole` in localStorage only decides what the UI shows; the server never trusts it.
+- `AccountSessions.ValidateAsync` (Program.cs, `OnValidatePrincipal`) ends a session when its account has been archived or given a different role since login, so the API answers 401 and session.js sends that browser to the login page. Roles are cached for 30 seconds; call `AccountSessions.Forget(username)` after changing an account's role or archiving it.
+- Every endpoint that changes data writes an activity log entry with `ActivityLog.WriteAsync` (or `Write`), passing the open database transaction, the signed-in person's name (`SessionClaims.FullNameOf(User)`, never a name the browser sends) and an `ActivityTypes` value, and adds `LiveTopics.Activity` to its `[LiveUpdate]`.
 - Mark every endpoint that changes data with `[LiveUpdate(LiveTopics.X, ...)]` so open pages refresh, and register matching `Live.on([...])` reloads on the pages that show that data.
 - Times are stored in UTC. Convert them with `ShopClock` (Philippine time, UTC+8) instead of `ToLocalTime()`, because the server runs on UTC.
 
@@ -87,6 +91,23 @@ Every page works from small phones (320px wide) up to desktops, so there is no m
   - moves the sale's `product_daily_sales` count to the new variant;
   - updates `transaction_items` to match what the customer now has;
   - records the change in `exchanges` and `exchange_items`, and writes an `activity_logs` entry.
+
+## Accounts and roles
+
+- The Accounts page (`staff-management`) lists every account from `GET /api/Auth/get-staff` (owners first, `isSelf` marks the signed-in one). Active accounts have Role (an Owner/Staff dropdown, `POST /api/Auth/role/{id}`), Password (`staff-password/{id}`) and Archive (`toggle-archive/{id}`) columns.
+- The signed-in owner can't change their own role or archive their own account, so there is always an active owner. Their own Password button opens the Change Password form that asks for the current password.
+
+## Discounts
+
+- The owner creates coupons on the `discounts` page (`DiscountsController`, table `discounts`). A coupon is a whole-number percentage (1 to 100) or a fixed peso amount, with an optional minimum purchase, usage limit and start/end dates (Philippine dates). Codes are saved in capitals and match ignoring case. Coupons can be disabled, enabled and deleted; deleting one doesn't change sales that used it.
+- `StoredDiscount` (api/Models/Discount.cs) holds the rules: its status (Active, Scheduled, Expired, Used up, Disabled), why it can't be used (`Problem`) and the amount off (`AmountOff`: percentages round to the centavo, fixed amounts never exceed the subtotal). `discountAmount` in `PointOfSale.js` must follow the same rule.
+- At the POS any cashier can apply a coupon, picked from a dropdown of the ones usable today (`GET /api/Discounts/available`, reloaded for each new checkout and on live updates). `POST /api/Discounts/apply` checks it against the checkout's items without changing anything. The POS checks it again just before stock is taken, then sends `discountCode` with the sale. `SaveTransaction` locks the coupon row, checks it once more, works out the subtotal from product prices, stores `total_amount` (after the discount), `discount_code` and `discount_amount`, and adds one to `times_used`. For these sales the browser's total is ignored.
+- The receipt and the Audit Logs details show the discount. The Excel export and import don't include it.
+
+## Activity logs
+
+- `activity_logs` records who did what: sales ("Processed sale ..."), exchanges, Excel imports, product, discount and account changes, and logins and logouts. `activity_type` holds the kind (`ActivityTypes` in api/Models/Activity.cs); schema.sql sorts entries written before that column existed by their wording, and ones it doesn't recognise become `Other`.
+- The owner-only `activity-logs` page lists every entry, newest first, 20 per page, from `GET /api/Activity` (search, type, staff and date filters), with the Staff filter's names from `GET /api/Activity/staff`. It replaced the dashboard's old Recent Activity card.
 
 ## Sales forecasting
 

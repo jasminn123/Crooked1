@@ -140,46 +140,6 @@ function renderSalesChart(dates, products, { animate = true } = {}) {
 }
 
 /* =========================
-   ACTIVITY LOGS
-========================= */
-async function fetchLogs({ quiet = false } = {}) {
-    const logBody = document.getElementById('logTableBody');
-    if (!logBody) return;
-    if (!quiet) UI.tableSkeleton(logBody, 3, 5);
-
-    try {
-        const logs = await UI.fetchJson(`${apiBase}/api/Auth/get-logs`);
-        if (!logs.length) {
-            UI.tableMessage(logBody, 3, {
-                icon: 'fa-clock-rotate-left',
-                title: 'No activity yet',
-                message: 'Logins, exchanges and imports will show up here.'
-            });
-            return;
-        }
-
-        UI.fillTable(logBody, logs.map(log => {
-            const row = document.createElement('tr');
-            row.append(
-                UI.cell(log.staffName),
-                UI.cell(log.action, 'col-wrap'),
-                UI.cell(log.dateOccurred, 'col-muted')
-            );
-            return row;
-        }), { fade: !quiet });
-    } catch (error) {
-        console.error('Logs Error:', error);
-        UI.tableMessage(logBody, 3, {
-            isError: true,
-            title: 'Unable to load activity logs',
-            message: error.message,
-            actionLabel: 'Try again',
-            onAction: () => fetchLogs()
-        });
-    }
-}
-
-/* =========================
    STAFF DASHBOARD STATS
 ========================= */
 async function fetchStaffStats({ quiet = false } = {}) {
@@ -210,11 +170,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const role = localStorage.getItem('userRole');
         const isOwner = role?.toLowerCase() === 'owner';
 
-        // Staff see stock cards instead of the sales chart and revenue card,
-        // and the activity logs are for the owner only.
+        // Staff see stock cards instead of the sales chart and revenue card.
+        // The activity logs have their own owner-only page (activity-logs.html).
         if (role && !isOwner) {
-            document.getElementById('activityLogsCard')?.remove();
-
             const staffStats = document.getElementById('staff-stats-container');
             if (staffStats) {
                 staffStats.hidden = false;
@@ -228,8 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // The sales chart and revenue come from owner-only endpoints.
         if (isOwner) {
-            fetchLogs();
-            Live.on(['activity'], () => fetchLogs({ quiet: true }));
             loadSalesAnalytics();
             Live.on(['transactions', 'exchanges', 'products'], () => loadSalesAnalytics({ quiet: true }));
         }

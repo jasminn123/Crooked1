@@ -33,6 +33,14 @@ function renderReceipt(sale) {
     setText('receiptTotal', UI.formatPeso(sale.total_amount));
     document.getElementById('receiptItems').replaceChildren(...sale.items.map(itemRow));
 
+    // A discount code (Discounts page) shows the subtotal and what came off it.
+    if (sale.discount_amount > 0) {
+        showRow('receiptSubtotal', UI.formatPeso(sale.subtotal_amount));
+        showRow('receiptDiscount', `-${UI.formatPeso(sale.discount_amount)}`);
+        document.getElementById('receiptDiscount').firstElementChild.textContent =
+            `Discount (${sale.discountCode}${sale.discountLabel ? `, ${sale.discountLabel}` : ''})`;
+    }
+
     if (sale.payment_method === 'Cash') {
         showRow('receiptCash', UI.formatPeso(sale.amount_received));
         showRow('receiptChange', UI.formatPeso(sale.change_given));

@@ -22,7 +22,25 @@ namespace Crooked.Controllers
         private const string WeakPasswordMessage =
             "Password must be 8 to 64 characters, with an uppercase letter, a lowercase letter, a number and a symbol, and no spaces.";
 
-        private const string FullNameClaim = "full_name";
+        private const string FullNameClaim = SessionClaims.FullName;
+
+        // An account on the Accounts page. Role is in lower case, like the session's role claim.
+        private sealed record Account(string Username, string FullName, string Role);
+
+        private static Account? FindAccount(NpgsqlConnection connection, int id)
+        {
+            using var command = new NpgsqlCommand(
+                "SELECT username, COALESCE(full_name, username), COALESCE(lower(role), '') FROM users WHERE id = @id", connection);
+            command.Parameters.AddWithValue("@id", id);
+            using var reader = command.ExecuteReader();
+            return reader.Read() ? new Account(reader.GetString(0), reader.GetString(1), reader.GetString(2)) : null;
+        }
+
+        private bool IsSignedInAs(Account account) => account.Username == User.Identity?.Name;
+
+        // An Accounts-page change, logged under the signed-in owner's name.
+        private void LogAccountChange(NpgsqlConnection connection, string action) =>
+            ActivityLog.Write(connection, SessionClaims.FullNameOf(User), ActivityTypes.Account, action);
 
         [AllowAnonymous]
         [HttpPost("login")]
@@ -50,12 +68,7 @@ namespace Crooked.Controllers
                                 string fullName = reader["full_name"].ToString() ?? string.Empty;
                                 reader.Close();
 
-                                var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES (@name, 'Logged into the system', NOW())";
-                                using (var logCmd = new NpgsqlCommand(logSql, connection))
-                                {
-                                    logCmd.Parameters.AddWithValue("@name", fullName);
-                                    logCmd.ExecuteNonQuery();
-                                }
+                                ActivityLog.Write(connection, fullName, ActivityTypes.Login, "Logged into the system");
 
                                 // The session cookie is what the API checks from now on; the role the
                                 // browser keeps in localStorage only decides which buttons it shows.
@@ -84,11 +97,28 @@ namespace Crooked.Controllers
             }
         }
 
-        // Ends the session by deleting the cookie. Anonymous so an expired session can still clear it.
+        // Ends the session by deleting the cookie. Anonymous so an expired session can still clear it;
+        // only a signed-in user's logout is written to the activity log.
         [AllowAnonymous]
         [HttpPost("logout")]
+        [LiveUpdate(LiveTopics.Activity)]
         public async Task<IActionResult> Logout()
         {
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                try
+                {
+                    using var connection = new NpgsqlConnection(_connectionString);
+                    connection.Open();
+                    ActivityLog.Write(connection, SessionClaims.FullNameOf(User), ActivityTypes.Login, "Logged out of the system");
+                }
+                catch (Exception ex)
+                {
+                    // Logging out must still work when the log can't be written.
+                    Console.WriteLine($"Logout Log Error: {ex.Message}");
+                }
+            }
+
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return NoContent();
         }
@@ -125,6 +155,8 @@ namespace Crooked.Controllers
             }
         }
 
+        // Archives or restores any account except the signed-in one, so there is always an active owner.
+        // An archived account's open sessions end at once (AccountSessions).
         [Authorize(Roles = UserRoles.Owner)]
         [HttpPost("toggle-archive/{id}")]
         [LiveUpdate(LiveTopics.Staff, LiveTopics.Activity)]
@@ -135,40 +167,30 @@ namespace Crooked.Controllers
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     connection.Open();
-                    string staffName;
 
-                    using (var nameCmd = new NpgsqlCommand(
-                        "SELECT full_name FROM users WHERE id = @id AND role = 'staff'", connection))
+                    var account = FindAccount(connection, id);
+                    if (account == null)
                     {
-                        nameCmd.Parameters.AddWithValue("@id", id);
-                        staffName = nameCmd.ExecuteScalar()?.ToString();
+                        return NotFound(new { message = "Account not found." });
+                    }
+                    if (IsSignedInAs(account))
+                    {
+                        return BadRequest(new { message = "You can't archive the account you are signed in with." });
                     }
 
-                    if (staffName == null)
-                    {
-                        return NotFound(new { message = "Staff account not found." });
-                    }
-
-                    const string updateSql = "UPDATE users SET is_active = @status WHERE id = @id AND role = 'staff'";
+                    const string updateSql = "UPDATE users SET is_active = @status WHERE id = @id";
                     using (var cmd = new NpgsqlCommand(updateSql, connection))
                     {
                         cmd.Parameters.AddWithValue("@status", !archive);
                         cmd.Parameters.AddWithValue("@id", id);
-                        if (cmd.ExecuteNonQuery() == 0)
-                        {
-                            return NotFound(new { message = "Staff account not found." });
-                        }
+                        cmd.ExecuteNonQuery();
                     }
+                    AccountSessions.Forget(account.Username);
 
-                    var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES ('Main Owner', @action, NOW())";
-                    using (var logCmd = new NpgsqlCommand(logSql, connection))
-                    {
-                        logCmd.Parameters.AddWithValue("@action", archive ? $"Archived: {staffName}" : $"Unarchived: {staffName}");
-                        logCmd.ExecuteNonQuery();
-                    }
+                    LogAccountChange(connection, archive ? $"Archived: {account.FullName}" : $"Unarchived: {account.FullName}");
                 }
 
-                return Ok(new { message = archive ? "Staff account archived." : "Staff account restored." });
+                return Ok(new { message = archive ? "Account archived." : "Account restored." });
             }
             catch (Exception ex)
             {
@@ -176,6 +198,8 @@ namespace Crooked.Controllers
             }
         }
 
+        // Every account for the Accounts page: owners first, then by name. isSelf marks the signed-in
+        // account, whose role and archive buttons the page doesn't show.
         [Authorize(Roles = UserRoles.Owner)]
         [HttpGet("get-staff")]
         public IActionResult GetStaff()
@@ -184,17 +208,20 @@ namespace Crooked.Controllers
             using (var connection = new NpgsqlConnection(_connectionString))
             {
                 connection.Open();
-                var sql = "SELECT id, full_name, username, is_active FROM users WHERE role = 'staff'";
+                var sql = @"SELECT id, full_name, username, lower(role) AS role, is_active FROM users
+                            ORDER BY lower(role) = 'owner' DESC, lower(full_name), id";
                 using (var cmd = new NpgsqlCommand(sql, connection))
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        staffList.Add(new { 
-                            id = reader["id"], 
-                            fullName = reader["full_name"], 
+                        staffList.Add(new {
+                            id = reader["id"],
+                            fullName = reader["full_name"],
                             username = reader["username"],
-                            isActive = Convert.ToBoolean(reader["is_active"])
+                            role = reader["role"],
+                            isActive = Convert.ToBoolean(reader["is_active"]),
+                            isSelf = reader["username"] as string == User.Identity?.Name
                         });
                     }
                 }
@@ -202,36 +229,61 @@ namespace Crooked.Controllers
             return Ok(staffList);
         }
 
+        // Makes an account an owner or staff. The signed-in owner can't change their own role, so
+        // there is always at least one owner. The account's open sessions end at once (AccountSessions),
+        // and it gets the new role's pages when it logs in again.
         [Authorize(Roles = UserRoles.Owner)]
-        [HttpGet("get-logs")]
-        public IActionResult GetLogs()
+        [HttpPost("role/{id}")]
+        [LiveUpdate(LiveTopics.Staff, LiveTopics.Activity)]
+        public IActionResult ChangeRole(int id, [FromBody] ChangeRoleRequest request)
         {
-            var logs = new List<object>();
-            using (var connection = new NpgsqlConnection(_connectionString))
+            var role = UserRoles.Normalize(request.Role);
+            if (role == null)
             {
-                connection.Open();
-                var sql = "SELECT staff_name, action, date_occurred FROM activity_logs ORDER BY date_occurred DESC LIMIT 10";
-                using (var cmd = new NpgsqlCommand(sql, connection))
-                using (var reader = cmd.ExecuteReader())
+                return BadRequest(new { message = "Choose Owner or Staff." });
+            }
+
+            try
+            {
+                using (var connection = new NpgsqlConnection(_connectionString))
                 {
-                    while (reader.Read())
+                    connection.Open();
+
+                    var account = FindAccount(connection, id);
+                    if (account == null)
                     {
-                        // date_occurred is stored in UTC; format it in Philippine time on the server
-                        // so the browser doesn't read the bare timestamp as its own local time.
-                        logs.Add(new {
-                            staffName = reader["staff_name"],
-                            action = reader["action"],
-                            dateOccurred = ShopClock.Display(Convert.ToDateTime(reader["date_occurred"]))
-                        });
+                        return NotFound(new { message = "Account not found." });
                     }
+                    if (IsSignedInAs(account))
+                    {
+                        return BadRequest(new { message = "You can't change the role of the account you are signed in with." });
+                    }
+                    if (account.Role == role)
+                    {
+                        return Ok(new { message = $"\"{account.FullName}\" is already {UserRoles.Display(role)}." });
+                    }
+
+                    using (var cmd = new NpgsqlCommand("UPDATE users SET role = @role WHERE id = @id", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@role", role);
+                        cmd.Parameters.AddWithValue("@id", id);
+                        cmd.ExecuteNonQuery();
+                    }
+                    AccountSessions.Forget(account.Username);
+
+                    LogAccountChange(connection, $"Changed role: {account.FullName} to {UserRoles.Display(role)}");
+                    return Ok(new { message = $"\"{account.FullName}\" is now {UserRoles.Display(role)}." });
                 }
             }
-            return Ok(logs);
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
         }
 
         [Authorize(Roles = UserRoles.Owner)]
         [HttpPost("register-staff")]
-        [LiveUpdate(LiveTopics.Staff)]
+        [LiveUpdate(LiveTopics.Staff, LiveTopics.Activity)]
         public IActionResult RegisterStaff([FromBody] User request)
         {
             if (!PasswordPolicy.IsValid(request.Password))
@@ -250,6 +302,7 @@ namespace Crooked.Controllers
                     cmd.Parameters.AddWithValue("@name", request.FullName);
                     cmd.ExecuteNonQuery();
                 }
+                LogAccountChange(connection, $"Created staff account: {request.FullName} ({request.Username})");
             }
             return Ok();
         }
@@ -300,12 +353,7 @@ namespace Crooked.Controllers
                         return BadRequest(new { message = "Your current password is incorrect." });
                     }
 
-                    var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES (@name, 'Changed their password', NOW())";
-                    using (var logCmd = new NpgsqlCommand(logSql, connection))
-                    {
-                        logCmd.Parameters.AddWithValue("@name", fullName);
-                        logCmd.ExecuteNonQuery();
-                    }
+                    ActivityLog.Write(connection, fullName, ActivityTypes.Account, "Changed their password");
                 }
 
                 return Ok(new { message = "Your password has been changed." });
@@ -316,7 +364,8 @@ namespace Crooked.Controllers
             }
         }
 
-        // The owner setting a staff member's password from Staff Management. Only staff accounts can be changed here.
+        // The owner setting another account's password from the Accounts page, without its current
+        // password. The signed-in account changes its own password with change-password instead.
         [Authorize(Roles = UserRoles.Owner)]
         [HttpPost("staff-password/{id}")]
         [LiveUpdate(LiveTopics.Activity)]
@@ -332,29 +381,26 @@ namespace Crooked.Controllers
                 using (var connection = new NpgsqlConnection(_connectionString))
                 {
                     connection.Open();
-                    string? staffName;
 
-                    const string updateSql = "UPDATE users SET password = @newPass WHERE id = @id AND role = 'staff' RETURNING full_name";
-                    using (var cmd = new NpgsqlCommand(updateSql, connection))
+                    var account = FindAccount(connection, id);
+                    if (account == null)
+                    {
+                        return NotFound(new { message = "Account not found." });
+                    }
+                    if (IsSignedInAs(account))
+                    {
+                        return BadRequest(new { message = "Change your own password with your current password instead." });
+                    }
+
+                    using (var cmd = new NpgsqlCommand("UPDATE users SET password = @newPass WHERE id = @id", connection))
                     {
                         cmd.Parameters.AddWithValue("@newPass", request.NewPassword);
                         cmd.Parameters.AddWithValue("@id", id);
-                        staffName = cmd.ExecuteScalar()?.ToString();
+                        cmd.ExecuteNonQuery();
                     }
 
-                    if (staffName == null)
-                    {
-                        return NotFound(new { message = "Staff account not found." });
-                    }
-
-                    var logSql = "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES ('Main Owner', @action, NOW())";
-                    using (var logCmd = new NpgsqlCommand(logSql, connection))
-                    {
-                        logCmd.Parameters.AddWithValue("@action", $"Changed password: {staffName}");
-                        logCmd.ExecuteNonQuery();
-                    }
-
-                    return Ok(new { message = $"The password for \"{staffName}\" has been changed." });
+                    LogAccountChange(connection, $"Changed password: {account.FullName}");
+                    return Ok(new { message = $"The password for \"{account.FullName}\" has been changed." });
                 }
             }
             catch (Exception ex)
@@ -366,6 +412,7 @@ namespace Crooked.Controllers
         // Owner recovery from the login page, so no session is needed.
         [AllowAnonymous]
         [HttpPost("reset-password")]
+        [LiveUpdate(LiveTopics.Activity)]
 public IActionResult ResetPassword([FromBody] ResetRequest request)
 {
 
@@ -387,21 +434,19 @@ public IActionResult ResetPassword([FromBody] ResetRequest request)
         {
             connection.Open();
 
-            var sql = "UPDATE users SET password = @newPass WHERE username = @user AND role = 'owner'";
+            var sql = "UPDATE users SET password = @newPass WHERE username = @user AND role = 'owner' RETURNING COALESCE(full_name, username)";
             using (var cmd = new NpgsqlCommand(sql, connection))
             {
                 cmd.Parameters.AddWithValue("@newPass", request.NewPassword);
                 cmd.Parameters.AddWithValue("@user", request.Username);
-                
-                int rowsAffected = cmd.ExecuteNonQuery();
-                if (rowsAffected > 0)
-                {
-                    return Ok(new { message = "Owner password reset successfully!" });
-                }
-                else
+
+                if (cmd.ExecuteScalar() is not string ownerName)
                 {
                     return BadRequest(new { message = "Owner username not found." });
                 }
+
+                ActivityLog.Write(connection, ownerName, ActivityTypes.Account, "Reset the owner password with the recovery key");
+                return Ok(new { message = "Owner password reset successfully!" });
             }
         }
     }

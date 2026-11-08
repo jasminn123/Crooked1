@@ -12,6 +12,8 @@ namespace Crooked.Models
         string PaymentMethod,
         string SoldBy,
         int ItemCount,
+        string? DiscountCode,
+        decimal DiscountAmount,
         [property: JsonIgnore] string StoredStatus,
         [property: JsonIgnore] DateTime StoredDateTime);
 

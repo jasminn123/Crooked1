@@ -32,6 +32,13 @@ const variantAvailability = document.getElementById("variantAvailability");
 const addVariantBtn = document.getElementById("addVariantBtn");
 const amountReceivedInput = document.getElementById("amountReceived");
 const gcashRefInput = document.getElementById("gcashRefId");
+const discountSection = document.getElementById("discountSection");
+const discountForm = document.getElementById("discountForm");
+const discountSelect = document.getElementById("discountCode");
+const applyDiscountBtn = document.getElementById("applyDiscountBtn");
+const discountApplied = document.getElementById("discountApplied");
+const removeDiscountBtn = document.getElementById("removeDiscountBtn");
+const discountMessage = document.getElementById("discountMessage");
 
 const formatPeso = amount => `₱${Number(amount || 0).toLocaleString("en-PH", {
   minimumFractionDigits: 2,
@@ -539,8 +546,35 @@ variantForm.addEventListener("submit", event => {
 /* =========================
    CHECKOUT
 ========================= */
-function cartTotal() {
+// The applied coupon: { code, description, type, value, minPurchase, label }, or null.
+let appliedDiscount = null;
+
+const toCents = amount => Math.round(Number(amount || 0) * 100);
+
+function cartSubtotal() {
   return Object.values(cart).reduce((sum, item) => sum + item.price * item.qty, 0);
+}
+
+// The same rule as StoredDiscount.AmountOff on the server, worked out in centavos so both round
+// alike: a whole-number percentage of the subtotal, or a fixed amount that never exceeds it.
+// Nothing comes off while the subtotal is below the coupon's minimum purchase.
+function discountAmount() {
+  if (!appliedDiscount) return 0;
+  const subtotalCents = toCents(cartSubtotal());
+  if (subtotalCents < toCents(appliedDiscount.minPurchase)) return 0;
+  const cents = appliedDiscount.type === "percent"
+    ? Math.round(subtotalCents * appliedDiscount.value / 100)
+    : Math.min(toCents(appliedDiscount.value), subtotalCents);
+  return cents / 100;
+}
+
+// What the customer pays: the subtotal less any discount.
+function cartTotal() {
+  return (toCents(cartSubtotal()) - toCents(discountAmount())) / 100;
+}
+
+function cartItemsPayload() {
+  return Object.values(cart).map(item => ({ productId: item.id, quantity: item.qty }));
 }
 
 function itemLabel(item) {
@@ -675,6 +709,9 @@ function renderCheckout(focusTarget = null) {
   });
 
   checkoutEmpty.hidden = cartHasItems();
+  // A coupon belongs to one sale, so an empty checkout (sale saved, cancelled or every item removed) drops it.
+  if (!cartHasItems()) resetDiscount();
+  renderDiscount();
   checkoutTotal.textContent = formatPeso(cartTotal());
 
   const itemCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
@@ -694,6 +731,140 @@ function clearCheckout() {
   cart = {};
   renderCheckout();
 }
+
+/* =========================
+   DISCOUNT
+========================= */
+// The cashier picks one of today's coupons from the dropdown. The server checks it when it is
+// applied, again just before stock is taken, and once more when the sale is saved, where it works
+// out the discount and the total itself.
+let discountPending = false;
+
+function setDiscountMessage(text, isError = false) {
+  discountMessage.textContent = text;
+  discountMessage.classList.toggle("is-error", isError && Boolean(text));
+}
+
+function resetDiscount() {
+  appliedDiscount = null;
+  discountSelect.value = "";
+  discountSelect.removeAttribute("aria-invalid");
+  setDiscountMessage("");
+}
+
+// "SALE10 · 10% off · min ₱500.00"
+function discountOptionText(discount) {
+  const minimum = Number(discount.minPurchase) > 0 ? ` · min ${formatPeso(discount.minPurchase)}` : "";
+  return `${discount.code} · ${discount.label}${minimum}`;
+}
+
+// Fills the dropdown with the coupons that can be used today, keeping the current choice if it is still there.
+async function loadAvailableDiscounts() {
+  const chosen = discountSelect.value;
+  try {
+    const discounts = await UI.fetchJson("/api/Discounts/available");
+    const placeholder = new Option(discounts.length ? "Choose a discount" : "No discounts available today", "");
+    discountSelect.replaceChildren(placeholder, ...discounts.map(discount => new Option(discountOptionText(discount), discount.code)));
+    discountSelect.value = discounts.some(discount => discount.code === chosen) ? chosen : "";
+  } catch (error) {
+    console.error("Discount List Error:", error);
+    discountSelect.replaceChildren(new Option("Discounts could not be loaded", ""));
+  }
+}
+
+// Shows the dropdown or the applied code, and the subtotal and discount lines when a code takes something off.
+function renderDiscount() {
+  const amount = discountAmount();
+  // A new checkout gets a fresh list, so coupons made or turned off since the last sale show correctly.
+  if (cartHasItems() && discountSection.hidden) loadAvailableDiscounts();
+  discountSection.hidden = !cartHasItems();
+  discountForm.hidden = Boolean(appliedDiscount);
+  discountApplied.hidden = !appliedDiscount;
+
+  if (appliedDiscount) {
+    document.getElementById("discountAppliedCode").textContent = appliedDiscount.code;
+    document.getElementById("discountAppliedLabel").textContent = appliedDiscount.label;
+    const shortBy = (toCents(appliedDiscount.minPurchase) - toCents(cartSubtotal())) / 100;
+    setDiscountMessage(shortBy > 0
+      ? `Add ${formatPeso(shortBy)} more to use this code (minimum purchase ${formatPeso(appliedDiscount.minPurchase)}).`
+      : appliedDiscount.description);
+  }
+
+  document.getElementById("subtotalLine").hidden = !amount;
+  document.getElementById("discountLine").hidden = !amount;
+  document.getElementById("checkoutSubtotal").textContent = formatPeso(cartSubtotal());
+  document.getElementById("discountLineLabel").textContent = `Discount (${appliedDiscount?.code || ""})`;
+  document.getElementById("checkoutDiscount").textContent = `−${formatPeso(amount)}`;
+}
+
+function checkDiscount(code) {
+  return UI.fetchJson("/api/Discounts/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, items: cartItemsPayload() })
+  });
+}
+
+async function applyDiscount(event) {
+  event.preventDefault();
+  if (discountPending) return;
+
+  const code = discountSelect.value;
+  if (!code) {
+    const message = discountSelect.options.length > 1 ? "Choose a discount first." : "There are no discounts to apply today.";
+    discountSelect.setAttribute("aria-invalid", "true");
+    setDiscountMessage(message, true);
+    discountSelect.focus();
+    announce(message);
+    return;
+  }
+
+  discountPending = true;
+  const restore = UI.setLoading(applyDiscountBtn, "Checking...");
+  try {
+    const result = await checkDiscount(code);
+    appliedDiscount = {
+      code: result.code,
+      description: result.description,
+      type: result.type,
+      value: Number(result.value),
+      minPurchase: Number(result.minPurchase),
+      label: result.label
+    };
+    discountSelect.removeAttribute("aria-invalid");
+    renderCheckout();
+    // The dropdown is hidden now, so focus moves to the applied code's remove button.
+    removeDiscountBtn.focus();
+    announce(`Discount ${appliedDiscount.code} applied, ${appliedDiscount.label}. Total ${formatPeso(cartTotal())}.`);
+  } catch (error) {
+    console.error("Discount Error:", error);
+    const message = error.status ? error.message : "Cannot connect to the server. Please try again.";
+    discountSelect.setAttribute("aria-invalid", "true");
+    setDiscountMessage(message, true);
+    discountSelect.focus();
+    announce(message);
+    // The coupon may have been turned off or used up, so the list is refreshed.
+    if (error.status) loadAvailableDiscounts();
+  } finally {
+    restore();
+    discountPending = false;
+  }
+}
+
+function removeDiscount() {
+  const code = appliedDiscount?.code;
+  resetDiscount();
+  renderCheckout();
+  discountSelect.focus();
+  announce(`Discount ${code} removed. Total ${formatPeso(cartTotal())}.`);
+}
+
+discountForm.addEventListener("submit", applyDiscount);
+removeDiscountBtn.addEventListener("click", removeDiscount);
+discountSelect.addEventListener("change", () => {
+  discountSelect.removeAttribute("aria-invalid");
+  setDiscountMessage("");
+});
 
 /* =========================
    CART SHEET (phones and short windows)
@@ -757,10 +928,17 @@ function generateReferenceId() {
   return 'REF-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
 }
 
+// subtotal_amount, discount_amount and discountLabel are for the receipt; the server works out the
+// discounted total itself from discountCode, which is only sent when the code takes something off.
 function buildTransaction(method, received = null, change = null, refId = null) {
+  const discount = discountAmount();
   return {
     referenceId: refId || generateReferenceId(),
     date_time: new Date().toISOString(),
+    subtotal_amount: cartSubtotal(),
+    discount_amount: discount,
+    discountCode: discount > 0 ? appliedDiscount.code : null,
+    discountLabel: discount > 0 ? appliedDiscount.label : null,
     total_amount: cartTotal(),
     status: "Completed",
     assistedBy: localStorage.getItem("userName")?.trim() || "Unknown",
@@ -778,17 +956,25 @@ function buildTransaction(method, received = null, change = null, refId = null) 
   };
 }
 
+// Returns { saved: true }, { saved: false } after showing the error, or { discountProblem } when the
+// discount code can no longer be used; nothing is changed in that case.
 async function processCheckout(tx) {
-  const cartPayload = Object.values(cart).map(item => ({
-    productId: item.id,
-    quantity: item.qty
-  }));
-
   try {
+    // The code may have been turned off, used up or expired since it was applied. Checking before
+    // any stock is taken means the sale stops cleanly instead of failing halfway.
+    if (tx.discountCode) {
+      try {
+        await checkDiscount(tx.discountCode);
+      } catch (error) {
+        if (error.status >= 400 && error.status < 500) return { saved: false, discountProblem: error.message };
+        throw error;
+      }
+    }
+
     const checkoutRes = await fetch("/api/POS/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cartPayload)
+      body: JSON.stringify(cartItemsPayload())
     });
 
     if (!checkoutRes.ok) throw new Error("Stock deduction failed");
@@ -801,11 +987,11 @@ async function processCheckout(tx) {
     if (!transactionRes.ok) throw new Error("Transaction could not be saved");
 
     console.log("Checkout and transaction saved.");
-    return true;
+    return { saved: true };
   } catch (err) {
     console.error("Error during checkout:", err);
     showToast("Checkout failed. Please try again.", true);
-    return false;
+    return { saved: false };
   }
 }
 
@@ -819,11 +1005,24 @@ async function completeSale(tx, modalId, submitButton) {
   submitButton.setAttribute("aria-disabled", "true");
   submitButton.textContent = "Saving...";
 
-  const saved = await processCheckout(tx);
+  const { saved, discountProblem } = await processCheckout(tx);
 
   salePending = false;
   submitButton.removeAttribute("aria-disabled");
   submitButton.textContent = buttonText;
+
+  // The total changes without the discount, so the payment starts again from Check Out.
+  if (discountProblem) {
+    hideModal(modalId);
+    resetDiscount();
+    renderCheckout();
+    loadAvailableDiscounts();
+    showDialog(
+      "Discount Removed",
+      `${discountProblem} It was taken off this checkout, so the total is now ${formatPeso(cartTotal())}. Check out again to take the payment.`
+    );
+    return;
+  }
   if (!saved) return;
 
   const returnFocus = hideModal(modalId, { restore: false });
@@ -986,3 +1185,5 @@ UI.cardSkeletons(grid, { count: 8, tag: "li", cardClass: "product-card", mediaHe
 loadProducts();
 // Stock changes from other tills, exchanges and product edits show up without a reload.
 Live.on(["products", "exchanges"], loadProducts);
+// So do coupons the owner creates, turns off or deletes, and ones that get used up.
+Live.on(["discounts"], loadAvailableDiscounts);

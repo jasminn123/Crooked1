@@ -523,7 +523,8 @@ select:focus-visible {
   outline-offset: 1px;
 }
 
-input[aria-invalid="true"] {
+input[aria-invalid="true"],
+select[aria-invalid="true"] {
   border-color: var(--color-danger);
 }
 
@@ -784,14 +785,91 @@ input[aria-invalid="true"] {
   text-align: center;
 }
 
+/* Discount: a dropdown of today's coupons with an Apply button, then the applied code with a remove button. */
+.discount-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.discount-entry {
+  display: flex;
+  gap: 8px;
+}
+
+.discount-entry select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.discount-entry .btn {
+  flex: 0 0 auto;
+  min-width: 88px;
+}
+
+.discount-applied {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 4px 12px;
+  border: 1px dashed var(--color-success);
+  border-radius: var(--radius-md);
+  color: var(--color-success);
+}
+
+.discount-applied-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.discount-applied-text strong {
+  color: var(--color-text);
+  letter-spacing: 0.5px;
+}
+
+.discount-message:empty {
+  display: none;
+}
+
+.discount-message.is-error {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+/* Subtotal and discount (only when a code takes something off), then the total. */
+.checkout-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.checkout-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.checkout-line-discount {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
 .checkout-total {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
   margin: 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
   color: var(--color-text-muted);
   font-size: var(--font-size-lg);
   font-weight: 700;

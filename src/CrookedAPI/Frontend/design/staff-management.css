@@ -15,11 +15,19 @@
     max-height: 320px;
 }
 
-/* Change Password and Archive / Unarchive, side by side in the Action column */
-.staff-actions {
+/* The signed-in owner's name, with a "You" badge */
+.account-name {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
+}
+
+/* Owner / Staff dropdown in the Role column, the same height as the small buttons beside it */
+.role-select {
+    min-width: 120px;
+    min-height: var(--control-height-sm);
+    font-weight: 700;
 }
 
 .archive-card {
@@ -44,10 +52,6 @@
     .table-container {
         max-height: none;
     }
-
-    .staff-actions .btn {
-        flex: 1 1 auto;
-    }
 }
 
 @media (max-width: 520px) {
@@ -56,6 +60,16 @@
     }
 
     .staff-form .btn {
+        width: 100%;
+    }
+
+    /* One value per line, so the Change Password button fits the narrowest phones. */
+    .accounts-table tbody tr {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .accounts-table .btn,
+    .accounts-table .role-select {
         width: 100%;
     }
 }

@@ -45,7 +45,7 @@ namespace Crooked.Controllers
         }
 
         [HttpPost]
-        [LiveUpdate(LiveTopics.Transactions)]
+        [LiveUpdate(LiveTopics.Transactions, LiveTopics.Discounts, LiveTopics.Activity)]
         public async Task<IActionResult> SaveTransaction([FromBody] Transaction tx)
         {
             try
@@ -70,9 +70,35 @@ namespace Crooked.Controllers
                     await using var dbTransaction = await conn.BeginTransactionAsync();
                     try
                     {
+                        var total = tx.Total_Amount;
+                        string? discountCode = null;
+                        decimal discountAmount = 0;
+
+                        // The coupon row stays locked until the sale is saved, so a usage limit can't be overrun.
+                        if (!string.IsNullOrWhiteSpace(tx.DiscountCode))
+                        {
+                            var discount = await DiscountStore.FindByCodeAsync(conn, dbTransaction, tx.DiscountCode, forUpdate: true);
+                            var subtotal = await DiscountStore.SubtotalAsync(conn, dbTransaction, tx.Items);
+                            var problem = discount == null
+                                ? DiscountStore.NotFound(tx.DiscountCode)
+                                : discount.Problem(subtotal, ShopClock.Today);
+                            if (problem != null)
+                            {
+                                await dbTransaction.RollbackAsync();
+                                return Conflict(new { message = problem });
+                            }
+
+                            discountCode = discount!.Code;
+                            discountAmount = discount.AmountOff(subtotal);
+                            total = subtotal - discountAmount;
+                            await DiscountStore.RecordUseAsync(conn, dbTransaction, discount.Id);
+                        }
+
                         const string sql = @"INSERT INTO Transactions
-                                           (reference_id, date_time, total_amount, status, assisted_by, payment_method)
-                                           VALUES (@referenceId, @dateTime, @total, @status, @assistedBy, @paymentMethod)
+                                           (reference_id, date_time, total_amount, status, assisted_by, payment_method,
+                                            discount_code, discount_amount)
+                                           VALUES (@referenceId, @dateTime, @total, @status, @assistedBy, @paymentMethod,
+                                            @discountCode, @discountAmount)
                                            RETURNING transaction_id";
 
                         int transactionId;
@@ -80,11 +106,13 @@ namespace Crooked.Controllers
                         {
                             cmd.Parameters.AddWithValue("@referenceId", tx.ReferenceId ?? (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@dateTime", tx.Date_Time);
-                            cmd.Parameters.AddWithValue("@total", tx.Total_Amount);
+                            cmd.Parameters.AddWithValue("@total", total);
                             cmd.Parameters.AddWithValue("@status", tx.Status ?? "Completed");
                             cmd.Parameters.AddWithValue("@assistedBy",
                                 string.IsNullOrWhiteSpace(tx.AssistedBy) ? "Unknown" : tx.AssistedBy.Trim());
                             cmd.Parameters.AddWithValue("@paymentMethod", paymentMethod);
+                            cmd.Parameters.AddWithValue("@discountCode", (object?)discountCode ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@discountAmount", discountAmount);
                             transactionId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                         }
 
@@ -107,8 +135,16 @@ namespace Crooked.Controllers
                             }
                         }
 
+                        // "Kevin · Processed sale REF-... (₱810.00, Cash, discount SALE10)" on the Activity Logs page.
+                        var units = tx.Items.Sum(item => item.Quantity);
+                        var details = new List<string> { Money.Peso(total), $"{units} item{(units == 1 ? "" : "s")}", paymentMethod };
+                        if (discountCode != null) details.Add($"discount {discountCode}");
+                        var reference = string.IsNullOrWhiteSpace(tx.ReferenceId) ? $"#{transactionId}" : tx.ReferenceId.Trim();
+                        await ActivityLog.WriteAsync(conn, dbTransaction, SessionClaims.FullNameOf(User), ActivityTypes.Sale,
+                            $"Processed sale {reference} ({string.Join(", ", details)})");
+
                         await dbTransaction.CommitAsync();
-                        return Ok(new { message = "Transaction saved successfully", tx });
+                        return Ok(new { message = "Transaction saved successfully", tx, totalAmount = total, discountAmount });
                     }
                     catch
                     {
@@ -308,7 +344,7 @@ namespace Crooked.Controllers
         [Authorize(Roles = UserRoles.Owner)]
         [HttpPost("import")]
         [LiveUpdate(LiveTopics.Transactions, LiveTopics.Activity)]
-        public async Task<IActionResult> ImportTransactions(IFormFile? file, [FromForm] string? importedBy)
+        public async Task<IActionResult> ImportTransactions(IFormFile? file)
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new { message = "Choose an Excel file (.xlsx) to import." });
@@ -517,12 +553,11 @@ namespace Crooked.Controllers
 
                 if (imported + updated > 0)
                 {
-                    var staffName = string.IsNullOrWhiteSpace(importedBy) ? "Unknown" : importedBy.Trim();
                     var parts = new List<string>();
                     if (imported > 0) parts.Add($"imported {imported}");
                     if (updated > 0) parts.Add($"updated {updated}");
                     var action = string.Join(" and ", parts);
-                    await TransactionStore.LogActivityAsync(connection, dbTransaction, staffName,
+                    await ActivityLog.WriteAsync(connection, dbTransaction, SessionClaims.FullNameOf(User), ActivityTypes.Import,
                         $"{char.ToUpper(action[0])}{action[1..]} transaction{(imported + updated == 1 ? "" : "s")} from Excel");
                 }
 

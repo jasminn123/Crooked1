@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRKD | Point of Sale</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="../design/PointofSale.css?v=22">
+  <link rel="stylesheet" href="../design/PointofSale.css?v=24">
   <link rel="stylesheet" href="../design/components.css?v=7">
   <link rel="icon" type="image/png" href="../assets/Favicon.jpg">
 
@@ -92,10 +92,47 @@
       </div>
       <p id="checkoutEmpty" class="checkout-empty">No items yet. Choose a product to add it.</p>
       <ul id="checkoutList" class="checkout-list" aria-labelledby="checkoutHeading"></ul>
-      <p class="checkout-total">
-        <span>Total</span>
-        <strong id="checkoutTotal">&#8369;0.00</strong>
-      </p>
+
+      <!-- Discount coupon (made on the Discounts page). PointOfSale.js lists the coupons that can be
+           used today; the server checks the chosen one and works out the discount. -->
+      <div id="discountSection" class="discount-section" hidden>
+        <form id="discountForm" class="form-field" novalidate>
+          <label for="discountCode">Discount</label>
+          <div class="discount-entry">
+            <select id="discountCode" aria-describedby="discountMessage">
+              <option value="">Loading discounts...</option>
+            </select>
+            <button id="applyDiscountBtn" type="submit" class="btn btn-secondary">Apply</button>
+          </div>
+        </form>
+        <div id="discountApplied" class="discount-applied" hidden>
+          <i class="fa-solid fa-tag" aria-hidden="true"></i>
+          <span class="discount-applied-text">
+            <strong id="discountAppliedCode"></strong>
+            <span id="discountAppliedLabel"></span>
+          </span>
+          <button id="removeDiscountBtn" type="button" class="btn btn-ghost btn-icon" aria-label="Remove discount code">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+        <!-- Screen readers hear these messages through posAnnouncer, and again when the field has focus. -->
+        <p id="discountMessage" class="field-hint discount-message"></p>
+      </div>
+
+      <div class="checkout-totals">
+        <p id="subtotalLine" class="checkout-line" hidden>
+          <span>Subtotal</span>
+          <span id="checkoutSubtotal">&#8369;0.00</span>
+        </p>
+        <p id="discountLine" class="checkout-line checkout-line-discount" hidden>
+          <span id="discountLineLabel">Discount</span>
+          <span id="checkoutDiscount">&#8369;0.00</span>
+        </p>
+        <p class="checkout-total">
+          <span>Total</span>
+          <strong id="checkoutTotal">&#8369;0.00</strong>
+        </p>
+      </div>
       <div class="checkout-actions">
         <button type="button" id="checkoutBtn" class="btn btn-primary">Check Out</button>
         <button type="button" id="cancelCheckoutBtn" class="btn btn-danger-outline">Cancel</button>
@@ -265,8 +302,8 @@
 
   <script src="../javascript/ui.js?v=6"></script>
   <script src="../javascript/live.js?v=2"></script>
-  <script src="../javascript/PointOfSale.js?v=15"></script>
-  <script src="../javascript/account.js?v=3"></script>
+  <script src="../javascript/PointOfSale.js?v=17"></script>
+  <script src="../javascript/account.js?v=4"></script>
 
 </body>
 </html>

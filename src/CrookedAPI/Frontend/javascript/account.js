@@ -189,12 +189,15 @@ function openPasswordForm(options) {
 ========================= */
 document.querySelector('[data-action="change-password"]')?.addEventListener('click', changeOwnPassword);
 
-// Any signed-in user, owner or staff. index.js saves the username at login; sessions
-// from before that was added type it in instead.
 function changeOwnPassword() {
     setProfileCardOpen(false);
     document.querySelector('.profile-icon')?.focus();
+    openOwnPasswordForm();
+}
 
+// Any signed-in user, owner or staff; the Accounts page also opens it for the owner's own row.
+// index.js saves the username at login; sessions from before that was added type it in instead.
+function openOwnPasswordForm() {
     openPasswordForm({
         title: 'Change Password',
         description: 'Enter your current password, then choose a new one.',

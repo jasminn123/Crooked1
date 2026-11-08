@@ -14,6 +14,10 @@ namespace Crooked.Models
         [JsonPropertyName("payment_method")]
         public string? PaymentMethod { get; set; }
 
+        // A coupon applied at the POS. The server checks it and works out the discount and the
+        // total itself (DiscountStore), so for these sales Total_Amount from the browser is ignored.
+        public string? DiscountCode { get; set; }
+
         public List<TransactionItemInput> Items { get; set; } = new();
     }
 

@@ -400,7 +400,7 @@ namespace Crooked.Controllers
                 }
 
                 var units = request.Items.Count;
-                await TransactionStore.LogActivityAsync(connection, transaction, processedBy,
+                await ActivityLog.WriteAsync(connection, transaction, SessionClaims.FullNameOf(User), ActivityTypes.Exchange,
                     $"Exchanged {units} item{(units == 1 ? "" : "s")} on sale {referenceId}");
 
                 await transaction.CommitAsync();

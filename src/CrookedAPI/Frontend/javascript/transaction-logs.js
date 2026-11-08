@@ -280,8 +280,8 @@ async function submitImport(event) {
     }
 
     const form = new FormData();
+    // The server logs the import under the signed-in account's name.
     form.append('file', importFile.files[0]);
-    form.append('importedBy', localStorage.getItem('userName')?.trim() || 'Unknown');
 
     importPending = true;
     const restore = UI.setLoading(document.getElementById('importSubmit'), 'Importing...');
@@ -344,6 +344,11 @@ function renderDetails({ transaction, items, exchanges, canExchange, exchangeUnt
         UI.detailPair('Status', UI.statusBadge(transaction.status)),
         UI.detailPair('Total amount', UI.formatPeso(transaction.totalAmount))
     );
+    // Sales that used a discount code (Discounts page): totalAmount is what the customer paid after it.
+    if (transaction.discountAmount > 0) {
+        summary.appendChild(UI.detailPair('Discount',
+            `${transaction.discountCode || 'Coupon'} · −${UI.formatPeso(transaction.discountAmount)}`));
+    }
 
     const itemsSection = UI.el('section', 'details-section');
     itemsSection.appendChild(UI.el('h3', null, 'Items'));

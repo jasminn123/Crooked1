@@ -175,7 +175,8 @@
 }
 
 @media (max-width: 800px) {
-    .transaction-search-field {
+    /* .table-filters raises it above components.css's .table-filters .form-field. */
+    .table-filters .transaction-search-field {
         flex-basis: 100%;
     }
 }
