@@ -40,37 +40,17 @@ window.addEventListener('themechange', updateSalesChartTheme);
 async function loadSalesAnalytics({ quiet = false } = {}) {
     const status = document.getElementById('salesAnalyticsStatus');
     const totalProductsSold = document.getElementById('totalProductsSold');
-    const todayRevenue = document.getElementById('todayRevenue');
     const chartSkeleton = quiet ? null : UI.skeleton('skeleton-block chart-skeleton');
     if (chartSkeleton) document.querySelector('.chart-canvas-wrap')?.appendChild(chartSkeleton);
     if (!quiet && totalProductsSold) UI.textSkeleton(totalProductsSold, '3em');
-    if (!quiet && todayRevenue) UI.textSkeleton(todayRevenue, '70%');
 
     try {
-        const [salesResponse, revenueResponse] = await Promise.all([
-            fetch(`${apiBase}/api/Forecasting/daily-sales`),
-            fetch(`${apiBase}/api/POS/Transaction/today-revenue`)
-        ]);
-        if (!salesResponse.ok) throw new Error(`Daily sales request failed (${salesResponse.status})`);
-        if (!revenueResponse.ok) throw new Error(`Today's revenue request failed (${revenueResponse.status})`);
-
-        const [analytics, revenueData] = await Promise.all([
-            salesResponse.json(),
-            revenueResponse.json()
-        ]);
+        const analytics = await UI.fetchJson(`${apiBase}/api/Forecasting/daily-sales`);
         const totalUnitsSold = analytics.products.reduce(
             (total, product) => total + product.dailySales.reduce((dailyTotal, units) => dailyTotal + units, 0),
             0
         );
         if (totalProductsSold) totalProductsSold.textContent = totalUnitsSold.toLocaleString('en-PH');
-
-        if (todayRevenue) {
-            todayRevenue.textContent = Number(revenueData.revenue).toLocaleString('en-PH', {
-                style: 'currency',
-                currency: 'PHP',
-                minimumFractionDigits: 2
-            });
-        }
 
         // Products with no sales would only add flat lines at zero, so the chart leaves them out.
         const soldProducts = analytics.products.filter(product => product.dailySales.some(units => units > 0));
@@ -82,7 +62,6 @@ async function loadSalesAnalytics({ quiet = false } = {}) {
         console.error('Sales Analytics Error:', error);
         if (status) status.textContent = 'Unable to load sales analytics. Please try again later.';
         if (totalProductsSold) totalProductsSold.textContent = '—';
-        if (todayRevenue) todayRevenue.textContent = '—';
     } finally {
         chartSkeleton?.remove();
     }
@@ -140,6 +119,56 @@ function renderSalesChart(dates, products, { animate = true } = {}) {
 }
 
 /* =========================
+   REVENUE
+   The dropdown picks today, the last 7 days, this month or this year.
+   The server works out the dates in Philippine time and sends them back.
+========================= */
+let revenueRequest = 0;
+
+function shopDateLabel(isoDate, withYear) {
+    return new Date(`${isoDate}T00:00:00`).toLocaleDateString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        ...(withYear ? { year: 'numeric' } : {})
+    });
+}
+
+// "Nov 11, 2026" for one day, otherwise "Nov 5 – Nov 11, 2026".
+function revenueRangeText(from, to) {
+    if (from === to) return shopDateLabel(to, true);
+    const sameYear = from.slice(0, 4) === to.slice(0, 4);
+    return `${shopDateLabel(from, !sameYear)} – ${shopDateLabel(to, true)}`;
+}
+
+// quiet: a live refresh keeps the current amount on screen until the new one arrives.
+async function loadRevenue({ quiet = false } = {}) {
+    const value = document.getElementById('revenueValue');
+    const range = document.getElementById('revenueRange');
+    const period = document.getElementById('revenuePeriod')?.value || 'today';
+    if (!value) return;
+
+    // Only the newest request may fill the card, in case the period changes mid-request.
+    const request = ++revenueRequest;
+    if (!quiet) {
+        UI.textSkeleton(value, '70%');
+        if (range) UI.textSkeleton(range, '55%');
+    }
+
+    try {
+        const data = await UI.fetchJson(
+            `${apiBase}/api/POS/Transaction/revenue?period=${encodeURIComponent(period)}`);
+        if (request !== revenueRequest) return;
+        value.textContent = UI.formatPeso(data.revenue);
+        if (range) range.textContent = revenueRangeText(data.from, data.to);
+    } catch (error) {
+        if (request !== revenueRequest) return;
+        console.error('Revenue Error:', error);
+        value.textContent = '—';
+        if (range) range.textContent = 'Unable to load revenue. Please try again later.';
+    }
+}
+
+/* =========================
    STAFF DASHBOARD STATS
 ========================= */
 async function fetchStaffStats({ quiet = false } = {}) {
@@ -187,7 +216,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // The sales chart and revenue come from owner-only endpoints.
         if (isOwner) {
             loadSalesAnalytics();
+            loadRevenue();
+            document.getElementById('revenuePeriod')?.addEventListener('change', () => loadRevenue());
             Live.on(['transactions', 'exchanges', 'products'], () => loadSalesAnalytics({ quiet: true }));
+            Live.on(['transactions'], () => loadRevenue({ quiet: true }));
         }
     } catch (error) {
         console.error('Dashboard Init Error:', error);

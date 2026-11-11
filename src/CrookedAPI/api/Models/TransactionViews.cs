@@ -14,6 +14,8 @@ namespace Crooked.Models
         int ItemCount,
         string? DiscountCode,
         decimal DiscountAmount,
+        // Set only for a manual discount (DiscountCode is then null).
+        int? ManualDiscountPercent,
         [property: JsonIgnore] string StoredStatus,
         [property: JsonIgnore] DateTime StoredDateTime);
 

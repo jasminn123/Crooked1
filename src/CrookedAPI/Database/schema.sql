@@ -146,6 +146,22 @@ ALTER TABLE transactions
     ADD COLUMN IF NOT EXISTS discount_code TEXT,
     ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(12, 2) NOT NULL DEFAULT 0;
 
+-- Manual discounts: instead of a coupon, the cashier types a whole-number percentage. Owners can
+-- give up to 100%; staff up to staff_max_percent, which the owner sets on the Discounts page
+-- (0 turns them off for staff). discount_settings always has exactly one row.
+CREATE TABLE IF NOT EXISTS discount_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    staff_max_percent INTEGER NOT NULL DEFAULT 10 CHECK (staff_max_percent BETWEEN 0 AND 100),
+    updated_by TEXT NOT NULL DEFAULT 'System',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO discount_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+-- A sale with a manual discount keeps discount_code NULL; discount_amount is what came off.
+ALTER TABLE transactions
+    ADD COLUMN IF NOT EXISTS manual_discount_percent INTEGER
+        CHECK (manual_discount_percent IS NULL OR manual_discount_percent BETWEEN 1 AND 100);
+
 -- The kind of each activity log entry (ActivityTypes in api/Models/Activity.cs), for the Activity
 -- Logs page's filter. Entries written before the column existed are sorted by their wording, once.
 ALTER TABLE activity_logs

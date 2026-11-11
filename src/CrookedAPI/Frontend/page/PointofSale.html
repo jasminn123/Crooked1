@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRKD | Point of Sale</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="../design/PointofSale.css?v=24">
+  <link rel="stylesheet" href="../design/PointofSale.css?v=25">
   <link rel="stylesheet" href="../design/components.css?v=7">
   <link rel="icon" type="image/png" href="../assets/Favicon.jpg">
 
@@ -93,8 +93,9 @@
       <p id="checkoutEmpty" class="checkout-empty">No items yet. Choose a product to add it.</p>
       <ul id="checkoutList" class="checkout-list" aria-labelledby="checkoutHeading"></ul>
 
-      <!-- Discount coupon (made on the Discounts page). PointOfSale.js lists the coupons that can be
-           used today; the server checks the chosen one and works out the discount. -->
+      <!-- Discount: a coupon (made on the Discounts page) or a manual percentage. PointOfSale.js
+           lists the coupons that can be used today, then "Manual discount" when the cashier may
+           give one; the server checks the choice and works out the discount. -->
       <div id="discountSection" class="discount-section" hidden>
         <form id="discountForm" class="form-field" novalidate>
           <label for="discountCode">Discount</label>
@@ -104,6 +105,12 @@
             </select>
             <button id="applyDiscountBtn" type="submit" class="btn btn-secondary">Apply</button>
           </div>
+          <div id="manualDiscountFields" class="form-field manual-discount-fields" hidden>
+            <label for="manualDiscountPercent">Percent off (%)</label>
+            <input id="manualDiscountPercent" type="text" inputmode="numeric" maxlength="3" placeholder="e.g. 10"
+              autocomplete="off" aria-describedby="manualDiscountHint discountMessage">
+            <p id="manualDiscountHint" class="field-hint"></p>
+          </div>
         </form>
         <div id="discountApplied" class="discount-applied" hidden>
           <i class="fa-solid fa-tag" aria-hidden="true"></i>
@@ -111,7 +118,7 @@
             <strong id="discountAppliedCode"></strong>
             <span id="discountAppliedLabel"></span>
           </span>
-          <button id="removeDiscountBtn" type="button" class="btn btn-ghost btn-icon" aria-label="Remove discount code">
+          <button id="removeDiscountBtn" type="button" class="btn btn-ghost btn-icon" aria-label="Remove discount">
             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
           </button>
         </div>
@@ -302,7 +309,7 @@
 
   <script src="../javascript/ui.js?v=6"></script>
   <script src="../javascript/live.js?v=2"></script>
-  <script src="../javascript/PointOfSale.js?v=17"></script>
+  <script src="../javascript/PointOfSale.js?v=18"></script>
   <script src="../javascript/account.js?v=4"></script>
 
 </body>

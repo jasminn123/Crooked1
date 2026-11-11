@@ -1219,6 +1219,26 @@ body.modal-open {
     color: var(--color-danger);
 }
 
+.stat-note {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* A stat card's title with a control (such as the revenue period dropdown) on the right. */
+.stat-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+.revenue-period {
+    min-height: var(--control-height-sm);
+    cursor: pointer;
+}
+
 /* =========================
    REDUCED MOTION
    Movement is replaced by a plain fade (WCAG 2.3.3).

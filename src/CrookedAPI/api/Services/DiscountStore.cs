@@ -1,9 +1,11 @@
+using System.Security.Claims;
 using Npgsql;
 using Crooked.Models;
 
 namespace Crooked.Services
 {
-    // Discount coupon queries shared by the Discounts page and the POS sale (TransactionController).
+    // Discount coupon and manual discount queries shared by the Discounts page and the POS sale
+    // (TransactionController).
     public static class DiscountStore
     {
         private const string Columns = @"
@@ -51,6 +53,34 @@ namespace Crooked.Services
             await using var command = new NpgsqlCommand(
                 "UPDATE discounts SET times_used = times_used + 1 WHERE discount_id = @id", connection, transaction);
             command.Parameters.AddWithValue("@id", discountId);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // The most a staff member can take off with a manual discount; 0 means they can't give one.
+        public static async Task<int> StaffMaxPercentAsync(NpgsqlConnection connection, NpgsqlTransaction? transaction)
+        {
+            await using var command = new NpgsqlCommand(
+                "SELECT staff_max_percent FROM discount_settings WHERE id = 1", connection, transaction);
+            return await command.ExecuteScalarAsync() is int percent ? percent : 0;
+        }
+
+        // The signed-in person's manual discount limit. Owners can give any percentage.
+        public static async Task<int> ManualMaxPercentAsync(
+            NpgsqlConnection connection, NpgsqlTransaction? transaction, ClaimsPrincipal user) =>
+            user.IsInRole(UserRoles.Owner) ? ManualDiscount.OwnerMaxPercent : await StaffMaxPercentAsync(connection, transaction);
+
+        public static async Task SetStaffMaxPercentAsync(
+            NpgsqlConnection connection, NpgsqlTransaction transaction, int percent, string updatedBy)
+        {
+            await using var command = new NpgsqlCommand(@"
+                INSERT INTO discount_settings (id, staff_max_percent, updated_by, updated_at)
+                VALUES (1, @percent, @updated_by, NOW())
+                ON CONFLICT (id) DO UPDATE
+                SET staff_max_percent = EXCLUDED.staff_max_percent,
+                    updated_by = EXCLUDED.updated_by,
+                    updated_at = EXCLUDED.updated_at", connection, transaction);
+            command.Parameters.AddWithValue("@percent", percent);
+            command.Parameters.AddWithValue("@updated_by", updatedBy);
             await command.ExecuteNonQueryAsync();
         }
 

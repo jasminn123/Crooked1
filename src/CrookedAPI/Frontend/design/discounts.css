@@ -55,6 +55,38 @@
     font-weight: 400;
 }
 
+/* Manual discounts: the staff limit with its Save button beside it (underneath on phones). */
+.manual-discount-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px 16px;
+}
+
+.manual-discount-form .form-field {
+    flex: 0 1 280px;
+}
+
+/* Lines the button up with the input, below the field's label. */
+.manual-discount-form .btn {
+    min-width: 160px;
+    margin-top: calc(var(--font-size-sm) * 1.4 + 6px);
+}
+
+.manual-discount-form input[aria-invalid="true"] {
+    border-color: var(--color-danger);
+}
+
+.manual-discount-error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 12px 0 0;
+    color: var(--color-danger);
+    font-weight: 700;
+}
+
 /* Disable / Enable and Delete, side by side in the Action column */
 .discount-actions {
     display: flex;
@@ -85,5 +117,19 @@
 
     .discount-form-actions .btn {
         width: 100%;
+    }
+
+    .manual-discount-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .manual-discount-form .form-field {
+        flex-basis: auto;
+    }
+
+    .manual-discount-form .btn {
+        width: 100%;
+        margin-top: 0;
     }
 }

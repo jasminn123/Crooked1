@@ -39,6 +39,9 @@ const applyDiscountBtn = document.getElementById("applyDiscountBtn");
 const discountApplied = document.getElementById("discountApplied");
 const removeDiscountBtn = document.getElementById("removeDiscountBtn");
 const discountMessage = document.getElementById("discountMessage");
+const manualDiscountFields = document.getElementById("manualDiscountFields");
+const manualPercentInput = document.getElementById("manualDiscountPercent");
+const manualDiscountHint = document.getElementById("manualDiscountHint");
 
 const formatPeso = amount => `₱${Number(amount || 0).toLocaleString("en-PH", {
   minimumFractionDigits: 2,
@@ -546,7 +549,8 @@ variantForm.addEventListener("submit", event => {
 /* =========================
    CHECKOUT
 ========================= */
-// The applied coupon: { code, description, type, value, minPurchase, label }, or null.
+// The applied discount, or null: { name, code, description, type, value, minPurchase, label } for a
+// coupon, or the same with manual: true and code: null for a manual discount.
 let appliedDiscount = null;
 
 const toCents = amount => Math.round(Number(amount || 0) * 100);
@@ -555,9 +559,10 @@ function cartSubtotal() {
   return Object.values(cart).reduce((sum, item) => sum + item.price * item.qty, 0);
 }
 
-// The same rule as StoredDiscount.AmountOff on the server, worked out in centavos so both round
-// alike: a whole-number percentage of the subtotal, or a fixed amount that never exceeds it.
-// Nothing comes off while the subtotal is below the coupon's minimum purchase.
+// The same rule as StoredDiscount.AmountOff and ManualDiscount.AmountOff on the server, worked out in
+// centavos so both round alike: a whole-number percentage of the subtotal, or a fixed amount that
+// never exceeds it. Nothing comes off while the subtotal is below the coupon's minimum purchase
+// (a manual discount has none).
 function discountAmount() {
   if (!appliedDiscount) return 0;
   const subtotalCents = toCents(cartSubtotal());
@@ -735,20 +740,34 @@ function clearCheckout() {
 /* =========================
    DISCOUNT
 ========================= */
-// The cashier picks one of today's coupons from the dropdown. The server checks it when it is
-// applied, again just before stock is taken, and once more when the sale is saved, where it works
-// out the discount and the total itself.
+// The cashier picks one of today's coupons from the dropdown, or "Manual discount" to type a
+// percentage. The server checks the choice when it is applied, again just before stock is taken,
+// and once more when the sale is saved, where it works out the discount and the total itself.
 let discountPending = false;
+
+// The dropdown's value for a manual discount. Coupon codes are saved in capitals, so none can match it.
+const MANUAL_OPTION = "manual";
+// The most the signed-in person can take off with a manual discount, or 0 when they can't. The
+// server works it out from their role: owners up to 100%, staff up to the owner's limit.
+let manualMaxPercent = 0;
+
+const isManualChoice = () => discountSelect.value === MANUAL_OPTION;
 
 function setDiscountMessage(text, isError = false) {
   discountMessage.textContent = text;
   discountMessage.classList.toggle("is-error", isError && Boolean(text));
 }
 
+function clearDiscountErrors() {
+  discountForm.querySelectorAll("[aria-invalid]").forEach(field => field.removeAttribute("aria-invalid"));
+}
+
 function resetDiscount() {
   appliedDiscount = null;
   discountSelect.value = "";
-  discountSelect.removeAttribute("aria-invalid");
+  manualPercentInput.value = "";
+  clearDiscountErrors();
+  updateManualFields();
   setDiscountMessage("");
 }
 
@@ -758,21 +777,40 @@ function discountOptionText(discount) {
   return `${discount.code} · ${discount.label}${minimum}`;
 }
 
-// Fills the dropdown with the coupons that can be used today, keeping the current choice if it is still there.
-async function loadAvailableDiscounts() {
-  const chosen = discountSelect.value;
-  try {
-    const discounts = await UI.fetchJson("/api/Discounts/available");
-    const placeholder = new Option(discounts.length ? "Choose a discount" : "No discounts available today", "");
-    discountSelect.replaceChildren(placeholder, ...discounts.map(discount => new Option(discountOptionText(discount), discount.code)));
-    discountSelect.value = discounts.some(discount => discount.code === chosen) ? chosen : "";
-  } catch (error) {
-    console.error("Discount List Error:", error);
-    discountSelect.replaceChildren(new Option("Discounts could not be loaded", ""));
-  }
+// The percent field shows while "Manual discount" is chosen.
+function updateManualFields() {
+  manualDiscountFields.hidden = !isManualChoice();
+  manualDiscountHint.textContent = `A whole number from 1 to ${manualMaxPercent}.`;
 }
 
-// Shows the dropdown or the applied code, and the subtotal and discount lines when a code takes something off.
+// Fills the dropdown with the coupons that can be used today, then "Manual discount" when the
+// cashier may give one, keeping the current choice if it is still there.
+async function loadAvailableDiscounts() {
+  const [coupons, manual] = await Promise.allSettled([
+    UI.fetchJson("/api/Discounts/available"),
+    UI.fetchJson("/api/Discounts/manual")
+  ]);
+  if (coupons.status === "rejected") console.error("Discount List Error:", coupons.reason);
+  if (manual.status === "rejected") console.error("Manual Discount Error:", manual.reason);
+  manualMaxPercent = manual.status === "fulfilled" ? Number(manual.value.maxPercent) || 0 : 0;
+
+  const options = (coupons.status === "fulfilled" ? coupons.value : [])
+    .map(discount => new Option(discountOptionText(discount), discount.code));
+  if (manualMaxPercent > 0) {
+    const limit = manualMaxPercent < 100 ? ` · up to ${manualMaxPercent}%` : "";
+    options.push(new Option(`Manual discount${limit}`, MANUAL_OPTION));
+  }
+  const placeholder = coupons.status === "rejected" ? "Coupons could not be loaded"
+    : options.length ? "Choose a discount"
+    : "No discounts available today";
+
+  const chosen = discountSelect.value;
+  discountSelect.replaceChildren(new Option(placeholder, ""), ...options);
+  discountSelect.value = options.some(option => option.value === chosen) ? chosen : "";
+  updateManualFields();
+}
+
+// Shows the dropdown or the applied discount, and the subtotal and discount lines when it takes something off.
 function renderDiscount() {
   const amount = discountAmount();
   // A new checkout gets a fresh list, so coupons made or turned off since the last sale show correctly.
@@ -782,7 +820,7 @@ function renderDiscount() {
   discountApplied.hidden = !appliedDiscount;
 
   if (appliedDiscount) {
-    document.getElementById("discountAppliedCode").textContent = appliedDiscount.code;
+    document.getElementById("discountAppliedCode").textContent = appliedDiscount.name;
     document.getElementById("discountAppliedLabel").textContent = appliedDiscount.label;
     const shortBy = (toCents(appliedDiscount.minPurchase) - toCents(cartSubtotal())) / 100;
     setDiscountMessage(shortBy > 0
@@ -793,7 +831,7 @@ function renderDiscount() {
   document.getElementById("subtotalLine").hidden = !amount;
   document.getElementById("discountLine").hidden = !amount;
   document.getElementById("checkoutSubtotal").textContent = formatPeso(cartSubtotal());
-  document.getElementById("discountLineLabel").textContent = `Discount (${appliedDiscount?.code || ""})`;
+  document.getElementById("discountLineLabel").textContent = `Discount (${appliedDiscount?.name || ""})`;
   document.getElementById("checkoutDiscount").textContent = `−${formatPeso(amount)}`;
 }
 
@@ -805,45 +843,85 @@ function checkDiscount(code) {
   });
 }
 
+function checkManualDiscount(percent) {
+  return UI.fetchJson("/api/Discounts/apply-manual", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ percent, items: cartItemsPayload() })
+  });
+}
+
+// Marks the field that needs fixing and says why.
+function showDiscountProblem(field, message) {
+  field.setAttribute("aria-invalid", "true");
+  setDiscountMessage(message, true);
+  field.focus();
+  announce(message);
+}
+
+// Returns the percent off, or null after pointing at the field. The server checks the same rule
+// (ManualDiscount.Problem).
+function readManualPercent() {
+  const percent = Number(manualPercentInput.value);
+  if (!manualPercentInput.value || !Number.isInteger(percent) || percent < 1 || percent > manualMaxPercent) {
+    showDiscountProblem(manualPercentInput, `Enter the percent off, from 1 to ${manualMaxPercent}.`);
+    return null;
+  }
+  return percent;
+}
+
+// appliedDiscount from what /api/Discounts/apply and /apply-manual send back.
+const couponFrom = result => ({
+  name: result.code,
+  code: result.code,
+  description: result.description,
+  type: result.type,
+  value: Number(result.value),
+  minPurchase: Number(result.minPurchase),
+  label: result.label
+});
+
+const manualDiscountFrom = result => ({
+  manual: true,
+  name: "Manual",
+  code: null,
+  description: "",
+  type: "percent",
+  value: Number(result.percent),
+  minPurchase: 0,
+  label: result.label
+});
+
 async function applyDiscount(event) {
   event.preventDefault();
   if (discountPending) return;
+  clearDiscountErrors();
 
-  const code = discountSelect.value;
-  if (!code) {
-    const message = discountSelect.options.length > 1 ? "Choose a discount first." : "There are no discounts to apply today.";
-    discountSelect.setAttribute("aria-invalid", "true");
-    setDiscountMessage(message, true);
-    discountSelect.focus();
-    announce(message);
+  const choice = discountSelect.value;
+  if (!choice) {
+    showDiscountProblem(discountSelect,
+      discountSelect.options.length > 1 ? "Choose a discount first." : "There are no discounts to apply today.");
     return;
   }
+  const manual = choice === MANUAL_OPTION;
+  const percent = manual ? readManualPercent() : null;
+  if (manual && percent === null) return;
 
   discountPending = true;
   const restore = UI.setLoading(applyDiscountBtn, "Checking...");
   try {
-    const result = await checkDiscount(code);
-    appliedDiscount = {
-      code: result.code,
-      description: result.description,
-      type: result.type,
-      value: Number(result.value),
-      minPurchase: Number(result.minPurchase),
-      label: result.label
-    };
-    discountSelect.removeAttribute("aria-invalid");
+    appliedDiscount = manual
+      ? manualDiscountFrom(await checkManualDiscount(percent))
+      : couponFrom(await checkDiscount(choice));
     renderCheckout();
-    // The dropdown is hidden now, so focus moves to the applied code's remove button.
+    // The dropdown is hidden now, so focus moves to the applied discount's remove button.
     removeDiscountBtn.focus();
-    announce(`Discount ${appliedDiscount.code} applied, ${appliedDiscount.label}. Total ${formatPeso(cartTotal())}.`);
+    announce(`Discount ${appliedDiscount.name} applied, ${appliedDiscount.label}. Total ${formatPeso(cartTotal())}.`);
   } catch (error) {
     console.error("Discount Error:", error);
-    const message = error.status ? error.message : "Cannot connect to the server. Please try again.";
-    discountSelect.setAttribute("aria-invalid", "true");
-    setDiscountMessage(message, true);
-    discountSelect.focus();
-    announce(message);
-    // The coupon may have been turned off or used up, so the list is refreshed.
+    showDiscountProblem(manual ? manualPercentInput : discountSelect,
+      error.status ? error.message : "Cannot connect to the server. Please try again.");
+    // The coupon may have been turned off or used up, or the manual limit changed, so the list is refreshed.
     if (error.status) loadAvailableDiscounts();
   } finally {
     restore();
@@ -852,17 +930,24 @@ async function applyDiscount(event) {
 }
 
 function removeDiscount() {
-  const code = appliedDiscount?.code;
+  const name = appliedDiscount?.name;
   resetDiscount();
   renderCheckout();
   discountSelect.focus();
-  announce(`Discount ${code} removed. Total ${formatPeso(cartTotal())}.`);
+  announce(`Discount ${name} removed. Total ${formatPeso(cartTotal())}.`);
 }
 
 discountForm.addEventListener("submit", applyDiscount);
 removeDiscountBtn.addEventListener("click", removeDiscount);
 discountSelect.addEventListener("change", () => {
-  discountSelect.removeAttribute("aria-invalid");
+  clearDiscountErrors();
+  setDiscountMessage("");
+  updateManualFields();
+});
+// The percent is a whole number, so anything but digits is dropped.
+manualPercentInput.addEventListener("input", () => {
+  manualPercentInput.value = manualPercentInput.value.replace(/\D/g, "").slice(0, 3);
+  manualPercentInput.removeAttribute("aria-invalid");
   setDiscountMessage("");
 });
 
@@ -928,17 +1013,21 @@ function generateReferenceId() {
   return 'REF-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
 }
 
-// subtotal_amount, discount_amount and discountLabel are for the receipt; the server works out the
-// discounted total itself from discountCode, which is only sent when the code takes something off.
+// subtotal_amount, discount_amount, discountName and discountLabel are for the receipt; the server
+// works out the discounted total itself from discountCode (a coupon) or manualDiscountPercent
+// (a manual discount), which are only sent when the discount takes something off.
 function buildTransaction(method, received = null, change = null, refId = null) {
   const discount = discountAmount();
+  const applied = discount > 0 ? appliedDiscount : null;
   return {
     referenceId: refId || generateReferenceId(),
     date_time: new Date().toISOString(),
     subtotal_amount: cartSubtotal(),
     discount_amount: discount,
-    discountCode: discount > 0 ? appliedDiscount.code : null,
-    discountLabel: discount > 0 ? appliedDiscount.label : null,
+    discountCode: applied && !applied.manual ? applied.code : null,
+    manualDiscountPercent: applied?.manual ? applied.value : null,
+    discountName: applied?.name ?? null,
+    discountLabel: applied?.label ?? null,
     total_amount: cartTotal(),
     status: "Completed",
     assistedBy: localStorage.getItem("userName")?.trim() || "Unknown",
@@ -957,14 +1046,16 @@ function buildTransaction(method, received = null, change = null, refId = null) 
 }
 
 // Returns { saved: true }, { saved: false } after showing the error, or { discountProblem } when the
-// discount code can no longer be used; nothing is changed in that case.
+// discount can no longer be used; nothing is changed in that case.
 async function processCheckout(tx) {
   try {
-    // The code may have been turned off, used up or expired since it was applied. Checking before
-    // any stock is taken means the sale stops cleanly instead of failing halfway.
-    if (tx.discountCode) {
+    // The code may have been turned off, used up or expired since it was applied, or the owner may
+    // have lowered the manual discount limit. Checking before any stock is taken means the sale
+    // stops cleanly instead of failing halfway.
+    if (tx.discountCode || tx.manualDiscountPercent) {
       try {
-        await checkDiscount(tx.discountCode);
+        if (tx.discountCode) await checkDiscount(tx.discountCode);
+        else await checkManualDiscount(tx.manualDiscountPercent);
       } catch (error) {
         if (error.status >= 400 && error.status < 500) return { saved: false, discountProblem: error.message };
         throw error;
@@ -1185,5 +1276,6 @@ UI.cardSkeletons(grid, { count: 8, tag: "li", cardClass: "product-card", mediaHe
 loadProducts();
 // Stock changes from other tills, exchanges and product edits show up without a reload.
 Live.on(["products", "exchanges"], loadProducts);
-// So do coupons the owner creates, turns off or deletes, and ones that get used up.
+// So do coupons the owner creates, turns off or deletes, ones that get used up, and changes to the
+// staff manual discount limit.
 Live.on(["discounts"], loadAvailableDiscounts);

@@ -14,10 +14,19 @@ namespace Crooked.Controllers
         private const int MaxExportRows = 50000;
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
+        // Revenue from completed sales (exchanged ones included) for a RevenuePeriods period:
+        // today (the default), 7days, month or year. Each period ends with today in Philippine time.
         [Authorize(Roles = UserRoles.Owner)]
-        [HttpGet("today-revenue")]
-        public IActionResult GetTodayRevenue()
+        [HttpGet("revenue")]
+        public IActionResult GetRevenue([FromQuery] string? period)
         {
+            var today = ShopClock.Today;
+            var firstDay = RevenuePeriods.FirstDay(period ?? RevenuePeriods.Today, today);
+            if (firstDay is not DateOnly from)
+            {
+                return BadRequest(new { error = "Period must be today, 7days, month or year." });
+            }
+
             try
             {
                 using (var connection = new NpgsqlConnection(_connectionString))
@@ -27,20 +36,22 @@ namespace Crooked.Controllers
                         SELECT COALESCE(SUM(total_amount), 0)
                         FROM transactions
                         WHERE status = 'Completed'
-                          AND date_time >= ((NOW() AT TIME ZONE 'Asia/Manila')::date::timestamp AT TIME ZONE 'Asia/Manila')
-                          AND date_time < (((NOW() AT TIME ZONE 'Asia/Manila')::date + 1)::timestamp AT TIME ZONE 'Asia/Manila')";
+                          AND date_time >= @from
+                          AND date_time < @to";
 
                     using (var command = new NpgsqlCommand(sql, connection))
                     {
+                        command.Parameters.AddWithValue("@from", ShopClock.StartOfDayUtc(from));
+                        command.Parameters.AddWithValue("@to", ShopClock.StartOfDayUtc(today.AddDays(1)));
                         var revenue = Convert.ToDecimal(command.ExecuteScalar());
-                        return Ok(new { revenue });
+                        return Ok(new { revenue, from, to = today });
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Today's Revenue Error: {ex.Message}");
-                return StatusCode(500, new { error = "Unable to load today's revenue." });
+                Console.WriteLine($"Revenue Error: {ex.Message}");
+                return StatusCode(500, new { error = "Unable to load revenue." });
             }
         }
 
@@ -61,6 +72,11 @@ namespace Crooked.Controllers
                     return BadRequest(new { error = "Transaction items must have a valid product and quantity." });
                 }
 
+                if (!string.IsNullOrWhiteSpace(tx.DiscountCode) && tx.ManualDiscountPercent != null)
+                {
+                    return BadRequest(new { message = "A sale can use a coupon or a manual discount, not both." });
+                }
+
                 var paymentMethod = PaymentMethods.Normalize(tx.PaymentMethod) ?? PaymentMethods.Unknown;
                 Console.WriteLine($"Received: RefId={tx.ReferenceId}, Date={tx.Date_Time}, Total={tx.Total_Amount}, Status={tx.Status}, Payment={paymentMethod}");
 
@@ -72,6 +88,7 @@ namespace Crooked.Controllers
                     {
                         var total = tx.Total_Amount;
                         string? discountCode = null;
+                        int? manualPercent = null;
                         decimal discountAmount = 0;
 
                         // The coupon row stays locked until the sale is saved, so a usage limit can't be overrun.
@@ -93,12 +110,29 @@ namespace Crooked.Controllers
                             total = subtotal - discountAmount;
                             await DiscountStore.RecordUseAsync(conn, dbTransaction, discount.Id);
                         }
+                        // A manual discount is checked against the signed-in person's limit (the role in
+                        // their session, never one the browser sends).
+                        else if (tx.ManualDiscountPercent != null)
+                        {
+                            var maxPercent = await DiscountStore.ManualMaxPercentAsync(conn, dbTransaction, User);
+                            var problem = ManualDiscount.Problem(tx.ManualDiscountPercent, maxPercent);
+                            if (problem != null)
+                            {
+                                await dbTransaction.RollbackAsync();
+                                return Conflict(new { message = problem });
+                            }
+
+                            var subtotal = await DiscountStore.SubtotalAsync(conn, dbTransaction, tx.Items);
+                            manualPercent = tx.ManualDiscountPercent.Value;
+                            discountAmount = ManualDiscount.AmountOff(subtotal, manualPercent.Value);
+                            total = subtotal - discountAmount;
+                        }
 
                         const string sql = @"INSERT INTO Transactions
                                            (reference_id, date_time, total_amount, status, assisted_by, payment_method,
-                                            discount_code, discount_amount)
+                                            discount_code, discount_amount, manual_discount_percent)
                                            VALUES (@referenceId, @dateTime, @total, @status, @assistedBy, @paymentMethod,
-                                            @discountCode, @discountAmount)
+                                            @discountCode, @discountAmount, @manualPercent)
                                            RETURNING transaction_id";
 
                         int transactionId;
@@ -113,6 +147,10 @@ namespace Crooked.Controllers
                             cmd.Parameters.AddWithValue("@paymentMethod", paymentMethod);
                             cmd.Parameters.AddWithValue("@discountCode", (object?)discountCode ?? DBNull.Value);
                             cmd.Parameters.AddWithValue("@discountAmount", discountAmount);
+                            cmd.Parameters.Add(new NpgsqlParameter("@manualPercent", NpgsqlTypes.NpgsqlDbType.Integer)
+                            {
+                                Value = (object?)manualPercent ?? DBNull.Value
+                            });
                             transactionId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                         }
 
@@ -135,10 +173,13 @@ namespace Crooked.Controllers
                             }
                         }
 
-                        // "Kevin · Processed sale REF-... (₱810.00, Cash, discount SALE10)" on the Activity Logs page.
+                        // "Kevin · Processed sale REF-... (₱810.00, 2 items, Cash, discount SALE10)" on the
+                        // Activity Logs page, or "..., manual discount 15% (₱150.00))".
                         var units = tx.Items.Sum(item => item.Quantity);
                         var details = new List<string> { Money.Peso(total), $"{units} item{(units == 1 ? "" : "s")}", paymentMethod };
                         if (discountCode != null) details.Add($"discount {discountCode}");
+                        if (manualPercent != null)
+                            details.Add($"manual discount {manualPercent}% ({Money.Peso(discountAmount)})");
                         var reference = string.IsNullOrWhiteSpace(tx.ReferenceId) ? $"#{transactionId}" : tx.ReferenceId.Trim();
                         await ActivityLog.WriteAsync(conn, dbTransaction, SessionClaims.FullNameOf(User), ActivityTypes.Sale,
                             $"Processed sale {reference} ({string.Join(", ", details)})");

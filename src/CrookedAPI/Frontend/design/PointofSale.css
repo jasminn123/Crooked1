@@ -807,6 +807,11 @@ select[aria-invalid="true"] {
   min-width: 88px;
 }
 
+/* Manual discount: the percent field under the dropdown, with the cashier's limit underneath. */
+.manual-discount-fields {
+  margin-top: 4px;
+}
+
 .discount-applied {
   display: flex;
   align-items: center;

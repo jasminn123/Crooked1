@@ -1,7 +1,8 @@
 /* =========================
    DISCOUNT COUPONS (owner only)
-   The owner creates coupons here. Cashiers type a coupon's code at the Point of Sale; the server
-   checks it there and works out the discount itself (DiscountsController, TransactionController).
+   The owner creates coupons here and sets how much staff can take off with a manual discount.
+   Cashiers pick a coupon or type a manual discount at the Point of Sale; the server checks it there
+   and works out the discount itself (DiscountsController, TransactionController).
 ========================= */
 const discountForm = document.getElementById('discountForm');
 const codeInput = document.getElementById('discountCode');
@@ -261,6 +262,91 @@ async function submitDiscount(discount) {
 }
 
 /* =========================
+   MANUAL DISCOUNTS
+   How much staff can take off at the POS without a coupon (0 turns it off for them). Owners can
+   give any percentage. The server checks the limit again when the sale is saved.
+========================= */
+const manualForm = document.getElementById('manualDiscountForm');
+const staffMaxInput = document.getElementById('staffMaxPercent');
+const saveManualButton = document.getElementById('saveManualDiscountBtn');
+const manualError = document.getElementById('manualDiscountError');
+let savedStaffMaxPercent = null;
+
+function setManualFormEnabled(enabled) {
+    staffMaxInput.disabled = !enabled;
+    saveManualButton.disabled = !enabled;
+}
+
+async function loadManualDiscount({ quiet = false } = {}) {
+    if (!quiet) {
+        setManualFormEnabled(false);
+        staffMaxInput.value = '';
+        staffMaxInput.placeholder = 'Loading...';
+        manualError.hidden = true;
+    }
+
+    try {
+        const settings = await UI.fetchJson(`${apiBase}/api/Discounts/manual`);
+        savedStaffMaxPercent = settings.staffMaxPercent;
+        // A live refresh doesn't replace a limit the owner is still typing.
+        if (!quiet || document.activeElement !== staffMaxInput) staffMaxInput.value = String(settings.staffMaxPercent);
+        staffMaxInput.placeholder = 'e.g. 10';
+        manualError.hidden = true;
+        setManualFormEnabled(true);
+    } catch (error) {
+        console.error('Manual Discount Error:', error);
+        if (quiet) return;
+        staffMaxInput.placeholder = '';
+        document.getElementById('manualDiscountErrorText').textContent =
+            `The manual discount limit could not be loaded. ${connectionMessage(error)}`;
+        manualError.hidden = false;
+    }
+}
+
+function saveManualDiscount(event) {
+    event.preventDefault();
+    staffMaxInput.removeAttribute('aria-invalid');
+
+    const percent = Number(staffMaxInput.value);
+    if (!staffMaxInput.value || !Number.isInteger(percent) || percent < 0 || percent > 100) {
+        markInvalid(staffMaxInput, 'Enter the staff limit as a whole number from 0 to 100.');
+        return;
+    }
+    if (percent === savedStaffMaxPercent) {
+        showToast(percent === 0 ? 'Manual discounts are already off for staff.' : `The staff limit is already ${percent}%.`, false);
+        return;
+    }
+
+    showDialog(
+        'Manual Discount Limit',
+        percent === 0
+            ? 'Turn off manual discounts for staff? Owners can still give them.'
+            : `Let staff give manual discounts of up to ${percent}% off?`,
+        () => submitManualDiscount(percent),
+        null,
+        { confirmText: percent === 0 ? 'Turn Off' : 'Save Limit', danger: percent === 0 }
+    );
+}
+
+async function submitManualDiscount(percent) {
+    const restore = UI.setLoading(saveManualButton, 'Saving...');
+    try {
+        const result = await UI.fetchJson(`${apiBase}/api/Discounts/manual`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ staffMaxPercent: percent })
+        });
+        savedStaffMaxPercent = result.staffMaxPercent;
+        showToast(result?.message || 'The limit has been saved.', false);
+    } catch (error) {
+        console.error('Manual Discount Save Error:', error);
+        showToast(connectionMessage(error), true);
+    } finally {
+        restore();
+    }
+}
+
+/* =========================
    PAGE LOAD
 ========================= */
 document.addEventListener('DOMContentLoaded', () => {
@@ -288,7 +374,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     startsOnInput.addEventListener('change', () => { endsOnInput.min = startsOnInput.value; });
 
+    manualForm.addEventListener('submit', saveManualDiscount);
+    staffMaxInput.addEventListener('input', () => {
+        staffMaxInput.value = staffMaxInput.value.replace(/\D/g, '').slice(0, 3);
+        staffMaxInput.removeAttribute('aria-invalid');
+    });
+    document.getElementById('retryManualDiscountBtn').addEventListener('click', () => loadManualDiscount());
+
     updateValueField();
     loadDiscounts();
-    Live.on(['discounts'], () => loadDiscounts({ quiet: true }));
+    loadManualDiscount();
+    Live.on(['discounts'], () => {
+        loadDiscounts({ quiet: true });
+        loadManualDiscount({ quiet: true });
+    });
 });

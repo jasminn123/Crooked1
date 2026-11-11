@@ -18,6 +18,11 @@ namespace Crooked.Models
         // total itself (DiscountStore), so for these sales Total_Amount from the browser is ignored.
         public string? DiscountCode { get; set; }
 
+        // A manual discount instead of a coupon (ManualDiscount): a whole-number percentage. The
+        // server checks it against the signed-in person's limit and works out the total itself,
+        // as it does for coupons.
+        public int? ManualDiscountPercent { get; set; }
+
         public List<TransactionItemInput> Items { get; set; } = new();
     }
 

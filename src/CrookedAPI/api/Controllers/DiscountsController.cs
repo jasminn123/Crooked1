@@ -7,9 +7,10 @@ using Crooked.Services;
 
 namespace Crooked.Controllers
 {
-    // Discount coupons. The owner creates and manages them on the Discounts page; any signed-in
-    // cashier can check a code at the POS (apply). The sale itself is saved by TransactionController,
-    // which checks the code again and records the use.
+    // Discount coupons and manual discounts. The owner creates and manages coupons, and sets how much
+    // staff can take off with a manual discount, on the Discounts page; any signed-in cashier can
+    // check a code (apply) or a manual discount (apply-manual) at the POS. The sale itself is saved by
+    // TransactionController, which checks the discount again and records it.
     [Route("api/[controller]")]
     [ApiController]
     public partial class DiscountsController : ControllerBase
@@ -212,6 +213,77 @@ namespace Crooked.Controllers
                 value = discount.Value,
                 label = discount.Label,
                 minPurchase = discount.MinPurchase,
+                subtotal,
+                discountAmount = amountOff,
+                total = subtotal - amountOff
+            });
+        }
+
+        // Manual discount limits: maxPercent is what the signed-in person can give (0 when they can't),
+        // staffMaxPercent the owner's limit for staff. Any signed-in cashier.
+        [HttpGet("manual")]
+        public async Task<IActionResult> GetManualDiscount()
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+            var staffMaxPercent = await DiscountStore.StaffMaxPercentAsync(connection, null);
+            return Ok(new
+            {
+                maxPercent = User.IsInRole(UserRoles.Owner) ? ManualDiscount.OwnerMaxPercent : staffMaxPercent,
+                staffMaxPercent
+            });
+        }
+
+        [Authorize(Roles = UserRoles.Owner)]
+        [HttpPost("manual")]
+        [LiveUpdate(LiveTopics.Discounts, LiveTopics.Activity)]
+        public async Task<IActionResult> SetManualDiscount([FromBody] ManualDiscountSettingsInput input)
+        {
+            var percent = input.StaffMaxPercent;
+            if (percent < 0 || percent > ManualDiscount.OwnerMaxPercent)
+                return BadRequest(new { message = "The staff limit must be a whole number from 0 to 100." });
+
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+            await using var dbTransaction = await connection.BeginTransactionAsync();
+
+            var changedBy = SessionClaims.FullNameOf(User);
+            await DiscountStore.SetStaffMaxPercentAsync(connection, dbTransaction, percent, changedBy);
+            await ActivityLog.WriteAsync(connection, dbTransaction, changedBy, ActivityTypes.Discount, percent == 0
+                ? "Turned off manual discounts for staff"
+                : $"Set the staff manual discount limit to {percent}%");
+            await dbTransaction.CommitAsync();
+            return Ok(new
+            {
+                message = percent == 0
+                    ? "Staff can no longer give manual discounts."
+                    : $"Staff can now give manual discounts of up to {percent}%.",
+                staffMaxPercent = percent
+            });
+        }
+
+        // The POS checking a manual discount for the items in its checkout. Changes nothing.
+        [HttpPost("apply-manual")]
+        public async Task<IActionResult> ApplyManualDiscount([FromBody] ManualDiscountRequest request)
+        {
+            if (request.Items.Count == 0 || request.Items.Any(item => item.ProductId <= 0 || item.Quantity <= 0))
+                return BadRequest(new { message = "Add products to the checkout before applying a discount." });
+
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            var maxPercent = await DiscountStore.ManualMaxPercentAsync(connection, null, User);
+            var problem = ManualDiscount.Problem(request.Percent, maxPercent);
+            if (problem != null) return Conflict(new { message = problem, maxPercent });
+
+            var percent = request.Percent!.Value;
+            var subtotal = await DiscountStore.SubtotalAsync(connection, null, request.Items);
+            var amountOff = ManualDiscount.AmountOff(subtotal, percent);
+            return Ok(new
+            {
+                percent,
+                label = ManualDiscount.Label(percent),
+                maxPercent,
                 subtotal,
                 discountAmount = amountOff,
                 total = subtotal - amountOff

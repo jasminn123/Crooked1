@@ -74,8 +74,11 @@ namespace Crooked.Models
 
         // Percentages round to the nearest centavo; a fixed amount never takes more than the subtotal.
         public decimal AmountOff(decimal subtotal) => Type == DiscountTypes.Percent
-            ? Math.Round(subtotal * Value / 100m, 2, MidpointRounding.AwayFromZero)
+            ? PercentOff(subtotal, Value)
             : Math.Min(Value, subtotal);
+
+        public static decimal PercentOff(decimal subtotal, decimal percent) =>
+            Math.Round(subtotal * percent / 100m, 2, MidpointRounding.AwayFromZero);
 
         // Why the code can't be used on a sale of this subtotal today, or null when it can.
         public string? Problem(decimal subtotal, DateOnly today) => Status(today) switch
@@ -87,6 +90,45 @@ namespace Crooked.Models
             _ when subtotal < MinPurchase => $"The discount code {Code} needs a purchase of at least {Money.Peso(MinPurchase)}.",
             _ => null
         };
+    }
+
+    // A percentage the cashier types at the POS instead of using a coupon. Owners can give up to
+    // 100%; staff up to the limit the owner sets on the Discounts page
+    // (discount_settings.staff_max_percent, where 0 turns manual discounts off for staff).
+    // The POS works out the same amount (discountAmount in PointOfSale.js).
+    public static class ManualDiscount
+    {
+        public const int OwnerMaxPercent = 100;
+
+        public static string Label(int percent) => StoredDiscount.LabelFor(DiscountTypes.Percent, percent);
+
+        public static decimal AmountOff(decimal subtotal, int percent) => StoredDiscount.PercentOff(subtotal, percent);
+
+        // Why this discount can't be given, or null when it can. maxPercent is the signed-in
+        // person's limit (DiscountStore.ManualMaxPercentAsync).
+        public static string? Problem(int? percent, int maxPercent)
+        {
+            if (maxPercent <= 0)
+                return "Manual discounts are turned off. The owner can allow them on the Discounts page.";
+            if (percent is not int value || value < 1 || value > OwnerMaxPercent)
+                return "Enter the percent off as a whole number from 1 to 100.";
+            if (value > maxPercent)
+                return $"Staff can give at most {maxPercent}% off. Ask the owner for a bigger discount.";
+            return null;
+        }
+    }
+
+    // The POS checking a manual discount against what is in the checkout.
+    public sealed class ManualDiscountRequest
+    {
+        public int? Percent { get; set; }
+        public List<TransactionItemInput> Items { get; set; } = new();
+    }
+
+    // The owner's limit for staff, from the Discounts page.
+    public sealed class ManualDiscountSettingsInput
+    {
+        public int StaffMaxPercent { get; set; }
     }
 
     // The create form on the Discounts page.

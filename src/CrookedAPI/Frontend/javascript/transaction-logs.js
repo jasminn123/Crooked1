@@ -344,10 +344,12 @@ function renderDetails({ transaction, items, exchanges, canExchange, exchangeUnt
         UI.detailPair('Status', UI.statusBadge(transaction.status)),
         UI.detailPair('Total amount', UI.formatPeso(transaction.totalAmount))
     );
-    // Sales that used a discount code (Discounts page): totalAmount is what the customer paid after it.
+    // Sales with a coupon or a manual discount: totalAmount is what the customer paid after it.
     if (transaction.discountAmount > 0) {
-        summary.appendChild(UI.detailPair('Discount',
-            `${transaction.discountCode || 'Coupon'} · −${UI.formatPeso(transaction.discountAmount)}`));
+        const name = transaction.manualDiscountPercent
+            ? `Manual ${transaction.manualDiscountPercent}%`
+            : transaction.discountCode || 'Coupon';
+        summary.appendChild(UI.detailPair('Discount', `${name} · −${UI.formatPeso(transaction.discountAmount)}`));
     }
 
     const itemsSection = UI.el('section', 'details-section');
