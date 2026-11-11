@@ -6,7 +6,7 @@
     <title>CRKD | Management</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../design/dashboard.css?v=28">
+    <link rel="stylesheet" href="../design/dashboard.css?v=29">
     <link rel="stylesheet" href="../design/components.css?v=7">
     <link rel="icon" type="image/png" href="../assets/Favicon.jpg">
 
@@ -113,6 +113,9 @@
                     <section class="card chart-card" aria-labelledby="salesChartTitle">
                         <h2 id="salesChartTitle" class="card-title">Product Sales by Day</h2>
                         <p id="salesAnalyticsStatus" class="card-subtitle" role="status">Loading the last 7 days of sales...</p>
+                        <button type="button" id="salesAnalyticsRetry" class="btn btn-secondary btn-sm chart-retry" hidden>
+                            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>Try again
+                        </button>
                         <p class="chart-total">Total units sold (7 days): <strong id="totalProductsSold">—</strong></p>
                         <div class="chart-canvas-wrap">
                             <canvas id="salesChart" role="img"
@@ -158,12 +161,12 @@
         </main>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js"></script>
     <script src="../javascript/ui.js?v=6"></script>
     <script src="../javascript/live.js?v=2"></script>
     <script src="../javascript/layout.js?v=9"></script>
     <script src="../javascript/account.js?v=4"></script>
-    <script src="../javascript/dashboard.js?v=34"></script>
+    <script src="../javascript/dashboard.js?v=35"></script>
 
 </body>
 </html>

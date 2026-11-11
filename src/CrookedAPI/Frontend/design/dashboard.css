@@ -1173,6 +1173,11 @@ body.modal-open {
     flex: 1 1 0;
 }
 
+/* Shown under the chart's status line when the sales analytics fail to load. */
+.chart-retry {
+    margin-bottom: 16px;
+}
+
 .chart-total {
     margin: 0 0 16px;
     color: var(--color-text-muted);
