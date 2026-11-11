@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Crooked.Models;
@@ -10,6 +11,8 @@ namespace Crooked.Controllers
     // goes back into stock and the replacement is taken out of stock.
     [ApiController]
     [Route("api/[controller]")]
+    // The Exchanges page is for the owner only.
+    [Authorize(Roles = UserRoles.Owner)]
     public class ExchangeController : ControllerBase
     {
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
@@ -397,7 +400,7 @@ namespace Crooked.Controllers
                 }
 
                 var units = request.Items.Count;
-                await TransactionStore.LogActivityAsync(connection, transaction, processedBy,
+                await ActivityLog.WriteAsync(connection, transaction, SessionClaims.FullNameOf(User), ActivityTypes.Exchange,
                     $"Exchanged {units} item{(units == 1 ? "" : "s")} on sale {referenceId}");
 
                 await transaction.CommitAsync();

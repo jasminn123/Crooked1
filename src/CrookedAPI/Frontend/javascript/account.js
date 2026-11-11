@@ -23,7 +23,6 @@ function openPasswordForm(options) {
 
     const modal = UI.el('div', 'modal password-form-modal');
     modal.id = 'passwordFormModal';
-    modal.style.display = 'flex';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
     modal.setAttribute('aria-labelledby', 'passwordFormTitle');
@@ -188,12 +187,17 @@ function openPasswordForm(options) {
 /* =========================
    OWN PASSWORD (profile menu)
 ========================= */
-// Any signed-in user, owner or staff. index.js saves the username at login; sessions
-// from before that was added type it in instead.
+document.querySelector('[data-action="change-password"]')?.addEventListener('click', changeOwnPassword);
+
 function changeOwnPassword() {
     setProfileCardOpen(false);
     document.querySelector('.profile-icon')?.focus();
+    openOwnPasswordForm();
+}
 
+// Any signed-in user, owner or staff; the Accounts page also opens it for the owner's own row.
+// index.js saves the username at login; sessions from before that was added type it in instead.
+function openOwnPasswordForm() {
     openPasswordForm({
         title: 'Change Password',
         description: 'Enter your current password, then choose a new one.',

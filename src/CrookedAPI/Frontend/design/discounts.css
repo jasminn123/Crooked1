@@ -1,0 +1,135 @@
+/* ── DISCOUNTS ── */
+
+/* Create form: four fields a row on wide screens, two on tablets, one on phones. */
+.discount-form {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+    gap: 16px;
+}
+
+.discount-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.discount-form-actions .btn {
+    min-width: 160px;
+}
+
+.discount-form input[aria-invalid="true"] {
+    border-color: var(--color-danger);
+}
+
+/* Codes are saved in capitals (discounts.js), so they show in capitals while typing. */
+.discount-code-input {
+    text-transform: uppercase;
+}
+
+.discount-code-input::placeholder {
+    text-transform: none;
+}
+
+/* The Action column only needs room for its two buttons (phones give it a whole line). */
+@media (min-width: 761px) {
+    .discounts-table td.col-wrap {
+        min-width: 180px;
+    }
+}
+
+/* Code with its description underneath */
+.discount-code {
+    display: block;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.discount-description {
+    display: block;
+    margin-top: 2px;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+}
+
+/* Manual discounts: the staff limit with its Save button beside it (underneath on phones). */
+.manual-discount-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px 16px;
+}
+
+.manual-discount-form .form-field {
+    flex: 0 1 280px;
+}
+
+/* Lines the button up with the input, below the field's label. */
+.manual-discount-form .btn {
+    min-width: 160px;
+    margin-top: calc(var(--font-size-sm) * 1.4 + 6px);
+}
+
+.manual-discount-form input[aria-invalid="true"] {
+    border-color: var(--color-danger);
+}
+
+.manual-discount-error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 12px 0 0;
+    color: var(--color-danger);
+    font-weight: 700;
+}
+
+/* Disable / Enable and Delete, side by side in the Action column */
+.discount-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+@media (max-width: 1100px) {
+    .discount-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .discount-actions .btn {
+        flex: 1 1 auto;
+    }
+}
+
+@media (max-width: 520px) {
+    .discount-form {
+        grid-template-columns: 1fr;
+    }
+
+    .discount-form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .discount-form-actions .btn {
+        width: 100%;
+    }
+
+    .manual-discount-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .manual-discount-form .form-field {
+        flex-basis: auto;
+    }
+
+    .manual-discount-form .btn {
+        width: 100%;
+        margin-top: 0;
+    }
+}

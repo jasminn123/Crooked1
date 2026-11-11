@@ -6,12 +6,14 @@
     <title>CRKD | Management</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../design/dashboard.css?v=23">
-    <link rel="stylesheet" href="../design/components.css?v=6">
+    <link rel="stylesheet" href="../design/dashboard.css?v=29">
+    <link rel="stylesheet" href="../design/components.css?v=7">
     <link rel="icon" type="image/png" href="../assets/Favicon.jpg">
 
     <!-- Applies the saved theme before the page is drawn, so the page never flashes the wrong colours. -->
-    <script src="../javascript/theme.js?v=2"></script>
+    <script src="../javascript/theme.js?v=3"></script>
+    <!-- Sends signed-out visitors to the login page before the page is drawn. -->
+    <script src="../javascript/session.js?v=2"></script>
 </head>
 
 <body data-page="dashboard">
@@ -29,9 +31,11 @@
         <a id="nav-products" href="products.html" class="nav-item"><i class="fa-solid fa-shirt" aria-hidden="true"></i>PRODUCTS</a>
         <a href="inventory.html" class="nav-item"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>INVENTORY</a>
         <a href="transaction-logs.html" class="nav-item"><i class="fa-solid fa-receipt" aria-hidden="true"></i>AUDIT LOGS</a>
+        <a id="nav-activity-logs" href="activity-logs.html" class="nav-item"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>ACTIVITY LOGS</a>
         <a id="nav-exchange" href="exchange.html" class="nav-item"><i class="fa-solid fa-right-left" aria-hidden="true"></i>EXCHANGES</a>
         <a id="nav-sales-history" href="sales-history.html" class="nav-item"><i class="fa-solid fa-chart-line" aria-hidden="true"></i>SALES HISTORY</a>
-        <a id="nav-staff-management" href="staff-management.html" class="nav-item"><i class="fa-solid fa-users" aria-hidden="true"></i>STAFF MANAGEMENT</a>
+        <a id="nav-discounts" href="discounts.html" class="nav-item"><i class="fa-solid fa-tags" aria-hidden="true"></i>DISCOUNTS</a>
+        <a id="nav-staff-management" href="staff-management.html" class="nav-item"><i class="fa-solid fa-users" aria-hidden="true"></i>ACCOUNTS</a>
         <a id="nav-forecasting" href="forecasting.html" class="nav-item"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>FORECASTING</a>
 
     </nav>
@@ -43,13 +47,13 @@
         <header class="top-header">
             <div class="header-icons">
 
-                <div id="forecastNotifications" class="forecast-notifications" style="display:none;">
+                <div id="forecastNotifications" class="forecast-notifications" hidden>
                     <button id="forecastNotificationButton" class="forecast-notification-button" type="button"
                         aria-label="Forecast notifications" aria-expanded="false" aria-controls="forecastNotificationPanel">
                         <i class="fa-solid fa-bell" aria-hidden="true"></i>
-                        <span id="forecastNotificationCount" class="forecast-notification-count" style="display:none;" aria-hidden="true">0</span>
+                        <span id="forecastNotificationCount" class="forecast-notification-count" hidden aria-hidden="true">0</span>
                     </button>
-                    <div id="forecastNotificationPanel" class="forecast-notification-panel" style="display:none;">
+                    <div id="forecastNotificationPanel" class="forecast-notification-panel" hidden>
                         <h3>Forecast Notifications</h3>
                         <div id="forecastNotificationList" class="forecast-notification-list">
                             <p class="forecast-notification-empty">Loading notifications...</p>
@@ -59,31 +63,31 @@
 
                 <div class="profile-section">
                     <!-- The button is named by the signed-in user's name (layout.js fills .Owner). -->
-                    <button type="button" class="profile-icon" onclick="toggleProfileCard(event)"
+                    <button type="button" class="profile-icon"
                         aria-haspopup="true" aria-expanded="false" aria-controls="profileCard">
                         <i class="fa-solid fa-user" aria-hidden="true"></i>
                         <span class="Owner">Main Owner</span>
                         <i class="fa-solid fa-chevron-down profile-chevron" aria-hidden="true"></i>
                     </button>
 
-                    <div id="profileCard" class="profile-card">
+                    <div id="profileCard" class="profile-card" hidden>
                         <div class="profile-card-header">
                             <i class="fa-solid fa-user" aria-hidden="true"></i>
                             <span>Main Owner</span>
                         </div>
 
                         <div class="profile-card-body">
-                            <button type="button" class="profile-menu-item" onclick="window.location.href='../page/PointofSale.html'">
+                            <a class="profile-menu-item" href="../page/PointofSale.html">
                                 <i class="fa-solid fa-cash-register" aria-hidden="true"></i>
                                 Switch to POS
-                            </button>
-                            <button type="button" class="profile-menu-item theme-toggle-button" onclick="toggleDarkMode()">Light Mode</button>
-                            <button type="button" class="profile-menu-item" onclick="changeOwnPassword()">
+                            </a>
+                            <button type="button" class="profile-menu-item theme-toggle-button">Light Mode</button>
+                            <button type="button" class="profile-menu-item" data-action="change-password">
                                 <i class="fa-solid fa-key" aria-hidden="true"></i>
                                 Change Password
                             </button>
                             <hr class="profile-menu-separator">
-                            <button type="button" class="profile-menu-item profile-menu-item-danger" onclick="logout()">
+                            <button type="button" class="profile-menu-item profile-menu-item-danger" data-action="logout">
                                 <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
                                 Logout
                             </button>
@@ -109,6 +113,9 @@
                     <section class="card chart-card" aria-labelledby="salesChartTitle">
                         <h2 id="salesChartTitle" class="card-title">Product Sales by Day</h2>
                         <p id="salesAnalyticsStatus" class="card-subtitle" role="status">Loading the last 7 days of sales...</p>
+                        <button type="button" id="salesAnalyticsRetry" class="btn btn-secondary btn-sm chart-retry" hidden>
+                            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>Try again
+                        </button>
                         <p class="chart-total">Total units sold (7 days): <strong id="totalProductsSold">—</strong></p>
                         <div class="chart-canvas-wrap">
                             <canvas id="salesChart" role="img"
@@ -116,16 +123,26 @@
                         </div>
                     </section>
 
-                    <!-- TODAY'S REVENUE -->
-                    <section class="card stat-card" aria-labelledby="todayRevenueLabel">
-                        <h2 id="todayRevenueLabel" class="stat-label">Today's Revenue</h2>
-                        <p id="todayRevenue" class="stat-value">Loading...</p>
+                    <!-- REVENUE (the dropdown's values are the API's revenue periods) -->
+                    <section class="card stat-card" aria-labelledby="revenueLabel">
+                        <div class="stat-card-header">
+                            <h2 id="revenueLabel" class="stat-label">Revenue</h2>
+                            <label for="revenuePeriod" class="visually-hidden">Revenue period</label>
+                            <select id="revenuePeriod" class="revenue-period">
+                                <option value="today" selected>Today</option>
+                                <option value="7days">Last 7 days</option>
+                                <option value="month">This month</option>
+                                <option value="year">This year</option>
+                            </select>
+                        </div>
+                        <p id="revenueValue" class="stat-value" aria-live="polite">Loading...</p>
+                        <p id="revenueRange" class="stat-note"></p>
                     </section>
 
                 </div>
 
                 <!-- STAFF: STOCK CARDS -->
-                <div id="staff-stats-container" class="staff-stats" style="display:none;">
+                <div id="staff-stats-container" class="staff-stats" hidden>
 
                     <section class="card stat-card" aria-labelledby="remainingStockLabel">
                         <h2 id="remainingStockLabel" class="stat-label">Remaining Stock</h2>
@@ -139,36 +156,17 @@
 
                 </div>
 
-                <!-- RECENT ACTIVITY LOGS -->
-                <section id="activityLogsCard" class="card" aria-labelledby="activityLogsTitle">
-                    <h2 id="activityLogsTitle" class="card-title">Recent Activity Logs</h2>
-
-                    <div class="transaction-table-scroll recent-activity-table-scroll">
-                        <table class="transaction-table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Staff Name</th>
-                                    <th scope="col">Action</th>
-                                    <th scope="col">Date</th>
-                                </tr>
-                            </thead>
-
-                            <tbody id="logTableBody"></tbody>
-                        </table>
-                    </div>
-                </section>
-
             </div>
 
         </main>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="../javascript/ui.js?v=5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.6.1/dist/chart.umd.min.js"></script>
+    <script src="../javascript/ui.js?v=6"></script>
     <script src="../javascript/live.js?v=2"></script>
-    <script src="../javascript/layout.js?v=5"></script>
-    <script src="../javascript/account.js?v=2"></script>
-    <script src="../javascript/dashboard.js?v=27"></script>
+    <script src="../javascript/layout.js?v=9"></script>
+    <script src="../javascript/account.js?v=4"></script>
+    <script src="../javascript/dashboard.js?v=35"></script>
 
 </body>
 </html>

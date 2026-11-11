@@ -10,7 +10,8 @@ namespace Crooked.Services
         // Select list for ReadSummary; the query must alias transactions as t.
         public const string SummaryColumns = @"
             t.transaction_id, t.reference_id, t.date_time, t.total_amount, t.status, t.has_exchange,
-            t.assisted_by, t.payment_method,
+            t.assisted_by, t.payment_method, t.discount_code, t.discount_amount,
+            t.manual_discount_percent,
             (SELECT COALESCE(SUM(ti.quantity), 0) FROM transaction_items ti WHERE ti.transaction_id = t.transaction_id) AS item_count";
 
         public static TransactionSummary ReadSummary(NpgsqlDataReader reader)
@@ -28,6 +29,9 @@ namespace Crooked.Services
                 reader["payment_method"] as string ?? PaymentMethods.Unknown,
                 reader["assisted_by"] as string ?? "Unknown",
                 Convert.ToInt32(reader["item_count"]),
+                reader["discount_code"] as string,
+                Convert.ToDecimal(reader["discount_amount"]),
+                reader["manual_discount_percent"] is int manualPercent ? manualPercent : null,
                 storedStatus,
                 dateTime);
         }
@@ -126,16 +130,6 @@ namespace Crooked.Services
                 }
             }
             return exchanges;
-        }
-
-        public static async Task LogActivityAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, string staffName, string action)
-        {
-            await using var command = new NpgsqlCommand(
-                "INSERT INTO activity_logs (staff_name, action, date_occurred) VALUES (@name, @action, NOW())",
-                connection, transaction);
-            command.Parameters.AddWithValue("@name", staffName);
-            command.Parameters.AddWithValue("@action", action);
-            await command.ExecuteNonQueryAsync();
         }
     }
 }

@@ -13,6 +13,7 @@ namespace Crooked.Services
         public const string Staff = "staff";
         public const string Forecast = "forecast";
         public const string Notifications = "notifications";
+        public const string Discounts = "discounts";
     }
 
     // Tells open pages that data changed, over a Supabase Realtime broadcast channel (websockets).

@@ -280,8 +280,8 @@ async function submitImport(event) {
     }
 
     const form = new FormData();
+    // The server logs the import under the signed-in account's name.
     form.append('file', importFile.files[0]);
-    form.append('importedBy', localStorage.getItem('userName')?.trim() || 'Unknown');
 
     importPending = true;
     const restore = UI.setLoading(document.getElementById('importSubmit'), 'Importing...');
@@ -344,6 +344,13 @@ function renderDetails({ transaction, items, exchanges, canExchange, exchangeUnt
         UI.detailPair('Status', UI.statusBadge(transaction.status)),
         UI.detailPair('Total amount', UI.formatPeso(transaction.totalAmount))
     );
+    // Sales with a coupon or a manual discount: totalAmount is what the customer paid after it.
+    if (transaction.discountAmount > 0) {
+        const name = transaction.manualDiscountPercent
+            ? `Manual ${transaction.manualDiscountPercent}%`
+            : transaction.discountCode || 'Coupon';
+        summary.appendChild(UI.detailPair('Discount', `${name} · −${UI.formatPeso(transaction.discountAmount)}`));
+    }
 
     const itemsSection = UI.el('section', 'details-section');
     itemsSection.appendChild(UI.el('h3', null, 'Items'));
@@ -373,6 +380,7 @@ function renderDetails({ transaction, items, exchanges, canExchange, exchangeUnt
             body.appendChild(row);
         });
         table.append(head, body);
+        UI.labelCells(body);
         const scroll = UI.el('div', 'details-table-scroll');
         scroll.appendChild(table);
         itemsSection.appendChild(scroll);
@@ -443,6 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const role = localStorage.getItem('userRole');
     if (role && role.toLowerCase() !== 'owner') {
         document.getElementById('importButton')?.remove();
+        document.getElementById('exportButton')?.remove();
         detailsExchangeLink.remove();
         document.getElementById('detailsSubtitle').textContent = "Sale records can't be edited.";
     }
@@ -456,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     clearFiltersButton.addEventListener('click', clearFilters);
 
-    document.getElementById('exportButton').addEventListener('click', exportTransactions);
+    document.getElementById('exportButton')?.addEventListener('click', exportTransactions);
     document.getElementById('importButton')?.addEventListener('click', openImport);
     document.getElementById('templateButton').addEventListener('click', downloadTemplate);
     importFile.addEventListener('change', checkImportFile);

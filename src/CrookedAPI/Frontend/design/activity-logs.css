@@ -1,0 +1,32 @@
+/* ── RECENT ACTIVITY LOGS ── */
+
+/* Pages hold at most 20 rows, so the table shows them all instead of scrolling inside the panel. */
+.data-table-panel .transaction-table-scroll {
+    max-height: none;
+}
+
+.activity-search-field {
+    flex: 1 1 260px;
+    min-width: 220px;
+}
+
+.activity-table .col-date {
+    white-space: nowrap;
+}
+
+.activity-table .col-staff {
+    font-weight: 700;
+}
+
+/* The search gets its own row once the filters wrap (same as the Audit Logs page). */
+@media (max-width: 800px) {
+    .table-filters .activity-search-field {
+        flex-basis: 100%;
+    }
+}
+
+@media (max-width: 760px) {
+    .activity-table .col-date {
+        white-space: normal;
+    }
+}

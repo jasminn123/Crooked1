@@ -76,7 +76,6 @@
     --section-gap: 24px;
     --sidebar-width: 260px;
     --header-height: 64px;
-    --mobile-nav-height: 64px;
 
     --font-family: Arial, Helvetica, sans-serif;
     --font-size-xs: 12px;
@@ -255,10 +254,95 @@ html.theme-transition *::after {
     gap: 4px;
     width: var(--sidebar-width);
     height: 100vh;
+    height: 100dvh;
     padding: 24px 16px;
     overflow-y: auto;
+    overscroll-behavior: contain; /* scrolling past the first or last link doesn't scroll the page */
     background: var(--chrome-bg);
     border-right: 1px solid var(--chrome-border);
+}
+
+/* Scrollbar: a slim rounded thumb on a clear track that brightens while the pointer is over the
+   sidebar. Chrome, Edge and Safari use the ::-webkit-scrollbar rules, which they ignore once
+   scrollbar-color is set, so only Firefox gets that. Both thumb colours meet 3:1. */
+.sidebar::-webkit-scrollbar {
+    width: 10px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    margin-block: 8px;
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: var(--chrome-control-border) padding-box;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb {
+    background-color: var(--chrome-text);
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover,
+.sidebar::-webkit-scrollbar-thumb:active {
+    border-width: 2px;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    .sidebar {
+        scrollbar-width: thin;
+        scrollbar-color: var(--chrome-control-border) transparent;
+    }
+
+    .sidebar:hover {
+        scrollbar-color: var(--chrome-text) transparent;
+    }
+}
+
+/* When links are cut off above or below, that edge of the sidebar fades out so it reads as
+   "scroll for more". The fades follow the sidebar's scroll position (scroll-driven animations);
+   they stay hidden when everything fits and in browsers without that feature. Each fade is
+   pulled out of the layout by its negative margin (which also cancels the 4px gap) and spans
+   the 16px side padding. Sticky offsets count from inside the 24px top and bottom padding, so
+   -24px puts the fades at the sidebar's edges. */
+@supports (animation-timeline: scroll()) {
+    .sidebar {
+        --sidebar-fade: 40px;
+    }
+
+    .sidebar::before,
+    .sidebar::after {
+        content: "";
+        position: sticky;
+        flex: 0 0 var(--sidebar-fade);
+        margin-inline: -16px;
+        pointer-events: none;
+        opacity: 0;
+        animation: sidebar-edge-fade linear both;
+        animation-timeline: scroll();
+    }
+
+    .sidebar::before {
+        top: -24px;
+        margin-bottom: calc(-1 * var(--sidebar-fade) - 4px);
+        background: linear-gradient(var(--chrome-bg), transparent);
+        animation-range: 0px var(--sidebar-fade);
+    }
+
+    .sidebar::after {
+        bottom: -24px;
+        margin-top: calc(-1 * var(--sidebar-fade) - 4px);
+        background: linear-gradient(transparent, var(--chrome-bg));
+        animation-direction: reverse;
+        animation-range: calc(100% - var(--sidebar-fade)) 100%;
+    }
+}
+
+@keyframes sidebar-edge-fade {
+    to {
+        opacity: 1;
+    }
 }
 
 .logo-img {
@@ -305,6 +389,67 @@ html[data-theme="light"] .logo-img {
 }
 
 /* =========================
+   NAVIGATION DRAWER
+   Tablets and phones (1100px and below): layout.js adds these to the
+   page and the sidebar slides in over it. See RESPONSIVE below.
+========================= */
+.nav-toggle,
+.nav-close,
+.nav-backdrop,
+.header-logo {
+    display: none;
+}
+
+.nav-toggle,
+.nav-close {
+    align-items: center;
+    justify-content: center;
+    width: var(--control-height);
+    height: var(--control-height);
+    padding: 0;
+    border: 1px solid var(--chrome-control-border);
+    border-radius: var(--radius-md);
+    background: var(--chrome-surface);
+    color: var(--chrome-text-strong);
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.nav-toggle {
+    flex: 0 0 auto;
+}
+
+.nav-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+}
+
+.nav-toggle:hover,
+.nav-close:hover {
+    background: var(--chrome-hover);
+}
+
+.nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-sidebar) - 1);
+    background: var(--color-overlay);
+}
+
+/* The logo is a square image with a black margin; crop to the lettering. */
+.header-logo {
+    flex: 0 0 auto;
+    width: 72px;
+    height: 36px;
+    object-fit: cover;
+}
+
+html[data-theme="light"] .header-logo {
+    filter: invert(1);
+}
+
+/* =========================
    MAIN AREA & STICKY TOP BAR
 ========================= */
 .main {
@@ -323,6 +468,7 @@ html[data-theme="light"] .logo-img {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    gap: 12px;
     height: var(--header-height);
     padding: 0 24px;
     background: var(--chrome-bg);
@@ -335,6 +481,7 @@ html[data-theme="light"] .logo-img {
     align-items: center;
     justify-content: flex-end;
     gap: 16px;
+    margin-left: auto;
 }
 
 .content-wrapper {
@@ -427,7 +574,6 @@ html[data-theme="light"] .logo-img {
     top: calc(100% + 12px);
     right: 0;
     z-index: var(--z-dropdown);
-    display: none; /* layout.js shows it */
     width: 220px;
     overflow: hidden;
     border: 1px solid var(--color-border);
@@ -468,6 +614,7 @@ html[data-theme="light"] .logo-img {
     font-size: var(--font-size-md);
     font-weight: 600;
     text-align: left;
+    text-decoration: none;
     cursor: pointer;
     transition: background-color 0.15s ease;
 }
@@ -585,6 +732,10 @@ html[data-theme="light"] .theme-toggle-button::before {
     border-radius: var(--radius-sm);
     object-fit: cover;
     background: var(--color-surface-3);
+}
+
+.forecast-notification-image.is-broken {
+    visibility: hidden;
 }
 
 .forecast-notification-copy {
@@ -857,15 +1008,12 @@ table {
 
 .transaction-table-scroll,
 .table-container {
+    position: relative; /* keeps hidden text in a cell inside the scroll area */
     max-height: 500px;
     overflow: auto;
     border-radius: var(--radius-md);
     scrollbar-color: var(--color-border-strong) transparent;
     scrollbar-width: thin;
-}
-
-.recent-activity-table-scroll {
-    max-height: 320px;
 }
 
 .transaction-table {
@@ -886,15 +1034,13 @@ table {
     letter-spacing: 0.6px;
     text-align: left;
     text-transform: uppercase;
-    white-space: nowrap;
 }
 
-/* Keep each row on one line; the scroll container scrolls sideways when the window is narrow. */
+/* Text wraps only when a row does not fit, so tables fit the window instead of scrolling sideways. */
 .transaction-table td {
     padding: 14px 16px;
     border-bottom: 1px solid var(--color-border);
     vertical-align: middle;
-    white-space: nowrap;
 }
 
 .transaction-table tbody tr:hover td {
@@ -907,6 +1053,11 @@ table {
 
 .transaction-table .col-muted {
     color: var(--color-text-muted);
+}
+
+/* Long text, such as an activity log entry. */
+.transaction-table .col-wrap {
+    min-width: 260px;
 }
 
 .transaction-table .transaction-empty,
@@ -925,6 +1076,7 @@ table {
     position: fixed;
     inset: 0;
     z-index: var(--z-modal);
+    display: flex;
     align-items: center;
     justify-content: center;
     padding: 24px;
@@ -936,6 +1088,7 @@ table {
 .modal-content {
     width: min(100%, 560px);
     max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
     overflow-y: auto;
     padding: 28px;
     border: 1px solid var(--color-border);
@@ -1020,6 +1173,11 @@ body.modal-open {
     flex: 1 1 0;
 }
 
+/* Shown under the chart's status line when the sales analytics fail to load. */
+.chart-retry {
+    margin-bottom: 16px;
+}
+
 .chart-total {
     margin: 0 0 16px;
     color: var(--color-text-muted);
@@ -1066,6 +1224,26 @@ body.modal-open {
     color: var(--color-danger);
 }
 
+.stat-note {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* A stat card's title with a control (such as the revenue period dropdown) on the right. */
+.stat-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+.revenue-period {
+    min-height: var(--control-height-sm);
+    cursor: pointer;
+}
+
 /* =========================
    REDUCED MOTION
    Movement is replaced by a plain fade (WCAG 2.3.3).
@@ -1086,7 +1264,17 @@ body.modal-open {
 
 /* =========================
    RESPONSIVE
+   Laptops keep the fixed sidebar. At 1100px and below it becomes a
+   drawer opened from the top bar. At 760px and below each table row
+   becomes a small card of labelled values (UI.labelCells sets the labels).
 ========================= */
+@media (max-width: 1280px) {
+    .transaction-table th,
+    .transaction-table td {
+        padding-inline: 10px;
+    }
+}
+
 @media (max-width: 1100px) {
     :root {
         --card-padding: 20px;
@@ -1100,8 +1288,62 @@ body.modal-open {
         flex-direction: column;
     }
 
+    body {
+        display: block;
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+        visibility: hidden;
+    }
+
+    .nav-open .sidebar {
+        box-shadow: var(--shadow-lg);
+        transform: none;
+        visibility: visible;
+    }
+
+    body.nav-open {
+        overflow: hidden;
+    }
+
+    .nav-open .nav-backdrop {
+        display: block;
+    }
+
+    .nav-toggle,
+    .nav-close {
+        display: inline-flex;
+    }
+
+    .header-logo {
+        display: block;
+    }
+
+    .main {
+        margin-left: 0;
+    }
+}
+
+/* It hides after sliding out, but shows at once when opening so it can take focus. */
+@media (max-width: 1100px) and (prefers-reduced-motion: no-preference) {
+    .sidebar {
+        transition: transform 0.2s ease, visibility 0s 0.2s;
+    }
+
+    .nav-open .sidebar {
+        transition: transform 0.2s ease;
+    }
+}
+
+@media (max-width: 900px) {
     .transaction-table {
-        min-width: 620px;
+        font-size: var(--font-size-sm);
+    }
+
+    .transaction-table th,
+    .transaction-table td {
+        padding-inline: 8px;
     }
 }
 
@@ -1111,52 +1353,7 @@ body.modal-open {
         --header-height: 56px;
     }
 
-    html {
-        scroll-padding-top: calc(var(--mobile-nav-height) + var(--header-height) + 16px);
-    }
-
-    body {
-        display: block;
-    }
-
-    /* The sidebar becomes a sticky, horizontally scrolling bar; the top bar sticks right under it. */
-    .sidebar {
-        position: sticky;
-        flex-direction: row;
-        align-items: center;
-        width: 100%;
-        height: var(--mobile-nav-height);
-        padding: 0 12px;
-        overflow-x: auto;
-        overflow-y: hidden;
-        border-right: 0;
-        border-bottom: 1px solid var(--chrome-border);
-    }
-
-    .logo-container {
-        flex: 0 0 auto;
-    }
-
-    .logo-img {
-        width: 48px;
-        margin: 0 8px 0 0;
-    }
-
-    .nav-item {
-        flex: 0 0 auto;
-        min-height: 40px;
-        padding: 0 12px;
-        font-size: var(--font-size-xs);
-        white-space: nowrap;
-    }
-
-    .main {
-        min-height: 0;
-        margin-left: 0;
-    }
-
     .top-header {
-        top: var(--mobile-nav-height);
         padding: 0 16px;
     }
 
@@ -1177,7 +1374,135 @@ body.modal-open {
     }
 
     .modal-content {
+        max-height: calc(100vh - 32px);
+        max-height: calc(100dvh - 32px);
         padding: 20px;
+    }
+}
+
+@media (max-width: 760px) {
+    :root {
+        --control-height-sm: 40px;
+    }
+
+    .header-icons {
+        gap: 8px;
+    }
+
+    .content-wrapper > h1 {
+        margin-bottom: 16px;
+        font-size: 20px;
+    }
+
+    .stat-value {
+        font-size: 28px;
+    }
+
+    /* The bell sits left of the profile button, so a panel hanging from it would run off the screen. */
+    .forecast-notification-panel {
+        position: fixed;
+        top: calc(var(--header-height) + 8px);
+        right: 16px;
+        left: 16px;
+        width: auto;
+    }
+
+    .chart-canvas-wrap {
+        height: 380px;
+    }
+
+    /* Tables: each row becomes a small card, and the page does the scrolling. */
+    .transaction-table-scroll,
+    .table-container {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .transaction-table,
+    .transaction-table tbody,
+    .transaction-table tr {
+        display: block;
+        width: 100%;
+    }
+
+    .transaction-table {
+        min-width: 0;
+        font-size: var(--font-size-md);
+    }
+
+    /* Still read out by screen readers. */
+    .transaction-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+    }
+
+    .transaction-table tbody tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 16px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .transaction-table tbody tr:first-child {
+        padding-top: 0;
+    }
+
+    .transaction-table tbody tr:last-child {
+        padding-bottom: 0;
+        border-bottom: 0;
+    }
+
+    .transaction-table td,
+    .transaction-table td.col-action,
+    .transaction-table td.col-wrap {
+        display: block;
+        width: auto;
+        min-width: 0;
+        padding: 0;
+        border-bottom: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .transaction-table td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 2px;
+        color: var(--color-text-subtle);
+        font-size: var(--font-size-xs);
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+
+    /* The row's name or date, long text and buttons get the whole line. */
+    .transaction-table td:first-child,
+    .transaction-table td.col-wrap,
+    .transaction-table td:not([data-label]) {
+        grid-column: 1 / -1;
+    }
+
+    .transaction-table td:first-child {
+        font-weight: 700;
+    }
+
+    /* A column with no visible heading holds only a button. */
+    .transaction-table td:not([data-label])::before {
+        content: none;
+    }
+
+    .transaction-table td:not([data-label]) .btn {
+        width: 100%;
+    }
+
+    .transaction-table .table-state td {
+        padding: 32px 16px;
+        font-weight: 400;
+        text-align: center;
     }
 }
 

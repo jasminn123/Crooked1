@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Crooked.Models;
@@ -13,9 +14,19 @@ namespace Crooked.Controllers
         private const int MaxExportRows = 50000;
         private readonly string _connectionString = DatabaseConfig.ConnectionString;
 
-        [HttpGet("today-revenue")]
-        public IActionResult GetTodayRevenue()
+        // Revenue from completed sales (exchanged ones included) for a RevenuePeriods period:
+        // today (the default), 7days, month or year. Each period ends with today in Philippine time.
+        [Authorize(Roles = UserRoles.Owner)]
+        [HttpGet("revenue")]
+        public IActionResult GetRevenue([FromQuery] string? period)
         {
+            var today = ShopClock.Today;
+            var firstDay = RevenuePeriods.FirstDay(period ?? RevenuePeriods.Today, today);
+            if (firstDay is not DateOnly from)
+            {
+                return BadRequest(new { error = "Period must be today, 7days, month or year." });
+            }
+
             try
             {
                 using (var connection = new NpgsqlConnection(_connectionString))
@@ -25,25 +36,27 @@ namespace Crooked.Controllers
                         SELECT COALESCE(SUM(total_amount), 0)
                         FROM transactions
                         WHERE status = 'Completed'
-                          AND date_time >= ((NOW() AT TIME ZONE 'Asia/Manila')::date::timestamp AT TIME ZONE 'Asia/Manila')
-                          AND date_time < (((NOW() AT TIME ZONE 'Asia/Manila')::date + 1)::timestamp AT TIME ZONE 'Asia/Manila')";
+                          AND date_time >= @from
+                          AND date_time < @to";
 
                     using (var command = new NpgsqlCommand(sql, connection))
                     {
+                        command.Parameters.AddWithValue("@from", ShopClock.StartOfDayUtc(from));
+                        command.Parameters.AddWithValue("@to", ShopClock.StartOfDayUtc(today.AddDays(1)));
                         var revenue = Convert.ToDecimal(command.ExecuteScalar());
-                        return Ok(new { revenue });
+                        return Ok(new { revenue, from, to = today });
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Today's Revenue Error: {ex.Message}");
-                return StatusCode(500, new { error = "Unable to load today's revenue." });
+                Console.WriteLine($"Revenue Error: {ex.Message}");
+                return StatusCode(500, new { error = "Unable to load revenue." });
             }
         }
 
         [HttpPost]
-        [LiveUpdate(LiveTopics.Transactions)]
+        [LiveUpdate(LiveTopics.Transactions, LiveTopics.Discounts, LiveTopics.Activity)]
         public async Task<IActionResult> SaveTransaction([FromBody] Transaction tx)
         {
             try
@@ -59,6 +72,11 @@ namespace Crooked.Controllers
                     return BadRequest(new { error = "Transaction items must have a valid product and quantity." });
                 }
 
+                if (!string.IsNullOrWhiteSpace(tx.DiscountCode) && tx.ManualDiscountPercent != null)
+                {
+                    return BadRequest(new { message = "A sale can use a coupon or a manual discount, not both." });
+                }
+
                 var paymentMethod = PaymentMethods.Normalize(tx.PaymentMethod) ?? PaymentMethods.Unknown;
                 Console.WriteLine($"Received: RefId={tx.ReferenceId}, Date={tx.Date_Time}, Total={tx.Total_Amount}, Status={tx.Status}, Payment={paymentMethod}");
 
@@ -68,9 +86,53 @@ namespace Crooked.Controllers
                     await using var dbTransaction = await conn.BeginTransactionAsync();
                     try
                     {
+                        var total = tx.Total_Amount;
+                        string? discountCode = null;
+                        int? manualPercent = null;
+                        decimal discountAmount = 0;
+
+                        // The coupon row stays locked until the sale is saved, so a usage limit can't be overrun.
+                        if (!string.IsNullOrWhiteSpace(tx.DiscountCode))
+                        {
+                            var discount = await DiscountStore.FindByCodeAsync(conn, dbTransaction, tx.DiscountCode, forUpdate: true);
+                            var subtotal = await DiscountStore.SubtotalAsync(conn, dbTransaction, tx.Items);
+                            var problem = discount == null
+                                ? DiscountStore.NotFound(tx.DiscountCode)
+                                : discount.Problem(subtotal, ShopClock.Today);
+                            if (problem != null)
+                            {
+                                await dbTransaction.RollbackAsync();
+                                return Conflict(new { message = problem });
+                            }
+
+                            discountCode = discount!.Code;
+                            discountAmount = discount.AmountOff(subtotal);
+                            total = subtotal - discountAmount;
+                            await DiscountStore.RecordUseAsync(conn, dbTransaction, discount.Id);
+                        }
+                        // A manual discount is checked against the signed-in person's limit (the role in
+                        // their session, never one the browser sends).
+                        else if (tx.ManualDiscountPercent != null)
+                        {
+                            var maxPercent = await DiscountStore.ManualMaxPercentAsync(conn, dbTransaction, User);
+                            var problem = ManualDiscount.Problem(tx.ManualDiscountPercent, maxPercent);
+                            if (problem != null)
+                            {
+                                await dbTransaction.RollbackAsync();
+                                return Conflict(new { message = problem });
+                            }
+
+                            var subtotal = await DiscountStore.SubtotalAsync(conn, dbTransaction, tx.Items);
+                            manualPercent = tx.ManualDiscountPercent.Value;
+                            discountAmount = ManualDiscount.AmountOff(subtotal, manualPercent.Value);
+                            total = subtotal - discountAmount;
+                        }
+
                         const string sql = @"INSERT INTO Transactions
-                                           (reference_id, date_time, total_amount, status, assisted_by, payment_method)
-                                           VALUES (@referenceId, @dateTime, @total, @status, @assistedBy, @paymentMethod)
+                                           (reference_id, date_time, total_amount, status, assisted_by, payment_method,
+                                            discount_code, discount_amount, manual_discount_percent)
+                                           VALUES (@referenceId, @dateTime, @total, @status, @assistedBy, @paymentMethod,
+                                            @discountCode, @discountAmount, @manualPercent)
                                            RETURNING transaction_id";
 
                         int transactionId;
@@ -78,11 +140,17 @@ namespace Crooked.Controllers
                         {
                             cmd.Parameters.AddWithValue("@referenceId", tx.ReferenceId ?? (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@dateTime", tx.Date_Time);
-                            cmd.Parameters.AddWithValue("@total", tx.Total_Amount);
+                            cmd.Parameters.AddWithValue("@total", total);
                             cmd.Parameters.AddWithValue("@status", tx.Status ?? "Completed");
                             cmd.Parameters.AddWithValue("@assistedBy",
                                 string.IsNullOrWhiteSpace(tx.AssistedBy) ? "Unknown" : tx.AssistedBy.Trim());
                             cmd.Parameters.AddWithValue("@paymentMethod", paymentMethod);
+                            cmd.Parameters.AddWithValue("@discountCode", (object?)discountCode ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@discountAmount", discountAmount);
+                            cmd.Parameters.Add(new NpgsqlParameter("@manualPercent", NpgsqlTypes.NpgsqlDbType.Integer)
+                            {
+                                Value = (object?)manualPercent ?? DBNull.Value
+                            });
                             transactionId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                         }
 
@@ -105,8 +173,19 @@ namespace Crooked.Controllers
                             }
                         }
 
+                        // "Kevin · Processed sale REF-... (₱810.00, 2 items, Cash, discount SALE10)" on the
+                        // Activity Logs page, or "..., manual discount 15% (₱150.00))".
+                        var units = tx.Items.Sum(item => item.Quantity);
+                        var details = new List<string> { Money.Peso(total), $"{units} item{(units == 1 ? "" : "s")}", paymentMethod };
+                        if (discountCode != null) details.Add($"discount {discountCode}");
+                        if (manualPercent != null)
+                            details.Add($"manual discount {manualPercent}% ({Money.Peso(discountAmount)})");
+                        var reference = string.IsNullOrWhiteSpace(tx.ReferenceId) ? $"#{transactionId}" : tx.ReferenceId.Trim();
+                        await ActivityLog.WriteAsync(conn, dbTransaction, SessionClaims.FullNameOf(User), ActivityTypes.Sale,
+                            $"Processed sale {reference} ({string.Join(", ", details)})");
+
                         await dbTransaction.CommitAsync();
-                        return Ok(new { message = "Transaction saved successfully", tx });
+                        return Ok(new { message = "Transaction saved successfully", tx, totalAmount = total, discountAmount });
                     }
                     catch
                     {
@@ -125,6 +204,7 @@ namespace Crooked.Controllers
         }
 
         // Every sale, newest first (used by Sales History).
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet]
         public IActionResult GetTransactions()
         {
@@ -230,6 +310,7 @@ namespace Crooked.Controllers
         }
 
         // Excel workbook of every sale that matches the current search and filters.
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet("export")]
         public async Task<IActionResult> ExportTransactions([FromQuery] TransactionQuery query)
         {
@@ -293,6 +374,7 @@ namespace Crooked.Controllers
             return File(TransactionExcel.Build(transactions, items), TransactionExcel.ContentType, fileName);
         }
 
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpGet("import-template")]
         public IActionResult DownloadImportTemplate() =>
             File(TransactionExcel.BuildTemplate(), TransactionExcel.ContentType, "crkd-transactions-template.xlsx");
@@ -300,9 +382,10 @@ namespace Crooked.Controllers
         // Adds sales from an Excel workbook to the logs. A sale whose reference ID already exists is
         // updated when any of its fields (or, when the file lists them, its items) differ, and skipped
         // when nothing changed. Stock levels are never changed.
+        [Authorize(Roles = UserRoles.Owner)]
         [HttpPost("import")]
         [LiveUpdate(LiveTopics.Transactions, LiveTopics.Activity)]
-        public async Task<IActionResult> ImportTransactions(IFormFile? file, [FromForm] string? importedBy)
+        public async Task<IActionResult> ImportTransactions(IFormFile? file)
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new { message = "Choose an Excel file (.xlsx) to import." });
@@ -511,12 +594,11 @@ namespace Crooked.Controllers
 
                 if (imported + updated > 0)
                 {
-                    var staffName = string.IsNullOrWhiteSpace(importedBy) ? "Unknown" : importedBy.Trim();
                     var parts = new List<string>();
                     if (imported > 0) parts.Add($"imported {imported}");
                     if (updated > 0) parts.Add($"updated {updated}");
                     var action = string.Join(" and ", parts);
-                    await TransactionStore.LogActivityAsync(connection, dbTransaction, staffName,
+                    await ActivityLog.WriteAsync(connection, dbTransaction, SessionClaims.FullNameOf(User), ActivityTypes.Import,
                         $"{char.ToUpper(action[0])}{action[1..]} transaction{(imported + updated == 1 ? "" : "s")} from Excel");
                 }
 

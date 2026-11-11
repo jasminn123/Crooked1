@@ -1,21 +1,15 @@
 /* ── FORECASTING ── */
 
-.forecasting-header {
-    margin-bottom: 16px;
+/* The forecast table has more columns than the other tables, so its cells wrap instead of
+   making the table scroll sideways on a laptop screen. */
+.forecasting-section .transaction-table th,
+.forecasting-section .transaction-table td {
+    padding-inline: 12px;
+    white-space: normal;
 }
 
-.forecasting-header h2 {
-    margin: 0 0 8px;
-    color: var(--color-text);
-    font-size: 18px;
-}
-
-.forecasting-header p {
-    max-width: 72ch;
-    margin: 0;
-    color: var(--color-text-muted);
-    font-size: var(--font-size-md);
-    line-height: 1.6;
+.forecasting-section .transaction-table td:first-child {
+    min-width: 16ch;
 }
 
 /* Pages are short, so the table shows every shown product instead of scrolling inside the panel. */
@@ -56,7 +50,7 @@
 
 .forecast-product-options {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
     gap: 8px 16px;
     max-height: 280px;
     overflow-y: auto;
@@ -100,4 +94,24 @@
     font-weight: 700;
     letter-spacing: 0.4px;
     text-transform: uppercase;
+}
+
+@media (max-width: 1280px) {
+    .forecasting-section .transaction-table th,
+    .forecasting-section .transaction-table td {
+        padding-inline: 8px;
+    }
+}
+
+@media (max-width: 900px) {
+    .forecasting-section .transaction-table th,
+    .forecasting-section .transaction-table td {
+        padding-inline: 6px;
+    }
+}
+
+@media (max-width: 760px) {
+    .forecasting-section .transaction-table td {
+        padding-inline: 0;
+    }
 }

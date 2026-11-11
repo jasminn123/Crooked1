@@ -322,7 +322,6 @@ html[data-theme="light"] .pos-logo {
   top: calc(100% + 12px);
   right: 0;
   z-index: var(--z-dropdown);
-  display: none; /* PointOfSale.js shows it */
   width: 220px;
   overflow: hidden;
   border: 1px solid var(--color-border);
@@ -524,7 +523,8 @@ select:focus-visible {
   outline-offset: 1px;
 }
 
-input[aria-invalid="true"] {
+input[aria-invalid="true"],
+select[aria-invalid="true"] {
   border-color: var(--color-danger);
 }
 
@@ -702,10 +702,24 @@ input[aria-invalid="true"] {
   color: var(--color-text);
 }
 
+.checkout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .checkout-panel h2 {
   margin: 0;
   color: var(--color-text);
   font-size: 20px;
+}
+
+/* Only the sheet on phones has a close button, and only phones have the bar and backdrop. */
+.checkout-close,
+.cart-bar,
+.cart-backdrop {
+  display: none;
 }
 
 .checkout-empty {
@@ -771,14 +785,96 @@ input[aria-invalid="true"] {
   text-align: center;
 }
 
+/* Discount: a dropdown of today's coupons with an Apply button, then the applied code with a remove button. */
+.discount-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.discount-entry {
+  display: flex;
+  gap: 8px;
+}
+
+.discount-entry select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.discount-entry .btn {
+  flex: 0 0 auto;
+  min-width: 88px;
+}
+
+/* Manual discount: the percent field under the dropdown, with the cashier's limit underneath. */
+.manual-discount-fields {
+  margin-top: 4px;
+}
+
+.discount-applied {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 4px 12px;
+  border: 1px dashed var(--color-success);
+  border-radius: var(--radius-md);
+  color: var(--color-success);
+}
+
+.discount-applied-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.discount-applied-text strong {
+  color: var(--color-text);
+  letter-spacing: 0.5px;
+}
+
+.discount-message:empty {
+  display: none;
+}
+
+.discount-message.is-error {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+/* Subtotal and discount (only when a code takes something off), then the total. */
+.checkout-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.checkout-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.checkout-line-discount {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
 .checkout-total {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
   margin: 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
   color: var(--color-text-muted);
   font-size: var(--font-size-lg);
   font-weight: 700;
@@ -823,6 +919,7 @@ input[aria-invalid="true"] {
 .modal-content {
   width: min(100%, 460px);
   max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   overflow-y: auto;
   padding: 28px;
   border: 1px solid var(--color-border);
@@ -982,17 +1079,100 @@ body.modal-open {
   }
 }
 
-@media (max-width: 760px) {
+/* Phones and short windows: the products fill the page, a bar at the bottom shows the
+   item count and total, and the checkout slides up over the page (PointOfSale.js). */
+@media (max-width: 760px), (max-height: 559px) {
   .pos-main {
     flex-direction: column;
-  }
-
-  .checkout-panel {
-    flex-basis: auto;
+    padding-bottom: 88px;
   }
 
   .pos-search {
     max-width: none;
+  }
+
+  .cart-bar {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    z-index: var(--z-header);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 56px;
+    padding: 0 16px;
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+    background: var(--color-primary);
+    box-shadow: var(--shadow-lg);
+    color: var(--color-on-primary);
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .cart-bar-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .cart-open .cart-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-header) + 1);
+    display: block;
+    background: var(--color-overlay);
+  }
+
+  .checkout-panel {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: calc(var(--z-header) + 2);
+    max-width: 560px;
+    max-height: 85vh;
+    max-height: 85dvh;
+    margin-inline: auto;
+    border-bottom: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(100%);
+    visibility: hidden;
+  }
+
+  .cart-open .checkout-panel {
+    transform: none;
+    visibility: visible;
+  }
+
+  body.cart-open {
+    overflow: hidden;
+  }
+
+  .checkout-close {
+    display: inline-flex;
+  }
+
+  .checkout-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+/* It hides after sliding out, but shows at once when opening so it can take focus. */
+@media (max-width: 760px) and (prefers-reduced-motion: no-preference),
+  (max-height: 559px) and (prefers-reduced-motion: no-preference) {
+  .checkout-panel {
+    transition: transform 0.2s ease, visibility 0s 0.2s;
+  }
+
+  .cart-open .checkout-panel {
+    transition: transform 0.2s ease;
   }
 }
 
@@ -1022,11 +1202,12 @@ body.modal-open {
   }
 
   .pos-main {
-    padding: 12px;
+    padding-top: 12px;
+    padding-inline: 12px;
   }
 
   .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: 12px;
     padding: 4px;
   }

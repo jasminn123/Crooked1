@@ -39,4 +39,6 @@ applyTheme(localStorage.getItem(themeStorageKey));
 // Pages load this script in <head>, before the toggle buttons exist.
 document.addEventListener('DOMContentLoaded', () => {
     updateThemeToggleButtons(document.documentElement.dataset.theme);
+    document.querySelectorAll('.theme-toggle-button').forEach(button =>
+        button.addEventListener('click', toggleDarkMode));
 });

@@ -155,7 +155,7 @@ const openModals = [];
 function openModalElement(modal, onRequestClose) {
     if (!modal) return;
 
-    modal.style.display = 'flex';
+    modal.hidden = false;
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
     if (!openModals.some(entry => entry.modal === modal)) {
@@ -170,7 +170,7 @@ function openModalElement(modal, onRequestClose) {
 function closeModalElement(modal) {
     if (!modal) return;
 
-    modal.style.display = 'none';
+    modal.hidden = true;
     modal.setAttribute('aria-hidden', 'true');
     const index = openModals.findIndex(entry => entry.modal === modal);
     if (index === -1) return;
@@ -196,8 +196,8 @@ document.addEventListener('keydown', (event) => {
 /* =========================
    PAGE ACCESS
 ========================= */
-// Pages marked data-owner-only (Products, Exchanges, Sales History, Staff Management, Forecasting)
-// send everyone else back to the dashboard.
+// Pages marked data-owner-only (Products, Activity Logs, Exchanges, Sales History, Discounts,
+// Accounts, Forecasting) send everyone else back to the dashboard.
 if (document.body.hasAttribute('data-owner-only')
     && localStorage.getItem('userRole')?.toLowerCase() !== 'owner') {
     window.location.replace('dashboard.html');
@@ -208,14 +208,14 @@ if (document.body.hasAttribute('data-owner-only')
 ========================= */
 function setProfileCardOpen(open) {
     const card = document.getElementById('profileCard');
-    if (card) card.style.display = open ? 'block' : 'none';
+    if (card) card.hidden = !open;
     document.querySelector('.profile-icon')?.setAttribute('aria-expanded', String(open));
 }
 
 function toggleProfileCard(event) {
     event.stopPropagation();
     const card = document.getElementById('profileCard');
-    if (card) setProfileCardOpen(card.style.display !== 'block');
+    if (card) setProfileCardOpen(card.hidden);
 }
 
 document.addEventListener('click', (event) => {
@@ -226,7 +226,7 @@ document.addEventListener('click', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && document.getElementById('profileCard')?.style.display === 'block') {
+    if (event.key === 'Escape' && document.getElementById('profileCard')?.hidden === false) {
         setProfileCardOpen(false);
         document.querySelector('.profile-icon')?.focus();
     }
@@ -236,13 +236,72 @@ function logout() {
     showDialog(
         'Log Out',
         'Are you sure you want to log out?',
-        () => {
-            localStorage.clear();
-            window.location.href = 'index.html';
-        },
+        () => Session.signOut(),
         null,
         { confirmText: 'Log Out' }
     );
+}
+
+/* =========================
+   NAVIGATION DRAWER
+========================= */
+// On tablets and phones dashboard.css moves the sidebar off screen. The menu button in the
+// top bar slides it back in; Escape, the close button and a tap beside it put it away.
+function initializeNavDrawer() {
+    const sidebar = document.querySelector('.sidebar');
+    const header = document.querySelector('.top-header');
+    if (!sidebar || !header) return;
+
+    sidebar.id = 'sidebarNav';
+
+    const toggle = UI.el('button', 'nav-toggle');
+    toggle.type = 'button';
+    toggle.setAttribute('aria-label', 'Open navigation menu');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-controls', sidebar.id);
+    toggle.appendChild(UI.icon('fa-bars'));
+
+    const close = UI.el('button', 'nav-close');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close navigation menu');
+    close.appendChild(UI.icon('fa-xmark'));
+    sidebar.prepend(close);
+
+    const logo = UI.el('img', 'header-logo');
+    logo.src = '../assets/logo.png';
+    logo.alt = '';
+    header.prepend(toggle, logo);
+
+    const backdrop = UI.el('div', 'nav-backdrop');
+    document.body.appendChild(backdrop);
+
+    const isOpen = () => document.body.classList.contains('nav-open');
+
+    function setOpen(open, { restore = true } = {}) {
+        document.body.classList.toggle('nav-open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+        if (open) close.focus();
+        else if (restore) toggle.focus();
+    }
+
+    toggle.addEventListener('click', () => setOpen(true));
+    close.addEventListener('click', () => setOpen(false));
+    backdrop.addEventListener('click', () => setOpen(false));
+
+    document.addEventListener('keydown', event => {
+        if (!isOpen()) return;
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            setOpen(false);
+        } else if (event.key === 'Tab') {
+            trapFocus(event, sidebar);
+        }
+    });
+
+    // Turning a tablet can widen the screen past the drawer's breakpoint.
+    window.matchMedia('(max-width: 1100px)').addEventListener('change', event => {
+        if (!event.matches && isOpen()) setOpen(false, { restore: false });
+    });
 }
 
 /* =========================
@@ -270,7 +329,7 @@ function renderForecastNotifications(notifications) {
         image.alt = '';
         image.src = notification.imageUrl || '';
         image.addEventListener('error', () => {
-            image.style.visibility = 'hidden';
+            image.classList.add('is-broken');
         }, { once: true });
 
         const copy = document.createElement('div');
@@ -327,7 +386,7 @@ async function loadForecastNotifications(markRead = false) {
     const count = document.getElementById('forecastNotificationCount');
     if (count) {
         count.textContent = data.unreadCount > 99 ? '99+' : String(data.unreadCount || 0);
-        count.style.display = data.unreadCount > 0 ? 'block' : 'none';
+        count.hidden = !(data.unreadCount > 0);
     }
     updateNotificationButtonLabel(data.unreadCount || 0);
 
@@ -338,7 +397,7 @@ async function loadForecastNotifications(markRead = false) {
             item.classList.remove('unread');
         });
         document.querySelectorAll('.forecast-notification-badge').forEach(badge => badge.remove());
-        if (count) count.style.display = 'none';
+        if (count) count.hidden = true;
         updateNotificationButtonLabel(0);
     }
 }
@@ -349,7 +408,7 @@ function initializeForecastNotifications() {
     const panel = document.getElementById('forecastNotificationPanel');
     if (!container || !button || !panel || localStorage.getItem('userRole')?.toLowerCase() !== 'owner') return;
 
-    container.style.display = '';
+    container.hidden = false;
     loadForecastNotifications().catch(error => {
         console.error('Forecast Notifications Error:', error);
     });
@@ -363,14 +422,14 @@ function initializeForecastNotifications() {
     });
 
     function closePanel() {
-        panel.style.display = 'none';
+        panel.hidden = true;
         button.setAttribute('aria-expanded', 'false');
     }
 
     button.addEventListener('click', async event => {
         event.stopPropagation();
-        const willOpen = panel.style.display === 'none';
-        panel.style.display = willOpen ? 'block' : 'none';
+        const willOpen = panel.hidden;
+        panel.hidden = !willOpen;
         button.setAttribute('aria-expanded', String(willOpen));
         if (!willOpen) return;
 
@@ -387,7 +446,7 @@ function initializeForecastNotifications() {
         if (!container.contains(event.target)) closePanel();
     });
     document.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && panel.style.display !== 'none') {
+        if (event.key === 'Escape' && !panel.hidden) {
             closePanel();
             button.focus();
         }
@@ -411,12 +470,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Role-based UI hiding
         if (role && !isOwner) {
-            ['nav-products', 'nav-exchange', 'nav-forecasting', 'nav-sales-history', 'nav-staff-management']
+            ['nav-products', 'nav-activity-logs', 'nav-exchange', 'nav-forecasting', 'nav-sales-history', 'nav-discounts',
+                'nav-staff-management']
                 .forEach(id => document.getElementById(id)?.remove());
         }
     } catch (error) {
         console.error('Layout Init Error:', error);
     }
 
+    document.querySelector('.profile-icon')?.addEventListener('click', toggleProfileCard);
+    document.querySelector('[data-action="logout"]')?.addEventListener('click', logout);
+
+    initializeNavDrawer();
     initializeForecastNotifications();
 });

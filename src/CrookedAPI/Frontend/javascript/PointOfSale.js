@@ -17,6 +17,14 @@ const checkoutList = document.getElementById("checkoutList");
 const checkoutEmpty = document.getElementById("checkoutEmpty");
 const checkoutTotal = document.getElementById("checkoutTotal");
 const checkoutBtn = document.getElementById("checkoutBtn");
+const checkoutPanel = document.getElementById("checkoutPanel");
+const closeCartBtn = document.getElementById("closeCartBtn");
+const cartBar = document.getElementById("cartBar");
+const cartBarCount = document.getElementById("cartBarCount");
+const cartBarTotal = document.getElementById("cartBarTotal");
+const cartBackdrop = document.getElementById("cartBackdrop");
+// Matches the phone layout in PointofSale.css.
+const sheetLayout = window.matchMedia("(max-width: 760px), (max-height: 559px)");
 const variantForm = document.getElementById("variantForm");
 const variantSize = document.getElementById("variantSize");
 const variantColor = document.getElementById("variantColor");
@@ -24,6 +32,16 @@ const variantAvailability = document.getElementById("variantAvailability");
 const addVariantBtn = document.getElementById("addVariantBtn");
 const amountReceivedInput = document.getElementById("amountReceived");
 const gcashRefInput = document.getElementById("gcashRefId");
+const discountSection = document.getElementById("discountSection");
+const discountForm = document.getElementById("discountForm");
+const discountSelect = document.getElementById("discountCode");
+const applyDiscountBtn = document.getElementById("applyDiscountBtn");
+const discountApplied = document.getElementById("discountApplied");
+const removeDiscountBtn = document.getElementById("removeDiscountBtn");
+const discountMessage = document.getElementById("discountMessage");
+const manualDiscountFields = document.getElementById("manualDiscountFields");
+const manualPercentInput = document.getElementById("manualDiscountPercent");
+const manualDiscountHint = document.getElementById("manualDiscountHint");
 
 const formatPeso = amount => `₱${Number(amount || 0).toLocaleString("en-PH", {
   minimumFractionDigits: 2,
@@ -51,9 +69,12 @@ function trapFocus(event, container) {
 }
 
 // Returns focus to the element that opened a dialog, or to the product search
-// when that element was re-rendered in the meantime.
+// when that element was re-rendered in the meantime. A button in a closed checkout
+// sheet can't take focus, so the bar that opens the sheet takes it instead.
 function restoreFocus(element) {
-  if (element?.isConnected && element !== document.body) {
+  if (sheetLayout.matches && !isCartOpen() && checkoutPanel.contains(element)) {
+    cartBar.focus();
+  } else if (element?.isConnected && element !== document.body) {
     element.focus();
   } else {
     productSearch.focus();
@@ -240,13 +261,13 @@ const profileCard = document.getElementById("profileCard");
 const profileSection = document.querySelector(".profile-section");
 
 function setProfileCardOpen(open) {
-  profileCard.style.display = open ? "block" : "none";
+  profileCard.hidden = !open;
   userIcon.setAttribute("aria-expanded", String(open));
 }
 
 userIcon.addEventListener("click", (event) => {
   event.stopPropagation();
-  setProfileCardOpen(profileCard.style.display !== "block");
+  setProfileCardOpen(profileCard.hidden);
 });
 
 document.addEventListener("click", (event) => {
@@ -254,7 +275,7 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && profileCard.style.display === "block") {
+  if (event.key === "Escape" && !profileCard.hidden) {
     setProfileCardOpen(false);
     userIcon.focus();
   }
@@ -280,10 +301,7 @@ function logout() {
     hasItems
       ? "Are you sure you want to log out? The items in the current checkout will be cleared."
       : "Are you sure you want to log out?",
-    () => {
-      localStorage.clear();
-      window.location.href = "index.html";
-    },
+    () => Session.signOut(),
     null,
     { confirmText: "Log Out", danger: hasItems }
   );
@@ -531,8 +549,37 @@ variantForm.addEventListener("submit", event => {
 /* =========================
    CHECKOUT
 ========================= */
-function cartTotal() {
+// The applied discount, or null: { name, code, description, type, value, minPurchase, label } for a
+// coupon, or the same with manual: true and code: null for a manual discount.
+let appliedDiscount = null;
+
+const toCents = amount => Math.round(Number(amount || 0) * 100);
+
+function cartSubtotal() {
   return Object.values(cart).reduce((sum, item) => sum + item.price * item.qty, 0);
+}
+
+// The same rule as StoredDiscount.AmountOff and ManualDiscount.AmountOff on the server, worked out in
+// centavos so both round alike: a whole-number percentage of the subtotal, or a fixed amount that
+// never exceeds it. Nothing comes off while the subtotal is below the coupon's minimum purchase
+// (a manual discount has none).
+function discountAmount() {
+  if (!appliedDiscount) return 0;
+  const subtotalCents = toCents(cartSubtotal());
+  if (subtotalCents < toCents(appliedDiscount.minPurchase)) return 0;
+  const cents = appliedDiscount.type === "percent"
+    ? Math.round(subtotalCents * appliedDiscount.value / 100)
+    : Math.min(toCents(appliedDiscount.value), subtotalCents);
+  return cents / 100;
+}
+
+// What the customer pays: the subtotal less any discount.
+function cartTotal() {
+  return (toCents(cartSubtotal()) - toCents(discountAmount())) / 100;
+}
+
+function cartItemsPayload() {
+  return Object.values(cart).map(item => ({ productId: item.id, quantity: item.qty }));
 }
 
 function itemLabel(item) {
@@ -667,7 +714,16 @@ function renderCheckout(focusTarget = null) {
   });
 
   checkoutEmpty.hidden = cartHasItems();
+  // A coupon belongs to one sale, so an empty checkout (sale saved, cancelled or every item removed) drops it.
+  if (!cartHasItems()) resetDiscount();
+  renderDiscount();
   checkoutTotal.textContent = formatPeso(cartTotal());
+
+  const itemCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
+  cartBarCount.textContent = `${itemCount} item${itemCount === 1 ? "" : "s"}`;
+  cartBarTotal.textContent = checkoutTotal.textContent;
+  // An empty checkout has nothing to show; the receipt modal keeps focus if a sale just ended.
+  if (!itemCount && isCartOpen()) setCartOpen(false, { restore: !openModals.length });
 
   if (focusTarget) {
     checkoutList.querySelector(
@@ -680,6 +736,254 @@ function clearCheckout() {
   cart = {};
   renderCheckout();
 }
+
+/* =========================
+   DISCOUNT
+========================= */
+// The cashier picks one of today's coupons from the dropdown, or "Manual discount" to type a
+// percentage. The server checks the choice when it is applied, again just before stock is taken,
+// and once more when the sale is saved, where it works out the discount and the total itself.
+let discountPending = false;
+
+// The dropdown's value for a manual discount. Coupon codes are saved in capitals, so none can match it.
+const MANUAL_OPTION = "manual";
+// The most the signed-in person can take off with a manual discount, or 0 when they can't. The
+// server works it out from their role: owners up to 100%, staff up to the owner's limit.
+let manualMaxPercent = 0;
+
+const isManualChoice = () => discountSelect.value === MANUAL_OPTION;
+
+function setDiscountMessage(text, isError = false) {
+  discountMessage.textContent = text;
+  discountMessage.classList.toggle("is-error", isError && Boolean(text));
+}
+
+function clearDiscountErrors() {
+  discountForm.querySelectorAll("[aria-invalid]").forEach(field => field.removeAttribute("aria-invalid"));
+}
+
+function resetDiscount() {
+  appliedDiscount = null;
+  discountSelect.value = "";
+  manualPercentInput.value = "";
+  clearDiscountErrors();
+  updateManualFields();
+  setDiscountMessage("");
+}
+
+// "SALE10 · 10% off · min ₱500.00"
+function discountOptionText(discount) {
+  const minimum = Number(discount.minPurchase) > 0 ? ` · min ${formatPeso(discount.minPurchase)}` : "";
+  return `${discount.code} · ${discount.label}${minimum}`;
+}
+
+// The percent field shows while "Manual discount" is chosen.
+function updateManualFields() {
+  manualDiscountFields.hidden = !isManualChoice();
+  manualDiscountHint.textContent = `A whole number from 1 to ${manualMaxPercent}.`;
+}
+
+// Fills the dropdown with the coupons that can be used today, then "Manual discount" when the
+// cashier may give one, keeping the current choice if it is still there.
+async function loadAvailableDiscounts() {
+  const [coupons, manual] = await Promise.allSettled([
+    UI.fetchJson("/api/Discounts/available"),
+    UI.fetchJson("/api/Discounts/manual")
+  ]);
+  if (coupons.status === "rejected") console.error("Discount List Error:", coupons.reason);
+  if (manual.status === "rejected") console.error("Manual Discount Error:", manual.reason);
+  manualMaxPercent = manual.status === "fulfilled" ? Number(manual.value.maxPercent) || 0 : 0;
+
+  const options = (coupons.status === "fulfilled" ? coupons.value : [])
+    .map(discount => new Option(discountOptionText(discount), discount.code));
+  if (manualMaxPercent > 0) {
+    const limit = manualMaxPercent < 100 ? ` · up to ${manualMaxPercent}%` : "";
+    options.push(new Option(`Manual discount${limit}`, MANUAL_OPTION));
+  }
+  const placeholder = coupons.status === "rejected" ? "Coupons could not be loaded"
+    : options.length ? "Choose a discount"
+    : "No discounts available today";
+
+  const chosen = discountSelect.value;
+  discountSelect.replaceChildren(new Option(placeholder, ""), ...options);
+  discountSelect.value = options.some(option => option.value === chosen) ? chosen : "";
+  updateManualFields();
+}
+
+// Shows the dropdown or the applied discount, and the subtotal and discount lines when it takes something off.
+function renderDiscount() {
+  const amount = discountAmount();
+  // A new checkout gets a fresh list, so coupons made or turned off since the last sale show correctly.
+  if (cartHasItems() && discountSection.hidden) loadAvailableDiscounts();
+  discountSection.hidden = !cartHasItems();
+  discountForm.hidden = Boolean(appliedDiscount);
+  discountApplied.hidden = !appliedDiscount;
+
+  if (appliedDiscount) {
+    document.getElementById("discountAppliedCode").textContent = appliedDiscount.name;
+    document.getElementById("discountAppliedLabel").textContent = appliedDiscount.label;
+    const shortBy = (toCents(appliedDiscount.minPurchase) - toCents(cartSubtotal())) / 100;
+    setDiscountMessage(shortBy > 0
+      ? `Add ${formatPeso(shortBy)} more to use this code (minimum purchase ${formatPeso(appliedDiscount.minPurchase)}).`
+      : appliedDiscount.description);
+  }
+
+  document.getElementById("subtotalLine").hidden = !amount;
+  document.getElementById("discountLine").hidden = !amount;
+  document.getElementById("checkoutSubtotal").textContent = formatPeso(cartSubtotal());
+  document.getElementById("discountLineLabel").textContent = `Discount (${appliedDiscount?.name || ""})`;
+  document.getElementById("checkoutDiscount").textContent = `−${formatPeso(amount)}`;
+}
+
+function checkDiscount(code) {
+  return UI.fetchJson("/api/Discounts/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, items: cartItemsPayload() })
+  });
+}
+
+function checkManualDiscount(percent) {
+  return UI.fetchJson("/api/Discounts/apply-manual", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ percent, items: cartItemsPayload() })
+  });
+}
+
+// Marks the field that needs fixing and says why.
+function showDiscountProblem(field, message) {
+  field.setAttribute("aria-invalid", "true");
+  setDiscountMessage(message, true);
+  field.focus();
+  announce(message);
+}
+
+// Returns the percent off, or null after pointing at the field. The server checks the same rule
+// (ManualDiscount.Problem).
+function readManualPercent() {
+  const percent = Number(manualPercentInput.value);
+  if (!manualPercentInput.value || !Number.isInteger(percent) || percent < 1 || percent > manualMaxPercent) {
+    showDiscountProblem(manualPercentInput, `Enter the percent off, from 1 to ${manualMaxPercent}.`);
+    return null;
+  }
+  return percent;
+}
+
+// appliedDiscount from what /api/Discounts/apply and /apply-manual send back.
+const couponFrom = result => ({
+  name: result.code,
+  code: result.code,
+  description: result.description,
+  type: result.type,
+  value: Number(result.value),
+  minPurchase: Number(result.minPurchase),
+  label: result.label
+});
+
+const manualDiscountFrom = result => ({
+  manual: true,
+  name: "Manual",
+  code: null,
+  description: "",
+  type: "percent",
+  value: Number(result.percent),
+  minPurchase: 0,
+  label: result.label
+});
+
+async function applyDiscount(event) {
+  event.preventDefault();
+  if (discountPending) return;
+  clearDiscountErrors();
+
+  const choice = discountSelect.value;
+  if (!choice) {
+    showDiscountProblem(discountSelect,
+      discountSelect.options.length > 1 ? "Choose a discount first." : "There are no discounts to apply today.");
+    return;
+  }
+  const manual = choice === MANUAL_OPTION;
+  const percent = manual ? readManualPercent() : null;
+  if (manual && percent === null) return;
+
+  discountPending = true;
+  const restore = UI.setLoading(applyDiscountBtn, "Checking...");
+  try {
+    appliedDiscount = manual
+      ? manualDiscountFrom(await checkManualDiscount(percent))
+      : couponFrom(await checkDiscount(choice));
+    renderCheckout();
+    // The dropdown is hidden now, so focus moves to the applied discount's remove button.
+    removeDiscountBtn.focus();
+    announce(`Discount ${appliedDiscount.name} applied, ${appliedDiscount.label}. Total ${formatPeso(cartTotal())}.`);
+  } catch (error) {
+    console.error("Discount Error:", error);
+    showDiscountProblem(manual ? manualPercentInput : discountSelect,
+      error.status ? error.message : "Cannot connect to the server. Please try again.");
+    // The coupon may have been turned off or used up, or the manual limit changed, so the list is refreshed.
+    if (error.status) loadAvailableDiscounts();
+  } finally {
+    restore();
+    discountPending = false;
+  }
+}
+
+function removeDiscount() {
+  const name = appliedDiscount?.name;
+  resetDiscount();
+  renderCheckout();
+  discountSelect.focus();
+  announce(`Discount ${name} removed. Total ${formatPeso(cartTotal())}.`);
+}
+
+discountForm.addEventListener("submit", applyDiscount);
+removeDiscountBtn.addEventListener("click", removeDiscount);
+discountSelect.addEventListener("change", () => {
+  clearDiscountErrors();
+  setDiscountMessage("");
+  updateManualFields();
+});
+// The percent is a whole number, so anything but digits is dropped.
+manualPercentInput.addEventListener("input", () => {
+  manualPercentInput.value = manualPercentInput.value.replace(/\D/g, "").slice(0, 3);
+  manualPercentInput.removeAttribute("aria-invalid");
+  setDiscountMessage("");
+});
+
+/* =========================
+   CART SHEET (phones and short windows)
+========================= */
+// PointofSale.css keeps the checkout off screen on these screens and shows a bar with the
+// item count and total. The bar slides the checkout up over the page as a sheet.
+const isCartOpen = () => document.body.classList.contains("cart-open");
+
+function setCartOpen(open, { restore = true } = {}) {
+  document.body.classList.toggle("cart-open", open);
+  cartBar.setAttribute("aria-expanded", String(open));
+  if (open) closeCartBtn.focus();
+  else if (restore) cartBar.focus();
+}
+
+cartBar.addEventListener("click", () => setCartOpen(true));
+closeCartBtn.addEventListener("click", () => setCartOpen(false));
+cartBackdrop.addEventListener("click", () => setCartOpen(false));
+
+document.addEventListener("keydown", (event) => {
+  if (!isCartOpen() || openModals.length || document.getElementById("customDialog")) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    setCartOpen(false);
+  } else if (event.key === "Tab") {
+    trapFocus(event, checkoutPanel);
+  }
+});
+
+// Turning a phone or widening the window brings the checkout back beside the products.
+sheetLayout.addEventListener("change", event => {
+  if (!event.matches && isCartOpen()) setCartOpen(false, { restore: false });
+});
 
 function confirmCancelCheckout() {
   if (!cartHasItems()) {
@@ -709,10 +1013,21 @@ function generateReferenceId() {
   return 'REF-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
 }
 
+// subtotal_amount, discount_amount, discountName and discountLabel are for the receipt; the server
+// works out the discounted total itself from discountCode (a coupon) or manualDiscountPercent
+// (a manual discount), which are only sent when the discount takes something off.
 function buildTransaction(method, received = null, change = null, refId = null) {
+  const discount = discountAmount();
+  const applied = discount > 0 ? appliedDiscount : null;
   return {
     referenceId: refId || generateReferenceId(),
     date_time: new Date().toISOString(),
+    subtotal_amount: cartSubtotal(),
+    discount_amount: discount,
+    discountCode: applied && !applied.manual ? applied.code : null,
+    manualDiscountPercent: applied?.manual ? applied.value : null,
+    discountName: applied?.name ?? null,
+    discountLabel: applied?.label ?? null,
     total_amount: cartTotal(),
     status: "Completed",
     assistedBy: localStorage.getItem("userName")?.trim() || "Unknown",
@@ -730,17 +1045,27 @@ function buildTransaction(method, received = null, change = null, refId = null) 
   };
 }
 
+// Returns { saved: true }, { saved: false } after showing the error, or { discountProblem } when the
+// discount can no longer be used; nothing is changed in that case.
 async function processCheckout(tx) {
-  const cartPayload = Object.values(cart).map(item => ({
-    productId: item.id,
-    quantity: item.qty
-  }));
-
   try {
+    // The code may have been turned off, used up or expired since it was applied, or the owner may
+    // have lowered the manual discount limit. Checking before any stock is taken means the sale
+    // stops cleanly instead of failing halfway.
+    if (tx.discountCode || tx.manualDiscountPercent) {
+      try {
+        if (tx.discountCode) await checkDiscount(tx.discountCode);
+        else await checkManualDiscount(tx.manualDiscountPercent);
+      } catch (error) {
+        if (error.status >= 400 && error.status < 500) return { saved: false, discountProblem: error.message };
+        throw error;
+      }
+    }
+
     const checkoutRes = await fetch("/api/POS/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cartPayload)
+      body: JSON.stringify(cartItemsPayload())
     });
 
     if (!checkoutRes.ok) throw new Error("Stock deduction failed");
@@ -753,11 +1078,11 @@ async function processCheckout(tx) {
     if (!transactionRes.ok) throw new Error("Transaction could not be saved");
 
     console.log("Checkout and transaction saved.");
-    return true;
+    return { saved: true };
   } catch (err) {
     console.error("Error during checkout:", err);
     showToast("Checkout failed. Please try again.", true);
-    return false;
+    return { saved: false };
   }
 }
 
@@ -771,11 +1096,24 @@ async function completeSale(tx, modalId, submitButton) {
   submitButton.setAttribute("aria-disabled", "true");
   submitButton.textContent = "Saving...";
 
-  const saved = await processCheckout(tx);
+  const { saved, discountProblem } = await processCheckout(tx);
 
   salePending = false;
   submitButton.removeAttribute("aria-disabled");
   submitButton.textContent = buttonText;
+
+  // The total changes without the discount, so the payment starts again from Check Out.
+  if (discountProblem) {
+    hideModal(modalId);
+    resetDiscount();
+    renderCheckout();
+    loadAvailableDiscounts();
+    showDialog(
+      "Discount Removed",
+      `${discountProblem} It was taken off this checkout, so the total is now ${formatPeso(cartTotal())}. Check out again to take the payment.`
+    );
+    return;
+  }
   if (!saved) return;
 
   const returnFocus = hideModal(modalId, { restore: false });
@@ -894,114 +1232,17 @@ document.getElementById("gcashForm").addEventListener("submit", event => {
 /* =========================
    RECEIPT
 ========================= */
+// receipt.js reads the sale from here, clears it and prints the receipt.
 function printReceipt(tx) {
-  const receiptWindow = window.open("", "Receipt", "width=420,height=700");
+  localStorage.setItem("crkdPendingReceipt", JSON.stringify(tx));
+  const receiptWindow = window.open("../page/receipt.html", "Receipt", "width=420,height=700");
   if (!receiptWindow) {
+    localStorage.removeItem("crkdPendingReceipt");
     showToast("The receipt window was blocked. Allow pop-ups and try printing again.", true);
     return false;
   }
 
-  const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[character]);
-
-  const items = tx.items.map(item => `
-    <div class="item">
-      <div class="item-name">${escapeHtml(item.name)}</div>
-      <div class="item-details">
-        <span>${item.quantity} x ${formatPeso(item.price)}</span>
-        <span>${formatPeso(item.quantity * item.price)}</span>
-      </div>
-    </div>
-  `).join("");
-  const paymentDetails = tx.payment_method === "Cash" ? `
-    <div class="row"><span>Cash</span><span>${formatPeso(tx.amount_received)}</span></div>
-    <div class="row"><span>Change</span><span>${formatPeso(tx.change_given)}</span></div>
-  ` : `
-    <div class="row"><span>Payment</span><span>${escapeHtml(tx.payment_method || "GCash")}</span></div>
-    ${tx.referenceId ? `<div class="row"><span>Reference</span><span>${escapeHtml(tx.referenceId)}</span></div>` : ""}
-  `;
-
-  receiptWindow.document.write(`<!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Crooked Receipt</title>
-        <style>
-          * { box-sizing: border-box; }
-          body {
-            width: 72mm;
-            margin: 0 auto;
-            padding: 5mm 4mm;
-            background: #fff;
-            color: #000;
-            font: 12px/1.4 "Courier New", monospace;
-          }
-          .receipt { width: 100%; }
-          .center { text-align: center; }
-          .shop-name {
-            margin: 0;
-            font-size: 23px;
-            font-weight: 900;
-            letter-spacing: 2px;
-            line-height: 1.1;
-          }
-          .address { margin: 5px 0 12px; font-size: 11px; }
-          .divider { border: 0; border-top: 1px dashed #000; margin: 9px 0; }
-          .row, .item-details {
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
-          }
-          .meta { font-size: 11px; }
-          .meta div { margin: 2px 0; }
-          .item { margin: 8px 0; }
-          .item-name { overflow-wrap: anywhere; }
-          .item-details { margin-top: 2px; padding-left: 8px; font-size: 11px; }
-          .total { font-size: 15px; font-weight: bold; }
-          .footer { margin-top: 14px; }
-          @media print {
-            @page { size: 80mm auto; margin: 0; }
-            body { width: 72mm; padding: 4mm; }
-          }
-        </style>
-      </head>
-      <body>
-        <main class="receipt">
-          <header class="center">
-            <h1 class="shop-name">CROOKED</h1>
-            <p class="address">2057 Bagong Sikat St., Baclaran,<br>Parañaque City</p>
-          </header>
-          <hr class="divider">
-          <section class="meta">
-            <div>Receipt: ${escapeHtml(tx.referenceId)}</div>
-            <div>Date: ${escapeHtml(new Date(tx.date_time).toLocaleString("en-PH"))}</div>
-            <div>Cashier: ${escapeHtml(tx.assistedBy)}</div>
-          </section>
-          <hr class="divider">
-          <section aria-label="Purchased items">${items}</section>
-          <hr class="divider">
-          <div class="row total"><span>TOTAL</span><span>${formatPeso(tx.total_amount)}</span></div>
-          <hr class="divider">
-          <section class="meta">${paymentDetails}</section>
-          <hr class="divider">
-          <footer class="center footer">
-            <div>Thank you for shopping at</div>
-            <strong>CROOKED</strong>
-            <div>Please come again!</div>
-          </footer>
-        </main>
-      </body>
-    </html>
-  `);
-  receiptWindow.document.close();
   receiptWindow.focus();
-  receiptWindow.print();
   return true;
 }
 
@@ -1019,6 +1260,10 @@ document.getElementById("receiptNoBtn").addEventListener("click", () => finishRe
 /* =========================
    PAGE LOAD
 ========================= */
+document.querySelector('[data-action="logout"]').addEventListener("click", logout);
+document.querySelector('[data-action="switch-to-dashboard"]').addEventListener("click", switchToDashboard);
+document.getElementById("cancelCheckoutBtn").addEventListener("click", confirmCancelCheckout);
+
 const userName = localStorage.getItem("userName");
 if (userName) {
   document.querySelectorAll(".pos-user-name, .profile-card-header span").forEach(element => {
@@ -1031,3 +1276,6 @@ UI.cardSkeletons(grid, { count: 8, tag: "li", cardClass: "product-card", mediaHe
 loadProducts();
 // Stock changes from other tills, exchanges and product edits show up without a reload.
 Live.on(["products", "exchanges"], loadProducts);
+// So do coupons the owner creates, turns off or deletes, ones that get used up, and changes to the
+// staff manual discount limit.
+Live.on(["discounts"], loadAvailableDiscounts);

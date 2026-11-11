@@ -4,7 +4,13 @@
    table short. "Show or hide products" lists every product so people
    can choose which ones appear; choices are kept in this browser.
 ========================= */
+const COLUMNS = 8;
 const VELOCITY_TONES = { fast: 'success', moderate: 'info' };
+const TRENDS = {
+    up: { label: 'Up', icon: 'fa-arrow-up', tone: 'success' },
+    down: { label: 'Down', icon: 'fa-arrow-down', tone: 'warning' },
+    stable: { label: 'Stable', icon: 'fa-arrow-right' }
+};
 const VISIBILITY_KEY = 'crkd-forecast-visibility';
 
 let forecastProducts = [];
@@ -36,7 +42,7 @@ const productName = product => UI.variantName(product.productName, product.size,
 async function loadForecast({ quiet = false } = {}) {
     const tableBody = document.getElementById('forecastTableBody');
     if (!tableBody) return;
-    if (!quiet) UI.tableSkeleton(tableBody, 4, 6);
+    if (!quiet) UI.tableSkeleton(tableBody, COLUMNS, 6);
 
     try {
         const analytics = await UI.fetchJson(`${apiBase}/api/Forecasting/daily-sales`);
@@ -46,7 +52,7 @@ async function loadForecast({ quiet = false } = {}) {
     } catch (error) {
         console.error('Forecast Error:', error);
         document.getElementById('forecastSummary').textContent = 'The forecast could not be loaded.';
-        UI.tableMessage(tableBody, 4, {
+        UI.tableMessage(tableBody, COLUMNS, {
             isError: true,
             title: 'Unable to load the forecast',
             message: error.message,
@@ -67,7 +73,7 @@ function renderForecastTable({ fade = false } = {}) {
         : '';
 
     if (!forecastProducts.length) {
-        UI.tableMessage(tableBody, 4, {
+        UI.tableMessage(tableBody, COLUMNS, {
             icon: 'fa-chart-column',
             title: 'No forecast data yet',
             message: 'Forecasts appear once there are active products.'
@@ -76,7 +82,7 @@ function renderForecastTable({ fade = false } = {}) {
     }
 
     if (!shown.length) {
-        UI.tableMessage(tableBody, 4, {
+        UI.tableMessage(tableBody, COLUMNS, {
             icon: 'fa-eye-slash',
             title: 'No products to show',
             message: 'None of the products had sales in the last 7 days, or they are all hidden.',
@@ -90,16 +96,36 @@ function renderForecastTable({ fade = false } = {}) {
     UI.fillTable(tableBody, shown.map(product => {
         const velocity = String(product.salesVelocityRating || 'slow').toLowerCase();
         const label = velocity.charAt(0).toUpperCase() + velocity.slice(1);
+        const sold = product.dailySales.reduce((total, units) => total + units, 0);
+
+        const forecast = product.forecast;
 
         const row = document.createElement('tr');
         row.append(
             UI.cell(productName(product)),
-            UI.cell(Number(product.averageDailySales).toFixed(2)),
+            UI.cell(String(sold)),
+            UI.cell(forecast ? formatUnits(forecast.predictedUnits) : '—'),
+            trendCell(forecast),
+            UI.cell(String(product.stockQuantity)),
+            UI.cell(!forecast ? '—' : forecast.suggestedRestock > 0 ? String(forecast.suggestedRestock) : 'None'),
             UI.cell(String(product.lowStockThreshold)),
             UI.cell(UI.badge(label, VELOCITY_TONES[velocity]))
         );
         return row;
     }), { fade });
+}
+
+const formatUnits = value => Number(value).toLocaleString('en-PH', { maximumFractionDigits: 1 });
+
+function trendCell(forecast) {
+    const trend = TRENDS[forecast?.trend];
+    if (!trend) return UI.cell('—');
+
+    const badge = UI.badge(trend.label, trend.tone);
+    const icon = UI.el('i', `fa-solid ${trend.icon}`);
+    icon.setAttribute('aria-hidden', 'true');
+    badge.prepend(icon);
+    return UI.cell(badge);
 }
 
 // One checkbox per product. Rebuilding keeps keyboard focus on the same product's checkbox.

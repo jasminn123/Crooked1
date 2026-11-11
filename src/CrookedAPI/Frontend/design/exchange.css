@@ -75,11 +75,6 @@
     text-align: right;
 }
 
-.transaction-table .col-wrap {
-    min-width: 260px;
-    white-space: normal;
-}
-
 /* Step 2: choose what to exchange */
 .exchange-sale-summary {
     margin: 20px 0;
@@ -298,6 +293,11 @@
 
     .exchange-step-header {
         flex-wrap: wrap;
+    }
+
+    /* Keeps the heading beside its number, with the step's button on the next line. */
+    .exchange-step-copy {
+        flex-basis: calc(100% - 48px);
     }
 
     .exchange-actions .btn {

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crooked Receipt</title>
+
+    <link rel="stylesheet" href="../design/receipt.css?v=1">
+    <link rel="icon" type="image/png" href="../assets/Favicon.jpg">
+
+    <!-- Sends signed-out visitors to the login page before the page is drawn. -->
+    <script src="../javascript/session.js?v=2"></script>
+</head>
+<body>
+
+    <!-- The POS opens this page in a small window; receipt.js fills it in and prints it. -->
+    <main id="receipt" class="receipt" hidden>
+        <header class="center">
+            <h1 class="shop-name">CROOKED</h1>
+            <p class="address">2057 Bagong Sikat St., Baclaran,<br>Para&ntilde;aque City</p>
+        </header>
+
+        <hr class="divider">
+
+        <section class="meta">
+            <div>Receipt: <span id="receiptNumber"></span></div>
+            <div>Date: <span id="receiptDate"></span></div>
+            <div>Cashier: <span id="receiptCashier"></span></div>
+        </section>
+
+        <hr class="divider">
+
+        <section id="receiptItems" aria-label="Purchased items"></section>
+
+        <hr class="divider">
+
+        <div id="receiptSubtotal" class="row" hidden><span>Subtotal</span><span></span></div>
+        <div id="receiptDiscount" class="row" hidden><span>Discount</span><span></span></div>
+        <div class="row total"><span>TOTAL</span><span id="receiptTotal"></span></div>
+
+        <hr class="divider">
+
+        <section class="meta">
+            <div id="receiptCash" class="row" hidden><span>Cash</span><span></span></div>
+            <div id="receiptChange" class="row" hidden><span>Change</span><span></span></div>
+            <div id="receiptPayment" class="row" hidden><span>Payment</span><span></span></div>
+            <div id="receiptReference" class="row" hidden><span>Reference</span><span></span></div>
+        </section>
+
+        <hr class="divider">
+
+        <footer class="center footer">
+            <div>Thank you for shopping at</div>
+            <strong>CROOKED</strong>
+            <div>Please come again!</div>
+        </footer>
+    </main>
+
+    <p id="receiptEmpty" class="receipt-empty" hidden>There is no receipt to print. Print it from the Point of Sale.</p>
+
+    <!-- One line of the receipt per item -->
+    <template id="receiptItemTemplate">
+        <div class="item">
+            <div class="item-name"></div>
+            <div class="item-details">
+                <span class="item-quantity"></span>
+                <span class="item-subtotal"></span>
+            </div>
+        </div>
+    </template>
+
+    <script src="../javascript/ui.js?v=6"></script>
+    <script src="../javascript/receipt.js?v=3"></script>
+
+</body>
+</html>

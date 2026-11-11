@@ -36,53 +36,59 @@ function updateSalesChartTheme() {
 
 window.addEventListener('themechange', updateSalesChartTheme);
 
-// quiet: a live refresh keeps the current numbers and chart on screen until the new ones arrive.
+// Says why a dashboard request failed. UI.fetchJson gives server errors a status; a request that
+// never reached the server (offline, or the server is down or restarting) has none.
+function loadErrorText(what, error) {
+    if (error?.status === 403) return `Only the owner can see ${what}. Log out, then sign in again as the owner.`;
+    if (error?.status) return `The server couldn't load ${what} (error ${error.status}). Try again in a moment.`;
+    return `Can't reach the server to load ${what}. Check your internet connection, then try again.`;
+}
+
+// True once the chart shows data, so a failed live refresh can leave it on screen.
+let salesAnalyticsShown = false;
+
+// quiet: a live refresh keeps the current numbers and chart on screen until the new ones arrive,
+// and keeps them if the refresh fails.
 async function loadSalesAnalytics({ quiet = false } = {}) {
     const status = document.getElementById('salesAnalyticsStatus');
+    const retry = document.getElementById('salesAnalyticsRetry');
     const totalProductsSold = document.getElementById('totalProductsSold');
-    const todayRevenue = document.getElementById('todayRevenue');
     const chartSkeleton = quiet ? null : UI.skeleton('skeleton-block chart-skeleton');
     if (chartSkeleton) document.querySelector('.chart-canvas-wrap')?.appendChild(chartSkeleton);
-    if (!quiet && totalProductsSold) UI.textSkeleton(totalProductsSold, '3em');
-    if (!quiet && todayRevenue) UI.textSkeleton(todayRevenue, '70%');
+    if (!quiet) {
+        if (status) status.textContent = 'Loading the last 7 days of sales...';
+        if (totalProductsSold) UI.textSkeleton(totalProductsSold, '3em');
+    }
 
     try {
-        const [salesResponse, revenueResponse] = await Promise.all([
-            fetch(`${apiBase}/api/Forecasting/daily-sales`),
-            fetch(`${apiBase}/api/POS/Transaction/today-revenue`)
-        ]);
-        if (!salesResponse.ok) throw new Error(`Daily sales request failed (${salesResponse.status})`);
-        if (!revenueResponse.ok) throw new Error(`Today's revenue request failed (${revenueResponse.status})`);
-
-        const [analytics, revenueData] = await Promise.all([
-            salesResponse.json(),
-            revenueResponse.json()
-        ]);
+        const analytics = await UI.fetchJson(`${apiBase}/api/Forecasting/daily-sales`);
         const totalUnitsSold = analytics.products.reduce(
             (total, product) => total + product.dailySales.reduce((dailyTotal, units) => dailyTotal + units, 0),
             0
         );
         if (totalProductsSold) totalProductsSold.textContent = totalUnitsSold.toLocaleString('en-PH');
+        if (retry) retry.hidden = true;
 
-        if (todayRevenue) {
-            todayRevenue.textContent = Number(revenueData.revenue).toLocaleString('en-PH', {
-                style: 'currency',
-                currency: 'PHP',
-                minimumFractionDigits: 2
-            });
+        // Chart.js comes from a CDN. Without it the total above still shows.
+        if (typeof Chart === 'undefined') {
+            if (status) status.textContent = "The chart couldn't be drawn because its library didn't load. Check your internet connection, then reload the page.";
+            return;
         }
 
         // Products with no sales would only add flat lines at zero, so the chart leaves them out.
         const soldProducts = analytics.products.filter(product => product.dailySales.some(units => units > 0));
         renderSalesChart(analytics.dates, soldProducts, { animate: !quiet });
+        salesAnalyticsShown = true;
         if (status) status.textContent = soldProducts.length
-            ? `Units sold per day over the last 7 days, for the ${soldProducts.length} product${soldProducts.length === 1 ? '' : 's'} that sold. Click a name below the chart to hide or show its line.`
+            ? `Units sold per day over the last 7 days, for the ${soldProducts.length} product${soldProducts.length === 1 ? '' : 's'} that sold. Click or tap a name below the chart to hide or show its line.`
             : 'No products were sold in the last 7 days.';
     } catch (error) {
         console.error('Sales Analytics Error:', error);
-        if (status) status.textContent = 'Unable to load sales analytics. Please try again later.';
+        // A failed live refresh leaves the chart and total on screen; the next change or a reload updates them.
+        if (quiet && salesAnalyticsShown) return;
+        if (status) status.textContent = loadErrorText('sales analytics', error);
         if (totalProductsSold) totalProductsSold.textContent = '—';
-        if (todayRevenue) todayRevenue.textContent = '—';
+        if (retry) retry.hidden = false;
     } finally {
         chartSkeleton?.remove();
     }
@@ -91,9 +97,6 @@ async function loadSalesAnalytics({ quiet = false } = {}) {
 function renderSalesChart(dates, products, { animate = true } = {}) {
     const canvas = document.getElementById('salesChart');
     if (!canvas) return;
-    if (typeof Chart === 'undefined') {
-        throw new Error('Sales chart is unavailable.');
-    }
 
     if (salesChartInstance) salesChartInstance.destroy();
 
@@ -140,42 +143,59 @@ function renderSalesChart(dates, products, { animate = true } = {}) {
 }
 
 /* =========================
-   ACTIVITY LOGS
+   REVENUE
+   The dropdown picks today, the last 7 days, this month or this year.
+   The server works out the dates in Philippine time and sends them back.
 ========================= */
-async function fetchLogs({ quiet = false } = {}) {
-    const logBody = document.getElementById('logTableBody');
-    if (!logBody) return;
-    if (!quiet) UI.tableSkeleton(logBody, 3, 5);
+let revenueRequest = 0;
+// True while the card shows an amount for the chosen period, so a failed live refresh can keep it.
+let revenueShown = false;
+
+function shopDateLabel(isoDate, withYear) {
+    return new Date(`${isoDate}T00:00:00`).toLocaleDateString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        ...(withYear ? { year: 'numeric' } : {})
+    });
+}
+
+// "Nov 11, 2026" for one day, otherwise "Nov 5 – Nov 11, 2026".
+function revenueRangeText(from, to) {
+    if (from === to) return shopDateLabel(to, true);
+    const sameYear = from.slice(0, 4) === to.slice(0, 4);
+    return `${shopDateLabel(from, !sameYear)} – ${shopDateLabel(to, true)}`;
+}
+
+// quiet: a live refresh keeps the current amount on screen until the new one arrives,
+// and keeps it if the refresh fails.
+async function loadRevenue({ quiet = false } = {}) {
+    const value = document.getElementById('revenueValue');
+    const range = document.getElementById('revenueRange');
+    const period = document.getElementById('revenuePeriod')?.value || 'today';
+    if (!value) return;
+
+    // Only the newest request may fill the card, in case the period changes mid-request.
+    const request = ++revenueRequest;
+    if (!quiet) {
+        revenueShown = false;
+        UI.textSkeleton(value, '70%');
+        if (range) UI.textSkeleton(range, '55%');
+    }
 
     try {
-        const logs = await UI.fetchJson(`${apiBase}/api/Auth/get-logs`);
-        if (!logs.length) {
-            UI.tableMessage(logBody, 3, {
-                icon: 'fa-clock-rotate-left',
-                title: 'No activity yet',
-                message: 'Logins, exchanges and imports will show up here.'
-            });
-            return;
-        }
-
-        UI.fillTable(logBody, logs.map(log => {
-            const row = document.createElement('tr');
-            row.append(
-                UI.cell(log.staffName),
-                UI.cell(log.action),
-                UI.cell(new Date(log.dateOccurred).toLocaleString(), 'col-muted')
-            );
-            return row;
-        }), { fade: !quiet });
+        const data = await UI.fetchJson(
+            `${apiBase}/api/POS/Transaction/revenue?period=${encodeURIComponent(period)}`);
+        if (request !== revenueRequest) return;
+        value.textContent = UI.formatPeso(data.revenue);
+        if (range) range.textContent = revenueRangeText(data.from, data.to);
+        revenueShown = true;
     } catch (error) {
-        console.error('Logs Error:', error);
-        UI.tableMessage(logBody, 3, {
-            isError: true,
-            title: 'Unable to load activity logs',
-            message: error.message,
-            actionLabel: 'Try again',
-            onAction: () => fetchLogs()
-        });
+        if (request !== revenueRequest) return;
+        console.error('Revenue Error:', error);
+        // A failed live refresh leaves the amount on screen; the next sale or a period change updates it.
+        if (quiet && revenueShown) return;
+        value.textContent = '—';
+        if (range) range.textContent = loadErrorText('revenue', error);
     }
 }
 
@@ -210,28 +230,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const role = localStorage.getItem('userRole');
         const isOwner = role?.toLowerCase() === 'owner';
 
-        // Staff see stock cards instead of the sales chart and revenue card,
-        // and the activity logs are for the owner only.
+        // Staff see stock cards instead of the sales chart and revenue card.
+        // The activity logs have their own owner-only page (activity-logs.html).
         if (role && !isOwner) {
-            document.getElementById('activityLogsCard')?.remove();
-
             const staffStats = document.getElementById('staff-stats-container');
             if (staffStats) {
-                staffStats.style.display = 'flex';
+                staffStats.hidden = false;
                 fetchStaffStats();
                 Live.on(['products', 'exchanges'], () => fetchStaffStats({ quiet: true }));
             }
 
             const statsContainer = document.querySelector('.dashboard-stats-container');
-            if (statsContainer) statsContainer.style.display = 'none';
+            if (statsContainer) statsContainer.hidden = true;
         }
 
+        // The sales chart and revenue come from owner-only endpoints.
         if (isOwner) {
-            fetchLogs();
-            Live.on(['activity'], () => fetchLogs({ quiet: true }));
+            loadSalesAnalytics();
+            document.getElementById('salesAnalyticsRetry')?.addEventListener('click', async event => {
+                const restore = UI.setLoading(event.currentTarget, 'Trying again...');
+                await loadSalesAnalytics();
+                restore();
+            });
+            loadRevenue();
+            document.getElementById('revenuePeriod')?.addEventListener('change', () => loadRevenue());
+            Live.on(['transactions', 'exchanges', 'products'], () => loadSalesAnalytics({ quiet: true }));
+            Live.on(['transactions'], () => loadRevenue({ quiet: true }));
         }
-        loadSalesAnalytics();
-        Live.on(['transactions', 'exchanges', 'products'], () => loadSalesAnalytics({ quiet: true }));
     } catch (error) {
         console.error('Dashboard Init Error:', error);
     }
