@@ -74,6 +74,27 @@ const UI = (() => {
         return data;
     }
 
+    // Remembers the last response a view drew, so a quiet refresh that brings nothing new can skip
+    // redrawing (which would move keyboard focus off the table or pager and repeat the summary to
+    // screen readers). changed(data) says whether data differs and remembers it; call forget()
+    // after an error so the next response is drawn.
+    //   const drawn = UI.lastDrawn();
+    //   if (!drawn.changed(data) && quiet) return;
+    function lastDrawn() {
+        let shown = '';
+        return {
+            changed(data) {
+                const snapshot = JSON.stringify(data);
+                if (snapshot === shown) return false;
+                shown = snapshot;
+                return true;
+            },
+            forget() {
+                shown = '';
+            }
+        };
+    }
+
     /* =========================
        SKELETONS
     ========================= */
@@ -442,6 +463,7 @@ const UI = (() => {
         el,
         icon,
         fetchJson,
+        lastDrawn,
         skeleton,
         tableSkeleton,
         labelCells,
