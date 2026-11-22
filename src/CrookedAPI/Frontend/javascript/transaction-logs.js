@@ -12,6 +12,7 @@ let currentPage = 1;
 let totalTransactions = 0;
 let latestRequest = 0;
 let focusPagerAfterLoad = false;
+const transactionsDrawn = UI.lastDrawn();
 
 const transactionBody = document.getElementById('transactionTableBody');
 const transactionSummary = document.getElementById('transactionSummary');
@@ -50,6 +51,8 @@ async function loadTransactions(page = currentPage, { quiet = false } = {}) {
         const data = await UI.fetchJson(`${apiBase}/api/POS/Transaction/search?${filterParams({ page, pageSize: PAGE_SIZE })}`);
         // A newer search or page request replaced this one while it was loading.
         if (request !== latestRequest) return;
+        // A refresh that found nothing new leaves the page as it is (keyboard focus on a View button included).
+        if (!transactionsDrawn.changed(data) && quiet) return;
 
         currentPage = data.page;
         totalTransactions = data.totalItems;
@@ -72,6 +75,7 @@ async function loadTransactions(page = currentPage, { quiet = false } = {}) {
         }
     } catch (error) {
         if (request !== latestRequest) return;
+        transactionsDrawn.forget();
         console.error('Transaction Error:', error);
         totalTransactions = 0;
         transactionPager.replaceChildren();
@@ -340,5 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadTransactions(1);
-    Live.on(['transactions', 'exchanges'], () => loadTransactions(currentPage, { quiet: true }));
+    // New sales and exchanges appear without reloading the page, through live updates or, when
+    // those are off, a check every 10 seconds.
+    Live.on(['transactions', 'exchanges'], () => loadTransactions(currentPage, { quiet: true }), { poll: true });
 });

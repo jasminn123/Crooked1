@@ -10,6 +10,7 @@ const filters = { search: '', from: '', to: '' };
 let currentPage = 1;
 let latestRequest = 0;
 let focusPagerAfterLoad = false;
+const salesDrawn = UI.lastDrawn();
 
 const salesBody = document.getElementById('salesHistoryTableBody');
 const salesSummary = document.getElementById('salesSummary');
@@ -43,6 +44,8 @@ async function loadSalesHistory(page = currentPage, { quiet = false } = {}) {
         const data = await UI.fetchJson(`${apiBase}/api/POS/Transaction/search?${salesParams(page)}`);
         // A newer search or page request replaced this one while it was loading.
         if (request !== latestRequest) return;
+        // A refresh that found nothing new leaves the page as it is.
+        if (!salesDrawn.changed(data) && quiet) return;
 
         currentPage = data.page;
         renderSales(data.items, { fade: !quiet });
@@ -62,6 +65,7 @@ async function loadSalesHistory(page = currentPage, { quiet = false } = {}) {
         }
     } catch (error) {
         if (request !== latestRequest) return;
+        salesDrawn.forget();
         console.error('Sales History Error:', error);
         salesPager.replaceChildren();
         salesSummary.textContent = 'Sales could not be loaded.';
@@ -164,5 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     salesClearFilters.addEventListener('click', clearFilters);
 
     loadSalesHistory(1);
-    Live.on(['transactions', 'exchanges'], () => loadSalesHistory(currentPage, { quiet: true }));
+    // New sales appear without reloading the page, through live updates or, when those are off,
+    // a check every 10 seconds.
+    Live.on(['transactions', 'exchanges'], () => loadSalesHistory(currentPage, { quiet: true }), { poll: true });
 });

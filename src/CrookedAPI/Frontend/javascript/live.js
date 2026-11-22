@@ -1,25 +1,47 @@
 // Live updates over Supabase Realtime (websockets). When data changes, the server broadcasts
 // which kinds changed (transactions, products, exchanges, activity, staff, forecast,
 // notifications) on one channel. Pages register what they show with
-// Live.on(topics, reload) and reload it quietly. Nothing happens until SUPABASE_URL and
-// SUPABASE_ANON_KEY are set on the server. Load it after ui.js.
+// Live.on(topics, reload) and reload it quietly. Broadcasts only happen when SUPABASE_URL and
+// SUPABASE_ANON_KEY are set on the server (they aren't on a local `dotnet run`); views registered
+// with { poll: true } check for changes on a timer instead while there is no live connection.
+// Load it after ui.js.
 const Live = (() => {
     const SUPABASE_SCRIPT = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js';
+    const POLL_MS = 10000;
     const listeners = [];
     let connecting = null;
     let status = null;
     let missedUpdates = false;
+    let isLive = false;
+    let pollTimer = null;
 
     // refresh runs at most once per burst of changes (wait ms after the last one).
-    function on(topics, refresh, { wait = 400 } = {}) {
-        listeners.push({ topics: new Set(topics), refresh: UI.debounce(refresh, wait) });
+    // poll: while live updates are off or disconnected, refresh also runs every 10 seconds while the
+    // page is on screen, and as soon as it is shown again. Only for views that are safe to redraw at
+    // any time, such as a read-only list; a reload that warns or resets a form would fire for nothing.
+    function on(topics, refresh, { wait = 400, poll = false } = {}) {
+        listeners.push({ topics: new Set(topics), refresh: UI.debounce(refresh, wait), poll });
         start();
+        if (poll) startPolling();
     }
 
     function notify(topics) {
         listeners.forEach(listener => {
             if (topics.some(topic => listener.topics.has(topic))) listener.refresh(topics);
         });
+    }
+
+    function pollQuietly() {
+        if (isLive || document.hidden) return;
+        listeners.forEach(listener => {
+            if (listener.poll) listener.refresh([]);
+        });
+    }
+
+    function startPolling() {
+        if (pollTimer) return;
+        pollTimer = setInterval(pollQuietly, POLL_MS);
+        document.addEventListener('visibilitychange', pollQuietly);
     }
 
     function loadScript(src) {
@@ -88,7 +110,8 @@ const Live = (() => {
                 if (Array.isArray(topics)) notify(topics);
             })
             .subscribe((channelStatus, error) => {
-                if (channelStatus === 'SUBSCRIBED') {
+                isLive = channelStatus === 'SUBSCRIBED';
+                if (isLive) {
                     setStatus('live');
                     // Changes made while the connection was down were never announced.
                     if (missedUpdates) {

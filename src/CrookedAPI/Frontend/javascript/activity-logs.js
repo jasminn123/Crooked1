@@ -12,6 +12,7 @@ const activityFilters = { search: '', type: '', staff: '', from: '', to: '' };
 let activityPage = 1;
 let latestActivityRequest = 0;
 let focusActivityPager = false;
+const activityDrawn = UI.lastDrawn();
 
 const activityBody = document.getElementById('activityTableBody');
 const activitySummary = document.getElementById('activitySummary');
@@ -85,6 +86,9 @@ async function loadActivity(page = activityPage, { quiet = false } = {}) {
         // A newer search or page request replaced this one while it was loading.
         if (request !== latestActivityRequest) return;
 
+        // A refresh that found nothing new leaves the page as it is.
+        if (!activityDrawn.changed(data) && quiet) return;
+
         activityPage = data.page;
         renderActivity(data.items, { fade: !quiet });
         const count = `${data.totalItems.toLocaleString('en-PH')} ${data.totalItems === 1 ? 'entry' : 'entries'}`;
@@ -104,6 +108,7 @@ async function loadActivity(page = activityPage, { quiet = false } = {}) {
         }
     } catch (error) {
         if (request !== latestActivityRequest) return;
+        activityDrawn.forget();
         console.error('Activity Error:', error);
         activityPager.replaceChildren();
         activitySummary.textContent = 'Activity could not be loaded.';
@@ -128,6 +133,9 @@ function goToActivityPage(page) {
 async function loadStaffNames() {
     try {
         const names = await UI.fetchJson(`${apiBase}/api/Activity/staff`);
+        // Same names: leave the list alone, so a refresh doesn't close it while it's open.
+        const shown = [...staffFilter.options].slice(1).map(option => option.value);
+        if (shown.length === names.length && shown.every((name, i) => name === names[i])) return;
         const chosen = staffFilter.value;
         staffFilter.replaceChildren(new Option('All staff', ''), ...names.map(name => new Option(name, name)));
         staffFilter.value = names.includes(chosen) ? chosen : '';
@@ -172,8 +180,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadStaffNames();
     loadActivity(1);
+    // New entries (a sale at the POS, a login on another device) appear without reloading the page,
+    // through live updates or, when those are off, a check every 10 seconds.
     Live.on(['activity'], () => {
         loadStaffNames();
         loadActivity(activityPage, { quiet: true });
-    });
+    }, { poll: true });
 });
